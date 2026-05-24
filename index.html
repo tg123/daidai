@@ -163,6 +163,19 @@
         #btn-pause { top: 50px; right: 12px; width: 44px; height: 44px; font-size: 16px; }
         #btn-restart { top: 50px; right: 64px; width: 44px; height: 44px; font-size: 18px; display: none; }
         #btn-restart.show { display: flex; }
+        #btn-mute { top: 100px; right: 12px; width: 44px; height: 44px; font-size: 18px; }
+        #btn-mute.muted { background: rgba(255,80,80,0.35); }
+        #mute-hint {
+            position: fixed; top: 150px; right: 12px;
+            background: rgba(0,0,0,0.75); color: #ffd; padding: 6px 10px;
+            border-radius: 8px; font-size: 12px; pointer-events: none;
+            border: 1px solid rgba(255,255,200,0.4); z-index: 60;
+            animation: muteHintPulse 1.6s ease-in-out infinite;
+        }
+        @keyframes muteHintPulse {
+            0%,100% { transform: translateX(0); opacity: 1; }
+            50% { transform: translateX(-4px); opacity: 0.7; }
+        }
 
         @media (max-width: 720px), (pointer: coarse) {
             #touch-controls { display: block; }
@@ -227,6 +240,15 @@
         #loading-worm { font-size: 28px; margin-bottom: 14px; animation: wiggle 1s ease-in-out infinite; }
         @keyframes wiggle { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
     </style>
+    <script>
+        // On-screen console (Eruda) — enable by adding ?debug to URL
+        if (location.search.includes('debug') || location.hash.includes('debug')) {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/eruda';
+            s.onload = () => window.eruda && eruda.init();
+            document.head.appendChild(s);
+        }
+    </script>
 </head>
 <body>
     <div id="loading-screen">
@@ -275,6 +297,7 @@
     <div id="touch-controls">
         <button class="touch-btn" id="btn-pause" aria-label="Pause">⏸</button>
         <button class="touch-btn" id="btn-restart" aria-label="Restart" title="重新开始">⟳</button>
+        <button class="touch-btn" id="btn-mute" aria-label="Sound" title="声音">🔊</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -287,6 +310,8 @@
             this.buffers = {};
             this.rawBuffers = {};
             this.loopSources = {};
+            this.masterGain = null;
+            this.muted = (localStorage.getItem('daidai_muted') === '1');
             this.files = {
                 eat: 'audio/eat.ogg',
                 die: 'audio/die.ogg',
@@ -336,10 +361,29 @@
                 return false;
             }
         }
+        // Create the AudioContext as early as possible (it starts suspended
+        // without a user gesture, which is fine — this lets us decode buffers
+        // in parallel with the network fetches so that play() works instantly
+        // after the first tap.
+        _ensureCtx() {
+            if (this.ctx) return;
+            try {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.value = this.muted ? 0 : 1;
+                this.masterGain.connect(this.ctx.destination);
+                this.ctx.onstatechange = () => {
+                    console.log('[audio] statechange →', this.ctx.state);
+                    if (this.ctx.state === 'running') this._flushQueue();
+                };
+                console.log('[audio] context created (eager), state:', this.ctx.state);
+            } catch (e) { console.warn('[audio] ctx create fail:', e); }
+        }
         // Fetch raw audio bytes (no AudioContext needed) so we can show a loading screen
         // before any user gesture has unlocked audio.
         async preload() {
             if (this._preloading) return this._preloading;
+            this._ensureCtx();
             this._preloading = (async () => {
                 const entries = Object.entries(this.files);
                 await Promise.all(entries.map(async ([name, url]) => {
@@ -359,18 +403,80 @@
             return this._preloading;
         }
         init() {
-            if (this.initialized) return;
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this._ensureCtx();
+            if (this.initialized) {
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume().then(() => { console.log('[audio] re-resumed, state:', this.ctx.state); this._flushQueue(); }).catch(e => console.warn('[audio] re-resume fail:', e));
+                }
+                return;
+            }
             this.initialized = true;
+            this._pendingPlays = [];
+            console.log('[audio] init() unlock, state:', this.ctx.state, 'muted:', this.muted);
+            this.ctx.resume().then(() => {
+                console.log('[audio] resume resolved, state:', this.ctx.state);
+                this._flushQueue();
+            }).catch(err => console.warn('[audio] resume failed:', err));
+            // iOS unlock: silent buffer + short oscillator at gain 0
+            try {
+                const silent = this.ctx.createBuffer(1, 1, 22050);
+                const src = this.ctx.createBufferSource();
+                src.buffer = silent;
+                src.connect(this.ctx.destination);
+                src.start(0);
+                const osc = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                g.gain.value = 0;
+                osc.connect(g).connect(this.ctx.destination);
+                osc.start(0);
+                osc.stop(this.ctx.currentTime + 0.05);
+                console.log('[audio] unlock buffer + osc started');
+            } catch(e) { console.warn('[audio] unlock fail:', e); }
+            // iOS silent-switch bypass: start a looping silent <video> (audio
+            // alone doesn't work on iOS 15+). Video playback uses the
+            // "playback" audio session category, ignoring the mute switch.
+            try {
+                let v = this._silentVideo;
+                if (!v) {
+                    v = document.createElement('video');
+                    v.src = 'audio/silent.mp4';
+                    v.loop = true;
+                    v.muted = false;
+                    v.volume = 0.01;
+                    v.setAttribute('playsinline', '');
+                    v.setAttribute('webkit-playsinline', '');
+                    v.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px';
+                    document.body.appendChild(v);
+                    this._silentVideo = v;
+                }
+                const p = v.play();
+                if (p && p.then) p.then(() => console.log('[audio] silent-video playing → playback session')).catch(err => console.warn('[audio] silent-video fail:', err.message));
+            } catch(e) { console.warn('[audio] silent-video create fail:', e); }
             this._decodeAll();
+        }
+        _flushQueue() {
+            if (!this._pendingPlays || this._pendingPlays.length === 0) return;
+            console.log('[audio] flushing', this._pendingPlays.length, 'queued plays');
+            const q = this._pendingPlays.splice(0);
+            for (const type of q) this.play(type);
+        }
+        setMuted(m) {
+            this.muted = !!m;
+            localStorage.setItem('daidai_muted', this.muted ? '1' : '0');
+            if (this.masterGain && this.ctx) {
+                const t = this.ctx.currentTime;
+                this.masterGain.gain.cancelScheduledValues(t);
+                this.masterGain.gain.linearRampToValueAtTime(this.muted ? 0 : 1, t + 0.1);
+            }
+            console.log('[audio] setMuted →', this.muted);
         }
         async _decodeAll() {
             // Make sure preload has finished (or is at least started)
             await this.preload();
             const entries = Object.entries(this.rawBuffers);
             await Promise.all(entries.map(async ([name, arrayBuf]) => {
+                if (this.buffers[name]) return; // already decoded by _fetchOne
                 try {
-                    // decodeAudioData detaches the ArrayBuffer; clone so we can re-decode if needed
                     const buf = arrayBuf.slice(0);
                     this.buffers[name] = await this.ctx.decodeAudioData(buf);
                 } catch (e) {
@@ -381,14 +487,15 @@
             this._startLoop('music', 0.3);
         }
         _playBuffer(name, volume = 0.6, loop = false) {
-            if (!this.initialized || !this.buffers[name]) return null;
+            if (!this.initialized) { console.warn('[audio] not initialized, skipping', name); return null; }
+            if (!this.buffers[name]) { console.warn('[audio] buffer missing:', name); return null; }
             const source = this.ctx.createBufferSource();
             source.buffer = this.buffers[name];
             source.loop = loop;
             const gain = this.ctx.createGain();
             gain.gain.value = volume;
             source.connect(gain);
-            gain.connect(this.ctx.destination);
+            gain.connect(this.masterGain);
             source.start();
             return { source, gain };
         }
@@ -411,6 +518,15 @@
         }
         play(type) {
             if (!this.initialized) return;
+            // iOS WKWebView: if ctx is still suspended, queue and try resume; flush after resume
+            if (this.ctx.state === 'suspended') {
+                this._pendingPlays = this._pendingPlays || [];
+                if (this._pendingPlays.length < 32) this._pendingPlays.push(type);
+                this.ctx.resume().catch(()=>{});
+                console.log('[audio] queued (suspended):', type);
+                return;
+            }
+            console.log('[audio] play()', type, 'state:', this.ctx.state, 'buffers:', Object.keys(this.buffers).length);
             switch(type) {
                 case 'eat': this._playBuffer('eat', 0.7); break;
                 case 'combo': this._playBuffer('beat', 0.8); break;
@@ -437,6 +553,16 @@
         }
     }
     const audio = new AudioEngine();
+    // iOS WKWebView reliability: prime audio on the very first user interaction
+    // anywhere on the page (touchend > touchstart for Safari/Chrome on iOS).
+    (function primeAudioOnFirstGesture() {
+        const events = ['touchend', 'touchstart', 'mousedown', 'click', 'keydown'];
+        const handler = () => {
+            audio.init();
+            events.forEach(ev => window.removeEventListener(ev, handler, true));
+        };
+        events.forEach(ev => window.addEventListener(ev, handler, true));
+    })();
     // ============ LOADING SCREEN ============
     (function setupLoadingScreen() {
         const screen = document.getElementById('loading-screen');
@@ -2530,6 +2656,23 @@
         btnRestart.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); doRestart(); });
         const btnRestartInline = document.getElementById('btn-restart-inline');
         btnRestartInline.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); doRestart(); });
+        // Mute button
+        const btnMute = document.getElementById('btn-mute');
+        function refreshMuteUI() {
+            const m = audio.muted;
+            btnMute.textContent = m ? '🔇' : '🔊';
+            btnMute.classList.toggle('muted', m);
+            btnMute.setAttribute('aria-label', m ? 'Unmute' : 'Mute');
+            const hint = document.getElementById('mute-hint');
+            if (hint) hint.style.display = m ? 'block' : 'none';
+        }
+        btnMute.addEventListener('click', e => {
+            e.preventDefault();
+            audio.init();
+            audio.setMuted(!audio.muted);
+            refreshMuteUI();
+        });
+        refreshMuteUI();
         // ============ GAMEPAD CONTROLLER SUPPORT ============
         (function setupGamepad() {
             let prevButtons = [];
