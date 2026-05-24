@@ -397,6 +397,42 @@
         }
     }
 
+    // ============ EASTER EGG STATE ============
+    let devtoolsOpen = false;
+    let godMode = false;          // Konami: rainbow + invincible + 10x score
+    let tributeActive = false;    // Heart pattern: tribute screen + TV static
+    const konamiSeq = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+    let konamiBuf = [];
+    let typedBuf = '';
+    const heartSeq = ['ArrowDown','ArrowRight','ArrowUp','ArrowLeft','ArrowDown','ArrowRight','ArrowUp','ArrowLeft'];
+    let heartBuf = [];
+
+    function announceDebugHelp() {
+        const big = 'color:#ffd700;font-size:18px;font-weight:bold;text-shadow:1px 1px 0 #000';
+        const sub = 'color:#88aaff;font-size:13px';
+        const mono = 'color:#fff;font-family:Consolas,monospace;font-size:12px;line-height:1.6';
+        console.log('%c🐛 DaiDai DEBUG 模式已激活', big);
+        console.log('%c按 1-5 触发对应魔法（不需 5 连豆）：', sub);
+        console.log('%c  1  🔴 变速魔法 (Speed Boost)\n  2  🔵 降雨魔法 (Rain)\n  3  🟢 生机魔法 (Shed→Beans)\n  4  🟠 圣光魔法 (Gold Laser)\n  5  🟣 寸缩魔法 (Halve)', mono);
+    }
+    function detectDevtools() {
+        const threshold = 160;
+        const opened =
+            (window.outerWidth  - window.innerWidth  > threshold) ||
+            (window.outerHeight - window.innerHeight > threshold) ||
+            window.devicePixelRatio < 0.5;
+        if (opened && !devtoolsOpen) { devtoolsOpen = true; announceDebugHelp(); }
+    }
+    setInterval(detectDevtools, 1000);
+    // Getter probe — fires when devtools renders the object (works even when undocked)
+    const _ddProbe = function(){};
+    _ddProbe.toString = function() {
+        if (!devtoolsOpen) { devtoolsOpen = true; announceDebugHelp(); }
+        return '';
+    };
+    setInterval(() => { if (!devtoolsOpen) console.debug('%c', '', _ddProbe); }, 1500);
+
+
     // ============ THREE.JS SETUP ============
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
@@ -1244,6 +1280,10 @@
             { x: startX - 4, y: startY }
         ];
         eatenColors = [];
+        godMode = false;
+        konamiBuf = [];
+        heartBuf = [];
+        typedBuf = '';
         direction = { x: 1, y: 0 };
         nextDirection = { x: 1, y: 0 };
         beans = [];
@@ -1302,8 +1342,8 @@
         if (head.y < 0) head.y = ROWS - 1;
         if (head.y >= ROWS) head.y = 0;
 
-        if (snake.some(s => s.x === head.x && s.y === head.y) ||
-            shedSkin.some(s => s.x === head.x && s.y === head.y)) {
+        if (!godMode && (snake.some(s => s.x === head.x && s.y === head.y) ||
+            shedSkin.some(s => s.x === head.x && s.y === head.y))) {
             gameOver = true;
             const isNew = score > hiScore;
             saveHiScore();
@@ -1365,6 +1405,7 @@
         if (isBoosted) basePoints += 5;
         // Bonus during blue rain
         if (isRaining) basePoints += 10;
+        if (godMode) basePoints *= 10;
         score += basePoints;
         growthPending++;
         audio.play('eat');
@@ -1449,12 +1490,14 @@
                 break;
             case 2:
                 audio.play('magic_green');
-                // Convert all shed skin back into beans (falling from sky effect)
+                // Randomly convert up to 5 shed skin segments back into beans
                 {
-                    const converted = shedSkin.splice(0, shedSkin.length);
-                    converted.forEach(s => {
+                    const n = Math.min(5, shedSkin.length);
+                    for (let k = 0; k < n; k++) {
+                        const idx = Math.floor(Math.random() * shedSkin.length);
+                        const s = shedSkin.splice(idx, 1)[0];
                         spawnFallingBean(s.x, s.y, Math.floor(Math.random() * COLORS_HEX.length));
-                    });
+                    }
                 }
                 showEffect('🌿 生机魔法！蜕皮变豆！');
                 break;
@@ -1497,6 +1540,70 @@
         el.textContent = text;
         el.style.opacity = 1;
         setTimeout(() => { el.style.opacity = 0; }, 2000);
+    }
+
+    // ============ EASTER EGG EFFECTS ============
+    function activateGodMode() {
+        if (godMode) return;
+        godMode = true;
+        showEffect('🌈 樊一鹏模式！无敌 + 彩虹 + 10×');
+        audio.play('magic_orange');
+        // sparkle
+        if (snake && snake[0]) {
+            for (let k = 0; k < 5; k++) {
+                const hue = (k * 72) % 360;
+                const col = new THREE.Color().setHSL(hue/360, 1, 0.5).getHex();
+                spawnParticles3D(snake[0].x * CELL, snake[0].y * CELL, col, 20);
+            }
+        }
+    }
+    function spawnMeteorShower() {
+        showEffect('☄️ 流星雨！');
+        audio.play('magic_blue');
+        for (let i = 0; i < 30; i++) {
+            const x = Math.floor(Math.random() * COLS);
+            const y = Math.floor(Math.random() * ROWS);
+            const c = Math.floor(Math.random() * COLORS_HEX.length);
+            // stagger drops for waterfall feel
+            setTimeout(() => spawnFallingBean(x, y, c), i * 60);
+        }
+    }
+    function activateTribute() {
+        if (tributeActive) return;
+        tributeActive = true;
+        audio.play('magic_orange');
+        // Create overlay: TV static + scrolling subtitle
+        const wrap = document.createElement('div');
+        wrap.id = 'tribute-overlay';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;overflow:hidden;background:radial-gradient(ellipse at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.85) 100%);';
+        // TV static canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = 320; canvas.height = 180;
+        canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;opacity:0.35;mix-blend-mode:screen;image-rendering:pixelated;';
+        wrap.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+        const staticTimer = setInterval(() => {
+            const img = ctx.createImageData(canvas.width, canvas.height);
+            for (let i = 0; i < img.data.length; i += 4) {
+                const v = Math.random() * 255 | 0;
+                img.data[i] = img.data[i+1] = img.data[i+2] = v;
+                img.data[i+3] = 255;
+            }
+            ctx.putImageData(img, 0, 0);
+        }, 60);
+        // Scrolling subtitle
+        const subtitle = document.createElement('div');
+        subtitle.style.cssText = 'position:absolute;left:100%;top:50%;transform:translateY(-50%);white-space:nowrap;font-size:56px;font-weight:bold;color:#fff;text-shadow:0 0 18px #ff66aa, 0 0 4px #000;font-family:"Microsoft YaHei",sans-serif;letter-spacing:6px;transition:left 5s linear;';
+        subtitle.textContent = '❤️  致樊一鹏 —— 谢谢你写出我们的童年  ❤️';
+        wrap.appendChild(subtitle);
+        document.body.appendChild(wrap);
+        requestAnimationFrame(() => { subtitle.style.left = '-100%'; });
+        setTimeout(() => {
+            clearInterval(staticTimer);
+            wrap.style.transition = 'opacity 0.6s';
+            wrap.style.opacity = '0';
+            setTimeout(() => { wrap.remove(); tributeActive = false; }, 700);
+        }, 5000);
     }
 
     function showMessage(text) {
@@ -1628,7 +1735,13 @@
             }
             // Body segments - color = eaten bean colors (newest at body[1])
             if (i > 0) {
-                if (isBoosted) {
+                if (godMode) {
+                    const hue = ((time * 0.0008) + i * 0.08) % 1;
+                    const col = new THREE.Color().setHSL(hue, 1, 0.55);
+                    mesh.material.color.copy(col);
+                    mesh.material.opacity = 0.92;
+                    mesh.material.transmission = 0.08;
+                } else if (isBoosted) {
                     const flicker = 0.7 + Math.sin(time * 0.02 + i) * 0.3;
                     mesh.material.color.setRGB(1.0 * flicker, 0.3, 0.1);
                     mesh.material.opacity = 0.8;
@@ -1934,6 +2047,35 @@
     document.addEventListener('keydown', e => {
         audio.init(); // Init audio on first interaction
 
+        // ----- Easter eggs (always-on capture) -----
+        // 1) Konami code → 樊一鹏模式
+        konamiBuf.push(e.key);
+        if (konamiBuf.length > konamiSeq.length) konamiBuf.shift();
+        if (konamiBuf.length === konamiSeq.length &&
+            konamiBuf.every((k, i) => k.toLowerCase() === konamiSeq[i].toLowerCase())) {
+            konamiBuf = [];
+            activateGodMode();
+        }
+        // 2) Type "daidai" → meteor shower
+        if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+            typedBuf = (typedBuf + e.key.toLowerCase()).slice(-6);
+            if (typedBuf === 'daidai') {
+                typedBuf = '';
+                spawnMeteorShower();
+            }
+        }
+        // 5) Heart pattern → tribute
+        const arrowOnly = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
+        if (arrowOnly.includes(e.key)) {
+            heartBuf.push(e.key);
+            if (heartBuf.length > heartSeq.length) heartBuf.shift();
+            if (heartBuf.length === heartSeq.length &&
+                heartBuf.every((k, i) => k === heartSeq[i])) {
+                heartBuf = [];
+                activateTribute();
+            }
+        }
+
         if (e.key === 'Enter' && gameOver) {
             initGame();
             return;
@@ -1944,8 +2086,8 @@
             e.preventDefault();
             return;
         }
-        // Backdoor: 1-5 trigger magic effects for testing
-        if ('12345'.includes(e.key) && !gameOver) {
+        // Backdoor: 1-5 trigger magic effects directly — only when devtools is open
+        if ('12345'.includes(e.key) && !gameOver && devtoolsOpen) {
             const magicIdx = parseInt(e.key) - 1;
             triggerMagic(magicIdx);
             e.preventDefault();
