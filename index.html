@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>呆呆虫与豆豆潭 - 3D版</title>
+    <title>呆呆虫与豆豆潭</title>
     <link rel="icon" type="image/x-icon" href="fav.ico">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -207,9 +207,35 @@
         #more-popup.open { display: block; }
         #more-popup > div { padding: 4px 2px; display: flex; align-items: center; gap: 8px; }
         #more-popup a { color: #fff; text-decoration: none; display: flex; align-items: center; gap: 6px; }
+        #loading-screen {
+            position: fixed; inset: 0; z-index: 1000;
+            background: radial-gradient(ellipse at center, #1a4a6a 0%, #062032 70%, #02101c 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #cfe9ff; font-family: 'Press Start 2P', monospace;
+            transition: opacity 0.6s ease;
+        }
+        #loading-screen.hidden { opacity: 0; pointer-events: none; }
+        #loading-title { font-size: 22px; letter-spacing: 2px; margin-bottom: 6px; color: #fff; text-shadow: 0 0 12px #4cd1ff; }
+        #loading-sub { font-size: 10px; opacity: 0.7; margin-bottom: 28px; letter-spacing: 1px; }
+        #loading-bar-outer {
+            width: 260px; max-width: 70vw; height: 14px;
+            border: 2px solid #4cd1ff; border-radius: 8px;
+            background: rgba(0,0,0,0.4); overflow: hidden; box-shadow: 0 0 16px rgba(76,209,255,0.4);
+        }
+        #loading-bar-inner { height: 100%; width: 0%; background: linear-gradient(90deg, #4cd1ff, #88f5ff); transition: width 0.2s ease; }
+        #loading-pct { margin-top: 10px; font-size: 10px; opacity: 0.9; }
+        #loading-worm { font-size: 28px; margin-bottom: 14px; animation: wiggle 1s ease-in-out infinite; }
+        @keyframes wiggle { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
     </style>
 </head>
 <body>
+    <div id="loading-screen">
+        <div id="loading-worm">🐛</div>
+        <div id="loading-title">呆呆虫之豆豆潭</div>
+        <div id="loading-sub">加载中…</div>
+        <div id="loading-bar-outer"><div id="loading-bar-inner"></div></div>
+        <div id="loading-pct">0%</div>
+    </div>
     <div id="ui-overlay">
         <div id="info-bar" class="compact">
             <span id="hiscore-item">HISCORE &nbsp;<b id="hiscore">00000</b></span>
@@ -235,7 +261,7 @@
     <div id="effect-text"></div>
     <div id="instructions">
         <div id="instr-line">
-            <span class="hint-key">空格/⏸ 暂停</span>
+            <span class="hint-key">␣ 暂停</span>
             <span class="hint-sep">|</span>
             <span class="color-hint" style="background:#ff4444;"></span><span class="hint-label">红×5 加速</span>
             <span class="color-hint" style="background:#4488ff;"></span><span class="hint-label">蓝×5 下雨</span>
@@ -243,7 +269,7 @@
             <span class="color-hint" style="background:#ff8800;"></span><span class="hint-label">橙×5 金豆</span>
             <span class="color-hint" style="background:#cc44ff;"></span><span class="hint-label">紫×5 减半</span>
         </div>
-        <button id="btn-restart-inline" type="button">⟳ 重新开始</button>
+        <button id="btn-restart-inline" type="button">↵ 重新开始</button>
     </div>
 
     <div id="touch-controls">
@@ -259,44 +285,98 @@
             this.ctx = null;
             this.initialized = false;
             this.buffers = {};
+            this.rawBuffers = {};
             this.loopSources = {};
+            this.files = {
+                eat: 'audio/eat.ogg',
+                die: 'audio/die.ogg',
+                drop: 'audio/drop.ogg',
+                freeze: 'audio/freeze.ogg',
+                laser: 'audio/laser.ogg',
+                warp: 'audio/warp.ogg',
+                thunder1: 'audio/thunder1.ogg',
+                thunder2: 'audio/thunder2.ogg',
+                rainloop: 'audio/rainloop.ogg',
+                speedup: 'audio/speedup.ogg',
+                speedown: 'audio/speedown.ogg',
+                beat: 'audio/beat.ogg',
+                fade: 'audio/fade.ogg',
+                loop: 'audio/loop.ogg',
+                popo: 'audio/popo.ogg',
+                start: 'audio/start.ogg',
+                select: 'audio/select.ogg'
+            };
+            // Optional / large files loaded in the background — they don't block the loading screen
+            this.deferredFiles = {
+                music: 'audio/music.ogg'
+            };
+            this.loaded = 0;
+            this.total = Object.keys(this.files).length;
+            this.onProgress = null;
+        }
+        async _fetchOne(name, url) {
+            const t0 = performance.now();
+            console.log(`[audio] fetching ${name} (${url})`);
+            try {
+                const ctrl = new AbortController();
+                const tid = setTimeout(() => { console.warn(`[audio] timeout ${name}`); ctrl.abort(); }, 60000);
+                const resp = await fetch(url, { signal: ctrl.signal });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const arrayBuf = await resp.arrayBuffer();
+                clearTimeout(tid);
+                this.rawBuffers[name] = arrayBuf;
+                console.log(`[audio] loaded ${name} (${(arrayBuf.byteLength/1024).toFixed(1)} KB, ${(performance.now()-t0).toFixed(0)} ms)`);
+                // If AudioContext already exists, decode immediately so it becomes playable
+                if (this.ctx) {
+                    try { this.buffers[name] = await this.ctx.decodeAudioData(arrayBuf.slice(0)); } catch(e) {}
+                }
+                return true;
+            } catch (e) {
+                console.warn(`[audio] failed ${name}:`, e.message || e);
+                return false;
+            }
+        }
+        // Fetch raw audio bytes (no AudioContext needed) so we can show a loading screen
+        // before any user gesture has unlocked audio.
+        async preload() {
+            if (this._preloading) return this._preloading;
+            this._preloading = (async () => {
+                const entries = Object.entries(this.files);
+                await Promise.all(entries.map(async ([name, url]) => {
+                    await this._fetchOne(name, url);
+                    this.loaded++;
+                    if (this.onProgress) this.onProgress(this.loaded, this.total, name);
+                }));
+                // Kick off deferred (large) downloads in the background — don't await
+                for (const [name, url] of Object.entries(this.deferredFiles)) {
+                    this._fetchOne(name, url).then(ok => {
+                        if (ok && this.ctx && name === 'music' && !this.loopSources.music) {
+                            this._startLoop('music', 0.3);
+                        }
+                    });
+                }
+            })();
+            return this._preloading;
         }
         init() {
             if (this.initialized) return;
             this.ctx = new (window.AudioContext || window.webkitAudioContext)();
             this.initialized = true;
-            this._loadAll();
+            this._decodeAll();
         }
-        async _loadAll() {
-            const files = {
-                eat: 'audio/eat.wav',
-                die: 'audio/die.wav',
-                drop: 'audio/drop.wav',
-                freeze: 'audio/freeze.wav',
-                laser: 'audio/laser.wav',
-                warp: 'audio/warp.wav',
-                thunder1: 'audio/thunder1.wav',
-                thunder2: 'audio/thunder2.wav',
-                rainloop: 'audio/rainloop.wav',
-                speedup: 'audio/speedup.wav',
-                speedown: 'audio/speedown.wav',
-                beat: 'audio/beat.wav',
-                fade: 'audio/fade.wav',
-                loop: 'audio/loop.wav',
-                popo: 'audio/popo.wav',
-                start: 'audio/start.wav',
-                select: 'audio/select.wav',
-                music: 'audio/music.wav'
-            };
-            for (const [name, url] of Object.entries(files)) {
+        async _decodeAll() {
+            // Make sure preload has finished (or is at least started)
+            await this.preload();
+            const entries = Object.entries(this.rawBuffers);
+            await Promise.all(entries.map(async ([name, arrayBuf]) => {
                 try {
-                    const resp = await fetch(url);
-                    const arrayBuf = await resp.arrayBuffer();
-                    this.buffers[name] = await this.ctx.decodeAudioData(arrayBuf);
+                    // decodeAudioData detaches the ArrayBuffer; clone so we can re-decode if needed
+                    const buf = arrayBuf.slice(0);
+                    this.buffers[name] = await this.ctx.decodeAudioData(buf);
                 } catch (e) {
-                    console.warn(`Failed to load ${name}:`, e);
+                    console.warn(`Failed to decode ${name}:`, e);
                 }
-            }
+            }));
             // Start background music loop
             this._startLoop('music', 0.3);
         }
@@ -357,10 +437,44 @@
         }
     }
     const audio = new AudioEngine();
+    // ============ LOADING SCREEN ============
+    (function setupLoadingScreen() {
+        const screen = document.getElementById('loading-screen');
+        const barInner = document.getElementById('loading-bar-inner');
+        const pctEl = document.getElementById('loading-pct');
+        const subEl = document.getElementById('loading-sub');
+        if (!screen) return;
+        audio.onProgress = (loaded, total, lastName) => {
+            const pct = Math.round((loaded / total) * 100);
+            if (barInner) barInner.style.width = pct + '%';
+            if (pctEl) pctEl.textContent = pct + '%  (' + loaded + '/' + total + ')';
+            if (subEl && lastName) subEl.textContent = '加载 ' + lastName + ' …';
+        };
+        // After 10s, surface which files are still pending in the UI
+        const pendingTimer = setInterval(() => {
+            if (audio.loaded >= audio.total) { clearInterval(pendingTimer); return; }
+            const pending = Object.keys(audio.files).filter(n => !audio.rawBuffers[n]);
+            if (pending.length && subEl) {
+                subEl.textContent = '仍在等待: ' + pending.slice(0, 3).join(', ') + (pending.length > 3 ? '…' : '');
+            }
+        }, 5000);
+        audio.preload().then(() => {
+            if (subEl) subEl.textContent = '点击 / 按键开始';
+            if (barInner) barInner.style.width = '100%';
+            if (pctEl) pctEl.textContent = '100%';
+            // Hide shortly after — keep the screen long enough to be readable
+            setTimeout(() => {
+                screen.classList.add('hidden');
+                setTimeout(() => screen.remove(), 800);
+            }, 250);
+        }).catch(err => {
+            console.warn('Preload error:', err);
+            if (subEl) subEl.textContent = '加载失败，继续游戏';
+            setTimeout(() => screen.classList.add('hidden'), 500);
+        });
+    })();
 
-    // ============ TEXTURE LOADING ============
-    const textureLoader = new THREE.TextureLoader();
-
+    // ============ TEXTURE GENERATION ============
     // Procedural high-res grass texture generator (seamless, tileable)
     function makeGrassTexture(size) {
         const c = document.createElement('canvas');
@@ -468,31 +582,9 @@
         return tex;
     }
 
-    const textures = {};
-    const textureFiles = {
-        wormbody: 'img/wormbody.png',
-        wormbox: 'img/wormbox.png',
-        wormshadow: 'img/wormshadow.png',
-        title: 'img/title.png',
-    };
-    // Load worm animation frames
-    for (let i = 1; i <= 8; i++) {
-        textureFiles[`wormb${i}`] = `img/wormb${i}.png`;
-        textureFiles[`wormd${i}`] = `img/wormd${i}.png`;
-    }
-    for (const [name, url] of Object.entries(textureFiles)) {
-        const tex = textureLoader.load(url);
-        tex.magFilter = THREE.NearestFilter;
-        tex.minFilter = THREE.NearestFilter;
-        textures[name] = tex;
-    }
-    // Load food texture (decoded from TXM, use it as bean sprite atlas)
-    textures.food = textureLoader.load('img/food_565_128x256.png');
-    textures.food.magFilter = THREE.NearestFilter;
-    textures.food.minFilter = THREE.NearestFilter;
-    textures.bright = textureLoader.load('img/bright_128x256.png');
-    textures.bright.magFilter = THREE.NearestFilter;
-    textures.bright.minFilter = THREE.NearestFilter;
+    // ============ TEXTURE LOADING ============
+    // (All image textures previously loaded from img/ were unused —
+    // the game uses procedural materials only.)
 
     // ============ GAME STATE ============
     // Pond grid dimensions — match screen aspect so the playfield fills the viewport edge-to-edge
@@ -523,6 +615,45 @@
     let gameOver, paused, speed, baseSpeed, comboColor, comboCount;
     let goldBeans, growthPending;
     let eatenColors = []; // queue of bean colors, [0]=most recent — displayed body[1]=eatenColors[0], body[2]=eatenColors[1], ...
+    let hasGamepad = false;
+    const hasTouchEnv = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    const hasFineKeyboardEnv = window.matchMedia('(pointer: fine)').matches;
+    let isPSGamepad = false;
+    if (location.hash === '#ps') isPSGamepad = true;
+    function detectGamepadNow() {
+        try {
+            const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+            for (const p of pads) {
+                if (!p) continue;
+                const id = (p.id || '').toLowerCase();
+                if (/dualshock|dualsense|playstation|ps[345]|sony|054c/.test(id)) isPSGamepad = true;
+                return true;
+            }
+        } catch(e) {}
+        return false;
+    }
+    function gpBtn(btn) {
+        // btn: 'A' (confirm) or 'B' (cancel/back)
+        if (isPSGamepad) return btn === 'A' ? '✕' : '◯';
+        return btn === 'A' ? 'Ⓐ' : 'Ⓑ';
+    }
+    function getStartPrompt() {
+        if (hasGamepad || detectGamepadNow()) {
+            hasGamepad = true;
+            return '按手柄方向键 / 摇杆 开始游戏！';
+        }
+        if (hasTouchEnv && !hasFineKeyboardEnv) return '点击 / 滑动屏幕 开始游戏！';
+        if (hasTouchEnv && hasFineKeyboardEnv) return '按 ← ↑ ↓ → / 点击 / 滑动 开始游戏！';
+        return '按 ← ↑ ↓ → 开始游戏！';
+    }
+    function getRestartHint() {
+        if (hasGamepad || detectGamepadNow()) { hasGamepad = true; return gpBtn('B') + ' 重新开始'; }
+        if (hasTouchEnv) return '点击屏幕重新开始';
+        return '↵ 重新开始';
+    }
+    function getPausePrompt() {
+        return '暂停中';
+    }
     let hiScore = 0;
     try { hiScore = parseInt(localStorage.getItem('daidai_hiscore') || '0', 10) || 0; } catch(e) {}
     function saveHiScore() {
@@ -1526,7 +1657,7 @@
             updateUI();
             audio.play('heartbeat_stop');
             audio.play('die');
-            const restartHint = (('ontouchstart' in window) || navigator.maxTouchPoints > 0) ? '点击屏幕重新开始' : '按回车重新开始';
+            const restartHint = getRestartHint();
             const msg = isNew
                 ? `🏆 新纪录！\n最终分数: ${score}\n${restartHint}`
                 : `游戏结束！\n最终分数: ${score}\n最高分: ${hiScore}\n${restartHint}`;
@@ -2284,8 +2415,13 @@
             }
         }
 
-        if (e.key === 'Enter' && gameOver) {
+        if (e.key === 'Enter' && (gameOver || paused)) {
+            audio.init();
             initGame();
+            paused = false;
+            showMessage('');
+            const bp = document.getElementById('btn-pause');
+            if (bp) bp.textContent = '⏸';
             return;
         }
         if (e.key === ' ') {
@@ -2394,6 +2530,94 @@
         btnRestart.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); doRestart(); });
         const btnRestartInline = document.getElementById('btn-restart-inline');
         btnRestartInline.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); doRestart(); });
+        // ============ GAMEPAD CONTROLLER SUPPORT ============
+        (function setupGamepad() {
+            let prevButtons = [];
+            const DEAD = 0.4;
+            function applyGamepadGlyphs() {
+                const hintKey = document.querySelector('#instr-line .hint-key');
+                if (hintKey) { hintKey.textContent = gpBtn('A') + ' 暂停'; hintKey.style.display = 'inline'; }
+                const hintSep = document.querySelector('#instr-line .hint-sep');
+                if (hintSep) hintSep.style.display = 'inline';
+                const restartBtn = document.getElementById('btn-restart-inline');
+                if (restartBtn) { restartBtn.textContent = gpBtn('B') + ' 重新开始'; restartBtn.style.display = 'inline-block'; }
+            }
+            function markGamepad() {
+                const firstTime = !hasGamepad;
+                hasGamepad = true;
+                if (!firstTime) return;
+                if (typeof window.__refreshIdlePrompt === 'function') window.__refreshIdlePrompt();
+                applyGamepadGlyphs();
+                if (gameOver) {
+                    const restartHint = getRestartHint();
+                    const msgEl = document.getElementById('message');
+                    const baseLines = msgEl ? msgEl.textContent.split('\n') : [];
+                    if (baseLines.length >= 2) {
+                        baseLines[baseLines.length - 1] = restartHint;
+                        showMessage(baseLines.join('\n'));
+                    }
+                }
+            }
+            window.__markGamepad = markGamepad;
+            window.__applyGamepadGlyphs = applyGamepadGlyphs;
+            // Log first-seen gamepad id once so unknown pads can be added to the PS regex
+            let loggedPad = false;
+            function poll() {
+                const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+                for (const pad of pads) {
+                    if (!pad) continue;
+                    const idLower = (pad.id || '').toLowerCase();
+                    if (!loggedPad) { console.log('[gamepad] detected:', pad.id, 'mapping:', pad.mapping); loggedPad = true; }
+                    const wasPS = isPSGamepad;
+                    if (/dualshock|dualsense|playstation|ps[345]|sony|054c/.test(idLower)) isPSGamepad = true;
+                    markGamepad();
+                    // If we just discovered it's a PS pad after first marking, re-apply glyphs
+                    if (!wasPS && isPSGamepad) {
+                        applyGamepadGlyphs();
+                        if (paused && !gameOver && typeof window.__refreshIdlePrompt === 'function') window.__refreshIdlePrompt();
+                    }
+                    // Direction: D-pad (buttons 12-15) or left stick (axes 0,1)
+                    let dx = 0, dy = 0;
+                    if (pad.buttons[12]?.pressed) dy = -1;
+                    else if (pad.buttons[13]?.pressed) dy = 1;
+                    if (pad.buttons[14]?.pressed) dx = -1;
+                    else if (pad.buttons[15]?.pressed) dx = 1;
+                    const ax = pad.axes[0] || 0, ay = pad.axes[1] || 0;
+                    if (!dx && !dy && (Math.abs(ax) > DEAD || Math.abs(ay) > DEAD)) {
+                        if (Math.abs(ax) > Math.abs(ay)) dx = ax > 0 ? 1 : -1;
+                        else dy = ay > 0 ? 1 : -1;
+                    }
+                    if (dx || dy) {
+                        const nd = { x: dx, y: dy };
+                        if (paused && !gameOver) { audio.init(); paused = false; showMessage(''); audio.play('start'); }
+                        if (gameOver) { doRestart(); }
+                        else if (nd.x !== -direction.x || nd.y !== -direction.y) nextDirection = nd;
+                    }
+                    // Edge-triggered button presses
+                    const prev = prevButtons[pad.index] || [];
+                    pad.buttons.forEach((b, i) => {
+                        const wasDown = !!prev[i];
+                        if (b.pressed && !wasDown) {
+                            // A/Cross (0) or Start (9): pause/unpause or restart
+                            if (i === 0 || i === 9) {
+                                audio.init();
+                                if (gameOver) doRestart();
+                                else { paused = !paused; showMessage(paused ? '暂停中' : ''); btnPause.textContent = paused ? '▶' : '⏸'; }
+                            }
+                            // B/Circle (1) or Back (8): restart — only when paused or game over
+                            if (i === 1 || i === 8) {
+                                if (paused || gameOver) { audio.init(); doRestart(); }
+                            }
+                        }
+                    });
+                    prevButtons[pad.index] = pad.buttons.map(b => b.pressed);
+                }
+                requestAnimationFrame(poll);
+            }
+            window.addEventListener('gamepadconnected', () => { markGamepad(); requestAnimationFrame(poll); });
+            // Some browsers (Chrome) need an active poll loop even without an event
+            requestAnimationFrame(poll);
+        })();
         // More menu toggle
         const moreMenu = document.getElementById('more-menu');
         const morePopup = document.getElementById('more-popup');
@@ -2435,24 +2659,28 @@
 
     // ============ START ============
     initGame();
-    // Auto-detect input modality and update prompt accordingly
-    const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-    const hasFineKeyboard = window.matchMedia('(pointer: fine)').matches;
-    function startMsg() {
-        if (hasTouch && !hasFineKeyboard) return '点击 / 滑动屏幕 开始游戏！';
-        if (hasTouch && hasFineKeyboard) return '按方向键 / 点击 / 滑动 开始游戏！';
-        return '按任意方向键 开始游戏！';
+    // Check for already-connected gamepad and prefer its prompts
+    if (detectGamepadNow() && typeof window.__markGamepad === 'function') {
+        window.__markGamepad();
     }
-    showMessage(startMsg());
+    showMessage(getStartPrompt());
     paused = true;
-    // Update prompt dynamically if first interaction reveals a different modality
-    function setStartPromptFromInput(kind) {
+    // Re-check shortly after load — some browsers expose gamepads asynchronously
+    setTimeout(() => {
+        if (detectGamepadNow() && typeof window.__markGamepad === 'function') {
+            window.__markGamepad();
+            if (paused && !gameOver) showMessage(getStartPrompt());
+        }
+    }, 500);
+    function refreshIdlePrompt() {
         if (!paused) return;
-        if (kind === 'touch') showMessage('点击 / 滑动屏幕 开始游戏！');
-        else showMessage('按任意方向键 开始游戏！');
+        if (gameOver) return; // gameOver renders its own message
+        showMessage(getStartPrompt());
     }
-    window.addEventListener('touchstart', () => setStartPromptFromInput('touch'), { once: true, passive: true });
-    window.addEventListener('keydown', () => setStartPromptFromInput('key'), { once: true });
+    // Update prompt dynamically if first interaction reveals a different modality
+    window.addEventListener('touchstart', () => { if (!hasGamepad) refreshIdlePrompt(); }, { once: true, passive: true });
+    window.addEventListener('keydown', () => { if (!hasGamepad) refreshIdlePrompt(); }, { once: true });
+    window.__refreshIdlePrompt = refreshIdlePrompt;
     document.addEventListener('keydown', function startHandler(e) {
         const dirs = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'];
         if (dirs.includes(e.key)) {
