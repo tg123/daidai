@@ -2,7 +2,9 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>呆呆虫与豆豆潭 - 3D版</title>
     <link rel="icon" type="image/x-icon" href="fav.ico">
     <style>
@@ -34,6 +36,8 @@
         }
         #info-bar {
             display: flex;
+            flex-wrap: nowrap;
+            white-space: nowrap;
             gap: 20px;
             padding: 6px 15px;
             color: #fff;
@@ -44,6 +48,7 @@
             justify-content: center;
             align-items: center;
             height: 32px;
+            box-sizing: border-box;
         }
         #info-bar > span {
             padding: 2px 8px;
@@ -98,23 +103,116 @@
         }
         #instructions {
             position: absolute;
-            bottom: 10px;
+            bottom: 14px;
             left: 50%;
             transform: translateX(-50%);
-            color: rgba(255,255,255,0.5);
+            color: rgba(255,255,255,0.85);
             font-size: 12px;
             text-align: center;
             pointer-events: none;
             z-index: 10;
+            display: none;
         }
-        canvas { display: block; }
+        #instructions.show { display: block; }
+        #instr-line { background: rgba(0,0,0,0.55); padding: 6px 12px; border-radius: 16px; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
+        .hint-key { opacity: 0.9; }
+        .hint-sep { opacity: 0.4; margin: 0 4px; }
+        .hint-label { margin-right: 4px; }
+        #btn-restart-inline {
+            display: block;
+            margin: 10px auto 0;
+            pointer-events: auto;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: #fff;
+            font-size: 13px;
+            padding: 6px 16px;
+            border-radius: 18px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        #btn-restart-inline:hover, #btn-restart-inline:active { background: rgba(255,255,255,0.3); }
+        canvas { display: block; touch-action: none; position: absolute; left: 0; }
         .color-hint { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: middle; margin: 0 2px; border: 1px solid rgba(255,255,255,0.3); }
+
+        /* Mobile on-screen controls — only shown on touch devices */
+        #touch-controls {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            pointer-events: none;
+        }
+        .touch-btn {
+            position: absolute;
+            background: rgba(255,255,255,0.12);
+            border: 2px solid rgba(255,255,255,0.35);
+            color: #fff;
+            font-size: 22px;
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .touch-btn:active { background: rgba(255,255,255,0.3); }
+        #btn-pause { top: 50px; right: 12px; width: 44px; height: 44px; font-size: 16px; }
+        #btn-restart { top: 50px; right: 64px; width: 44px; height: 44px; font-size: 18px; display: none; }
+        #btn-restart.show { display: flex; }
+
+        @media (max-width: 720px), (pointer: coarse) {
+            #touch-controls { display: block; }
+            #info-bar { font-size: 11px; gap: 8px; padding: 4px 8px; height: 28px; }
+            #info-bar > span { padding: 1px 3px; }
+            #instructions { font-size: 11px; bottom: 10px; left: 8px; right: 8px; transform: none; max-width: none; }
+            #instr-line { padding: 6px 8px; gap: 4px 8px; flex-wrap: wrap; }
+            .hint-key, .hint-sep { display: none; }
+            .hint-label { margin-right: 0; }
+            .color-hint { width: 10px; height: 10px; }
+            #btn-restart-inline { display: none; }
+            #message { font-size: 20px; padding: 0 12px; }
+            #effect-text { font-size: 22px; }
+        }
+        #more-menu {
+            display: none !important;
+            position: relative;
+            cursor: pointer;
+            pointer-events: auto;
+            user-select: none;
+            padding: 1px 6px !important;
+            font-weight: bold;
+        }
+        #info-bar.compact #hiscore-item,
+        #info-bar.compact #gh-link { display: none !important; }
+        #info-bar.compact #more-menu { display: inline-flex !important; }
+        #more-popup {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 4px;
+            background: rgba(0,0,0,0.85);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 6px;
+            padding: 8px 10px;
+            min-width: 140px;
+            white-space: nowrap;
+            z-index: 50;
+            font-weight: normal;
+        }
+        #more-popup.open { display: block; }
+        #more-popup > div { padding: 4px 2px; display: flex; align-items: center; gap: 8px; }
+        #more-popup a { color: #fff; text-decoration: none; display: flex; align-items: center; gap: 6px; }
     </style>
 </head>
 <body>
     <div id="ui-overlay">
-        <div id="info-bar">
-            <span>HISCORE &nbsp;<b id="hiscore">00000</b></span>
+        <div id="info-bar" class="compact">
+            <span id="hiscore-item">HISCORE &nbsp;<b id="hiscore">00000</b></span>
             <span>SCORE &nbsp;<b id="score">00000</b></span>
             <span>⏱️ <b id="timer">00:00</b></span>
             <span>📏 <b id="length">5</b></span>
@@ -123,17 +221,34 @@
             <a id="gh-link" href="https://github.com/tg123/daidai" target="_blank" rel="noopener" title="View on GitHub" aria-label="GitHub">
                 <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
             </a>
+            <span id="more-menu" title="More" aria-label="More">⋯
+                <div id="more-popup">
+                    <div>HISCORE&nbsp;<b id="hiscore-m">00000</b></div>
+                    <div><a href="https://github.com/tg123/daidai" target="_blank" rel="noopener">
+                        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+                        GitHub</a></div>
+                </div>
+            </span>
         </div>
     </div>
     <div id="message"></div>
     <div id="effect-text"></div>
     <div id="instructions">
-        方向键/WASD 控制 | 空格暂停 | 回车重开 | 
-        <span class="color-hint" style="background:#ff4444;"></span>红×5加速
-        <span class="color-hint" style="background:#4488ff;"></span>蓝×5下雨
-        <span class="color-hint" style="background:#44cc44;"></span>绿×5蜕皮变豆
-        <span class="color-hint" style="background:#ff8800;"></span>橙×5金豆
-        <span class="color-hint" style="background:#cc44ff;"></span>紫×5减半
+        <div id="instr-line">
+            <span class="hint-key">空格/⏸ 暂停</span>
+            <span class="hint-sep">|</span>
+            <span class="color-hint" style="background:#ff4444;"></span><span class="hint-label">红×5 加速</span>
+            <span class="color-hint" style="background:#4488ff;"></span><span class="hint-label">蓝×5 下雨</span>
+            <span class="color-hint" style="background:#44cc44;"></span><span class="hint-label">绿×5 蜕皮</span>
+            <span class="color-hint" style="background:#ff8800;"></span><span class="hint-label">橙×5 金豆</span>
+            <span class="color-hint" style="background:#cc44ff;"></span><span class="hint-label">紫×5 减半</span>
+        </div>
+        <button id="btn-restart-inline" type="button">⟳ 重新开始</button>
+    </div>
+
+    <div id="touch-controls">
+        <button class="touch-btn" id="btn-pause" aria-label="Pause">⏸</button>
+        <button class="touch-btn" id="btn-restart" aria-label="Restart" title="重新开始">⟳</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -380,7 +495,26 @@
     textures.bright.minFilter = THREE.NearestFilter;
 
     // ============ GAME STATE ============
-    const COLS = 30, ROWS = 24, CELL = 1.0;
+    // Pond grid dimensions — match screen aspect so the playfield fills the viewport edge-to-edge
+    const CELL = 1.0;
+    let COLS, ROWS;
+    (function pickGridForAspect() {
+        // Estimate the canvas height after info-bar takes its share (~42px on desktop, ~38 on mobile)
+        const reservedTop = window.matchMedia('(max-width: 720px), (pointer: coarse)').matches ? 38 : 42;
+        const w = window.innerWidth;
+        const h = Math.max(200, window.innerHeight - reservedTop);
+        const aspect = w / h;
+        const SHORT = 22;
+        if (aspect >= 1) {
+            ROWS = SHORT;
+            COLS = Math.max(SHORT, Math.round(SHORT * aspect));
+        } else {
+            COLS = SHORT;
+            ROWS = Math.max(SHORT, Math.round(SHORT / aspect));
+        }
+        COLS = Math.min(60, COLS);
+        ROWS = Math.min(60, ROWS);
+    })();
     const COLORS_HEX = [0xff3333, 0x2266ff, 0x22ee22, 0xffaa00, 0xdd55ff];
     const COLORS_STR = ['#ff3333', '#2266ff', '#22ee22', '#ffaa00', '#dd55ff'];
     const COLOR_NAMES = ['红', '蓝', '绿', '橙', '紫'];
@@ -447,9 +581,40 @@
     renderer.toneMappingExposure = 1.2;
     document.body.appendChild(renderer.domElement);
 
-    // Camera position - top-down like original D3D game
-    camera.position.set(COLS * CELL / 2, 32, ROWS * CELL / 2 + 2);
-    camera.lookAt(COLS * CELL / 2, 0, ROWS * CELL / 2);
+    // Camera position - top-down, auto-fit to screen
+    function getVisibleArea() {
+        const infoEl = document.getElementById('info-bar');
+        const top = infoEl ? infoEl.getBoundingClientRect().bottom : 0;
+        return { top, height: Math.max(150, window.innerHeight - top), width: window.innerWidth };
+    }
+    function applyCanvasSize() {
+        const v = getVisibleArea();
+        renderer.setSize(v.width, v.height);
+        renderer.domElement.style.top = v.top + 'px';
+        camera.aspect = v.width / v.height;
+        camera.updateProjectionMatrix();
+    }
+    applyCanvasSize();
+    function fitCameraToPond() {
+        const aspect = camera.aspect;
+        const vFov = camera.fov * Math.PI / 180;
+        const RIM = 0;
+        const margin = 1.02;
+        const W = (COLS * CELL + RIM * 2) * margin;
+        const H = (ROWS * CELL + RIM * 2) * margin;
+        const distForH = (H / 2) / Math.tan(vFov / 2);
+        const distForW = (W / 2) / (Math.tan(vFov / 2) * aspect);
+        const dist = Math.max(distForH, distForW);
+        const cx = (COLS - 1) * CELL / 2;
+        const cz = (ROWS - 1) * CELL / 2;
+        camera.up.set(0, 1, 0);
+        camera.position.set(cx, dist, cz + 0.5);
+        camera.lookAt(cx, 0, cz);
+        camera.updateProjectionMatrix();
+        // Keep fog visual constant regardless of camera distance (portrait vs landscape)
+        if (scene.fog) scene.fog.density = 0.018 * (25 / dist);
+    }
+    fitCameraToPond();
 
     // Lighting - bright and even like original
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
@@ -627,16 +792,17 @@
     rimMesh.rotation.x = -Math.PI / 2;
     rimMesh.position.y = -0.18;
     rimMesh.receiveShadow = true;
-    scene.add(rimMesh);
+    // Rim & pebbles disabled — screen edge is the boundary
+    // scene.add(rimMesh);
 
-    // 3D pebbles scattered on the rim
+    // 3D pebbles scattered on the rim (disabled)
     const pebbleGeoms = [
         new THREE.IcosahedronGeometry(0.18, 0),
         new THREE.IcosahedronGeometry(0.12, 0),
         new THREE.DodecahedronGeometry(0.14, 0),
     ];
     const pebbleColors = [0x5c4a36, 0x6b5640, 0x4a3a28, 0x807060, 0x3d2e20];
-    for (let i = 0; i < 60; i++) {
+    if (false) for (let i = 0; i < 60; i++) {
         // Pick which side of the rim
         const side = Math.floor(Math.random() * 4);
         let px, pz;
@@ -1360,9 +1526,10 @@
             updateUI();
             audio.play('heartbeat_stop');
             audio.play('die');
+            const restartHint = (('ontouchstart' in window) || navigator.maxTouchPoints > 0) ? '点击屏幕重新开始' : '按回车重新开始';
             const msg = isNew
-                ? `🏆 新纪录！\n最终分数: ${score}\n按回车重新开始`
-                : `游戏结束！\n最终分数: ${score}\n最高分: ${hiScore}\n按回车重新开始`;
+                ? `🏆 新纪录！\n最终分数: ${score}\n${restartHint}`
+                : `游戏结束！\n最终分数: ${score}\n最高分: ${hiScore}\n${restartHint}`;
             showMessage(msg);
             return;
         }
@@ -1634,6 +1801,8 @@
     function updateUI() {
         document.getElementById('score').textContent = String(score).padStart(5, '0');
         document.getElementById('hiscore').textContent = String(hiScore).padStart(5, '0');
+        const hm = document.getElementById('hiscore-m');
+        if (hm) hm.textContent = String(hiScore).padStart(5, '0');
         document.getElementById('length').textContent = snake.length;
         const comboEl = document.getElementById('combo');
         if (comboCount > 0) {
@@ -1654,6 +1823,12 @@
 
     // ============ 3D SCENE SYNC ============
     function syncScene(time) {
+        // Show instructions + restart button only when paused or game not started/over
+        const showHints = paused || gameOver;
+        const instrEl = document.getElementById('instructions');
+        const btnRestartEl = document.getElementById('btn-restart');
+        if (instrEl) instrEl.classList.toggle('show', showHints);
+        if (btnRestartEl) btnRestartEl.classList.toggle('show', showHints);
         // Tick boost countdown every frame for smooth display
         if (isBoosted) {
             const boostEl = document.getElementById('boost-timer');
@@ -2036,9 +2211,8 @@
             }
         }
 
-        // Camera fixed top-down
-        camera.position.set(COLS * CELL / 2, 32, ROWS * CELL / 2 + 2);
-        camera.lookAt(COLS * CELL / 2, 0, ROWS * CELL / 2);
+        // Camera fixed top-down (auto-fit to viewport / aspect)
+        fitCameraToPond();
     }
 
     // ============ GAME LOOP ============
@@ -2116,7 +2290,7 @@
         }
         if (e.key === ' ') {
             paused = !paused;
-            showMessage(paused ? '暂停中\n按空格继续' : '');
+            showMessage(paused ? '暂停中' : '');
             e.preventDefault();
             return;
         }
@@ -2149,11 +2323,108 @@
         }
     });
 
+    // ============ TOUCH / SWIPE CONTROLS ============
+    (function() {
+        let sx = 0, sy = 0, tracking = false, moved = false;
+        const SWIPE_THRESHOLD = 24; // px
+        function applyDir(dx, dy) {
+            const nd = Math.abs(dx) > Math.abs(dy)
+                ? { x: dx > 0 ? 1 : -1, y: 0 }
+                : { x: 0, y: dy > 0 ? 1 : -1 };
+            if (nd.x !== -direction.x || nd.y !== -direction.y) {
+                nextDirection = nd;
+            }
+        }
+        const surface = renderer.domElement;
+        surface.addEventListener('touchstart', e => {
+            audio.init();
+            if (gameOver) { initGame(); return; }
+            const t = e.touches[0];
+            sx = t.clientX; sy = t.clientY;
+            tracking = true; moved = false;
+            e.preventDefault();
+        }, { passive: false });
+        surface.addEventListener('touchmove', e => {
+            if (!tracking) return;
+            const t = e.touches[0];
+            const dx = t.clientX - sx, dy = t.clientY - sy;
+            if (Math.hypot(dx, dy) >= SWIPE_THRESHOLD) {
+                moved = true;
+                // Swipe also starts/unpauses the game
+                if (paused && !gameOver) {
+                    paused = false;
+                    showMessage('');
+                    audio.play('start');
+                }
+                applyDir(dx, dy);
+                // Reset origin so continued drag can chain another direction
+                sx = t.clientX; sy = t.clientY;
+            }
+            e.preventDefault();
+        }, { passive: false });
+        surface.addEventListener('touchend', e => {
+            // Quick tap (no swipe) → unpause / start game
+            if (tracking && !moved && paused) {
+                paused = false;
+                showMessage('');
+                audio.play('start');
+            }
+            tracking = false;
+            e.preventDefault();
+        }, { passive: false });
+        // Pause button
+        const btnPause = document.getElementById('btn-pause');
+        btnPause.addEventListener('click', e => {
+            e.preventDefault();
+            audio.init();
+            if (gameOver) { initGame(); return; }
+            paused = !paused;
+            showMessage(paused ? '暂停中' : '');
+            btnPause.textContent = paused ? '▶' : '⏸';
+        });
+        // Restart buttons (mobile touch + inline desktop)
+        function doRestart() {
+            audio.init();
+            initGame();
+            paused = false;
+            btnPause.textContent = '⏸';
+            showMessage('');
+        }
+        const btnRestart = document.getElementById('btn-restart');
+        btnRestart.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); doRestart(); });
+        const btnRestartInline = document.getElementById('btn-restart-inline');
+        btnRestartInline.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); doRestart(); });
+        // More menu toggle
+        const moreMenu = document.getElementById('more-menu');
+        const morePopup = document.getElementById('more-popup');
+        moreMenu.addEventListener('click', e => {
+            e.stopPropagation();
+            morePopup.classList.toggle('open');
+        });
+        document.addEventListener('click', e => {
+            if (!moreMenu.contains(e.target)) morePopup.classList.remove('open');
+        });
+        // Show ⋯ only when info-bar would overflow
+        const infoBar = document.getElementById('info-bar');
+        function checkInfoBarOverflow() {
+            // Try expanding (show HISCORE + GitHub). If it fits, keep expanded; otherwise stay compact.
+            const wasCompact = infoBar.classList.contains('compact');
+            infoBar.classList.remove('compact');
+            const fits = infoBar.scrollWidth <= infoBar.clientWidth + 1;
+            if (!fits) infoBar.classList.add('compact');
+            const isCompact = infoBar.classList.contains('compact');
+            if (wasCompact !== isCompact) { applyCanvasSize(); fitCameraToPond(); }
+        }
+        window.addEventListener('resize', checkInfoBarOverflow);
+        setTimeout(checkInfoBarOverflow, 0);
+        // Re-check whenever score/hiscore text length changes
+        new MutationObserver(checkInfoBarOverflow).observe(infoBar, { subtree: true, characterData: true, childList: true });
+    })();
+
     // Resize
     window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        applyCanvasSize();
+        fitCameraToPond();
         // Resize underwater overlay so it always covers the screen
         const distance = 0.5;
         const vFov = (camera.fov * Math.PI) / 180;
@@ -2164,8 +2435,24 @@
 
     // ============ START ============
     initGame();
-    showMessage('按任意方向键开始游戏！');
+    // Auto-detect input modality and update prompt accordingly
+    const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    const hasFineKeyboard = window.matchMedia('(pointer: fine)').matches;
+    function startMsg() {
+        if (hasTouch && !hasFineKeyboard) return '点击 / 滑动屏幕 开始游戏！';
+        if (hasTouch && hasFineKeyboard) return '按方向键 / 点击 / 滑动 开始游戏！';
+        return '按任意方向键 开始游戏！';
+    }
+    showMessage(startMsg());
     paused = true;
+    // Update prompt dynamically if first interaction reveals a different modality
+    function setStartPromptFromInput(kind) {
+        if (!paused) return;
+        if (kind === 'touch') showMessage('点击 / 滑动屏幕 开始游戏！');
+        else showMessage('按任意方向键 开始游戏！');
+    }
+    window.addEventListener('touchstart', () => setStartPromptFromInput('touch'), { once: true, passive: true });
+    window.addEventListener('keydown', () => setStartPromptFromInput('key'), { once: true });
     document.addEventListener('keydown', function startHandler(e) {
         const dirs = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'];
         if (dirs.includes(e.key)) {
