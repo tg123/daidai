@@ -370,268 +370,20 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="./src/heartSequence.js"></script>
+    <script src="./src/eatenColors.js"></script>
+    <script src="./src/i18n/index.js"></script>
+    <script src="./src/i18n/zh.js"></script>
+    <script src="./src/i18n/zh-tw.js"></script>
+    <script src="./src/i18n/en.js"></script>
+    <script src="./src/i18n/ja.js"></script>
+    <script src="./src/i18n/ko.js"></script>
+    <script src="./src/i18n/es.js"></script>
+    <script src="./src/audio/AudioEngine.js"></script>
+    <script src="./src/input/gamepad.js"></script>
     <script>
-    // ============ AUDIO ENGINE (Original PCM/WAV files) ============
-    class AudioEngine {
-        constructor() {
-            this.ctx = null;
-            this.initialized = false;
-            this.buffers = {};
-            this.rawBuffers = {};
-            this.loopSources = {};
-            this.masterGain = null;
-            this.muted = (localStorage.getItem('daidai_muted') === '1');
-            this.files = {
-                eat: 'audio/eat.ogg',
-                die: 'audio/die.ogg',
-                drop: 'audio/drop.ogg',
-                freeze: 'audio/freeze.ogg',
-                laser: 'audio/laser.ogg',
-                warp: 'audio/warp.ogg',
-                thunder1: 'audio/thunder1.ogg',
-                thunder2: 'audio/thunder2.ogg',
-                rainloop: 'audio/rainloop.ogg',
-                speedup: 'audio/speedup.ogg',
-                speedown: 'audio/speedown.ogg',
-                beat: 'audio/beat.ogg',
-                fade: 'audio/fade.ogg',
-                loop: 'audio/loop.ogg',
-                popo: 'audio/popo.ogg',
-                start: 'audio/start.ogg',
-                select: 'audio/select.ogg'
-            };
-            // Optional / large files loaded in the background — they don't block the loading screen
-            this.deferredFiles = {
-                music: 'audio/music.ogg'
-            };
-            this.loaded = 0;
-            this.total = Object.keys(this.files).length;
-            this.onProgress = null;
-        }
-        async _fetchOne(name, url) {
-            const t0 = performance.now();
-            console.log(`[audio] fetching ${name} (${url})`);
-            try {
-                const ctrl = new AbortController();
-                const tid = setTimeout(() => { console.warn(`[audio] timeout ${name}`); ctrl.abort(); }, 60000);
-                const resp = await fetch(url, { signal: ctrl.signal });
-                if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                const arrayBuf = await resp.arrayBuffer();
-                clearTimeout(tid);
-                this.rawBuffers[name] = arrayBuf;
-                console.log(`[audio] loaded ${name} (${(arrayBuf.byteLength/1024).toFixed(1)} KB, ${(performance.now()-t0).toFixed(0)} ms)`);
-                // If AudioContext already exists, decode immediately so it becomes playable
-                if (this.ctx) {
-                    try { this.buffers[name] = await this.ctx.decodeAudioData(arrayBuf.slice(0)); } catch(e) {}
-                }
-                return true;
-            } catch (e) {
-                console.warn(`[audio] failed ${name}:`, e.message || e);
-                return false;
-            }
-        }
-        // Create the AudioContext as early as possible (it starts suspended
-        // without a user gesture, which is fine — this lets us decode buffers
-        // in parallel with the network fetches so that play() works instantly
-        // after the first tap.
-        _ensureCtx() {
-            if (this.ctx) return;
-            try {
-                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                this.masterGain = this.ctx.createGain();
-                this.masterGain.gain.value = this.muted ? 0 : 1;
-                this.masterGain.connect(this.ctx.destination);
-                this.ctx.onstatechange = () => {
-                    console.log('[audio] statechange →', this.ctx.state);
-                    if (this.ctx.state === 'running') this._flushQueue();
-                };
-                console.log('[audio] context created (eager), state:', this.ctx.state);
-            } catch (e) { console.warn('[audio] ctx create fail:', e); }
-        }
-        // Fetch raw audio bytes (no AudioContext needed) so we can show a loading screen
-        // before any user gesture has unlocked audio.
-        async preload() {
-            if (this._preloading) return this._preloading;
-            this._ensureCtx();
-            this._preloading = (async () => {
-                const entries = Object.entries(this.files);
-                await Promise.all(entries.map(async ([name, url]) => {
-                    await this._fetchOne(name, url);
-                    this.loaded++;
-                    if (this.onProgress) this.onProgress(this.loaded, this.total, name);
-                }));
-                // Kick off deferred (large) downloads in the background — don't await
-                for (const [name, url] of Object.entries(this.deferredFiles)) {
-                    this._fetchOne(name, url).then(ok => {
-                        if (ok && this.ctx && name === 'music' && !this.loopSources.music) {
-                            this._startLoop('music', 0.3);
-                        }
-                    });
-                }
-            })();
-            return this._preloading;
-        }
-        init() {
-            this._ensureCtx();
-            if (this.initialized) {
-                if (this.ctx && this.ctx.state === 'suspended') {
-                    this.ctx.resume().then(() => { console.log('[audio] re-resumed, state:', this.ctx.state); this._flushQueue(); }).catch(e => console.warn('[audio] re-resume fail:', e));
-                }
-                return;
-            }
-            this.initialized = true;
-            this._pendingPlays = [];
-            console.log('[audio] init() unlock, state:', this.ctx.state, 'muted:', this.muted);
-            this.ctx.resume().then(() => {
-                console.log('[audio] resume resolved, state:', this.ctx.state);
-                this._flushQueue();
-            }).catch(err => console.warn('[audio] resume failed:', err));
-            // iOS unlock: silent buffer + short oscillator at gain 0
-            try {
-                const silent = this.ctx.createBuffer(1, 1, 22050);
-                const src = this.ctx.createBufferSource();
-                src.buffer = silent;
-                src.connect(this.ctx.destination);
-                src.start(0);
-                const osc = this.ctx.createOscillator();
-                const g = this.ctx.createGain();
-                g.gain.value = 0;
-                osc.connect(g).connect(this.ctx.destination);
-                osc.start(0);
-                osc.stop(this.ctx.currentTime + 0.05);
-                console.log('[audio] unlock buffer + osc started');
-            } catch(e) { console.warn('[audio] unlock fail:', e); }
-            // iOS silent-switch bypass: start a looping silent <video> (audio
-            // alone doesn't work on iOS 15+). Video playback uses the
-            // "playback" audio session category, ignoring the mute switch.
-            this._ensureSilentVideo();
-            this._decodeAll();
-        }
-        _ensureSilentVideo() {
-            try {
-                let v = this._silentVideo;
-                if (!v) {
-                    v = document.createElement('video');
-                    v.src = 'audio/silent.mp4';
-                    v.loop = true;
-                    v.muted = false;
-                    v.volume = 0.01;
-                    v.setAttribute('playsinline', '');
-                    v.setAttribute('webkit-playsinline', '');
-                    v.setAttribute('preload', 'auto');
-                    v.crossOrigin = 'anonymous';
-                    v.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px';
-                    document.body.appendChild(v);
-                    this._silentVideo = v;
-                    // If iOS pauses it (e.g. on backgrounding or interruption),
-                    // quietly restart whenever any user gesture happens.
-                    v.addEventListener('pause', () => console.log('[audio] silent-video paused'));
-                    v.addEventListener('ended', () => { try { v.currentTime = 0; v.play().catch(()=>{}); } catch(_){} });
-                }
-                if (v.paused || v.ended) {
-                    const p = v.play();
-                    if (p && p.then) p.then(() => console.log('[audio] silent-video playing → playback session')).catch(err => console.warn('[audio] silent-video play fail:', err.message));
-                }
-            } catch(e) { console.warn('[audio] silent-video fail:', e); }
-        }
-        _flushQueue() {
-            if (!this._pendingPlays || this._pendingPlays.length === 0) return;
-            console.log('[audio] flushing', this._pendingPlays.length, 'queued plays');
-            const q = this._pendingPlays.splice(0);
-            for (const type of q) this.play(type);
-        }
-        setMuted(m) {
-            this.muted = !!m;
-            localStorage.setItem('daidai_muted', this.muted ? '1' : '0');
-            if (this.masterGain && this.ctx) {
-                const t = this.ctx.currentTime;
-                this.masterGain.gain.cancelScheduledValues(t);
-                this.masterGain.gain.linearRampToValueAtTime(this.muted ? 0 : 1, t + 0.1);
-            }
-            console.log('[audio] setMuted →', this.muted);
-        }
-        async _decodeAll() {
-            // Make sure preload has finished (or is at least started)
-            await this.preload();
-            const entries = Object.entries(this.rawBuffers);
-            await Promise.all(entries.map(async ([name, arrayBuf]) => {
-                if (this.buffers[name]) return; // already decoded by _fetchOne
-                try {
-                    const buf = arrayBuf.slice(0);
-                    this.buffers[name] = await this.ctx.decodeAudioData(buf);
-                } catch (e) {
-                    console.warn(`Failed to decode ${name}:`, e);
-                }
-            }));
-            // Start background music loop
-            this._startLoop('music', 0.3);
-        }
-        _playBuffer(name, volume = 0.6, loop = false) {
-            if (!this.initialized) { console.warn('[audio] not initialized, skipping', name); return null; }
-            if (!this.buffers[name]) { console.warn('[audio] buffer missing:', name); return null; }
-            const source = this.ctx.createBufferSource();
-            source.buffer = this.buffers[name];
-            source.loop = loop;
-            const gain = this.ctx.createGain();
-            gain.gain.value = volume;
-            source.connect(gain);
-            gain.connect(this.masterGain);
-            source.start();
-            return { source, gain };
-        }
-        _startLoop(name, volume = 0.5) {
-            if (this.loopSources[name]) return;
-            const node = this._playBuffer(name, volume, true);
-            if (node) this.loopSources[name] = node;
-        }
-        setLoopVolume(name, volume, rampTime = 0.3) {
-            const node = this.loopSources[name];
-            if (!node) return;
-            node.gain.gain.linearRampToValueAtTime(volume, this.ctx.currentTime + rampTime);
-        }
-        _stopLoop(name, fadeTime = 0.5) {
-            const node = this.loopSources[name];
-            if (!node) return;
-            node.gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + fadeTime);
-            node.source.stop(this.ctx.currentTime + fadeTime);
-            delete this.loopSources[name];
-        }
-        play(type) {
-            if (!this.initialized) return;
-            // iOS WKWebView: if ctx is still suspended, queue and try resume; flush after resume
-            if (this.ctx.state === 'suspended') {
-                this._pendingPlays = this._pendingPlays || [];
-                if (this._pendingPlays.length < 32) this._pendingPlays.push(type);
-                this.ctx.resume().catch(()=>{});
-                console.log('[audio] queued (suspended):', type);
-                return;
-            }
-            console.log('[audio] play()', type, 'state:', this.ctx.state, 'buffers:', Object.keys(this.buffers).length);
-            switch(type) {
-                case 'eat': this._playBuffer('eat', 0.7); break;
-                case 'combo': this._playBuffer('beat', 0.8); break;
-                case 'grow': this._playBuffer('popo', 0.7); break;
-                case 'magic_red': this._playBuffer('speedup', 0.8); break;
-                case 'magic_blue':
-                    this._playBuffer('thunder1', 0.9);
-                    setTimeout(() => this._playBuffer('rainloop', 0.6), 500);
-                    setTimeout(() => this._playBuffer('thunder2', 0.7), 2000);
-                    break;
-                case 'magic_green': this._playBuffer('warp', 0.7); break;
-                case 'magic_orange': this._playBuffer('laser', 0.8); break;
-                case 'magic_purple': this._playBuffer('fade', 0.7); break;
-                case 'gold': this._playBuffer('select', 0.8); break;
-                case 'die': this._playBuffer('die', 0.9); break;
-                case 'move': this._playBuffer('drop', 0.15); break;
-                case 'speed_end': this._playBuffer('speedown', 0.7); break;
-                case 'start': this._playBuffer('start', 0.8); break;
-                case 'freeze': this._playBuffer('freeze', 0.9); break;
-                case 'plop': this._playBuffer('drop', 0.35); break;
-                case 'heartbeat_start': this._startLoop('beat', 0.25); break;
-                case 'heartbeat_stop': this._stopLoop('beat', 0.1); break;
-            }
-        }
-    }
+    // ============ AUDIO ENGINE (extracted to src/audio/AudioEngine.js) ============
+    const AudioEngine = DAIDAI.AudioEngine;
     const audio = new AudioEngine();
     // iOS WKWebView reliability: prime audio on the very first user interaction
     // anywhere on the page (touchend > touchstart for Safari/Chrome on iOS).
@@ -830,315 +582,32 @@
         ROWS = Math.min(60, ROWS);
     })();
     // ============ I18N ============
-    const I18N_DICT = {
-        zh: {
-            title: '呆呆虫之豆豆潭',
-            'loading.title': '呆呆虫之豆豆潭',
-            'loading.sub': '加载中…',
-            'loading.fetching': '加载 {name} …',
-            'loading.waiting': '仍在等待: {names}',
-            'loading.ready': '点击 / 按键开始',
-            'loading.failed': '加载失败，继续游戏',
-            'hint.pauseKey': '␣ 暂停',
-            'hint.pauseGamepad': '{btn} 暂停',
-            'hint.restartGamepad': '{btn} 重新开始',
-            'hint.restartTouch': '点击屏幕重新开始',
-            'hint.restartKey': '↵ 重新开始',
-            'hint.combo.red': '×5 加速',
-            'hint.combo.blue': '×5 下雨',
-            'hint.combo.green': '×5 蜕皮',
-            'hint.combo.orange': '×5 金豆',
-            'hint.combo.purple': '×5 减半',
-            'btn.restart': '重新开始',
-            'btn.sound': '声音',
-            'btn.language': '语言',
-            'ui.hiscore': '最高',
-            'ui.score': '得分',
-            'hint.langPauseFirst': '暂停后才能切换语言',
-            'start.gamepad': '按手柄方向键 / 摇杆 开始游戏！',
-            'start.touch': '点击 / 滑动屏幕 开始游戏！',
-            'start.both': '按 ← ↑ ↓ → / 点击 / 滑动 开始游戏！',
-            'start.keyboard': '按 ← ↑ ↓ → 开始游戏！',
-            paused: '暂停中',
-            'over.new': '🏆 新纪录！\n最终分数: {score}',
-            'over.normal': '游戏结束！\n最终分数: {score}\n最高分: {hi}',
-            'fx.shed': '🎉 蜕皮！长度重置！',
-            'fx.boostEnd': '⏹️ 加速结束',
-            'fx.boost': '🔥 变速 ×{mult} 得分！(15s)',
-            'fx.rain': '🌧️ 降雨魔法！吃豆额外+10！',
-            'fx.green': '🌿 生机魔法！蜕皮变豆！',
-            'fx.gold': '✨ 圣光发射！击中变金豆！',
-            'fx.halve': '💜 长度减半！',
-            'fx.godmode': '🌈 樊一鹏模式！无敌 + 彩虹 + 10×',
-            'fx.meteor': '☄️ 流星雨！',
-            'fx.lenPlus': '➕ 长度 +1',
-            subtitle: '❤️  致樊一鹏 —— 谢谢你写出我们的童年  ❤️',
-        },
-        'zh-tw': {
-            title: '呆呆蟲之豆豆潭',
-            'loading.title': '呆呆蟲之豆豆潭',
-            'loading.sub': '載入中…',
-            'loading.fetching': '載入 {name} …',
-            'loading.waiting': '仍在等待: {names}',
-            'loading.ready': '點擊 / 按鍵開始',
-            'loading.failed': '載入失敗，繼續遊戲',
-            'hint.pauseKey': '␣ 暫停',
-            'hint.pauseGamepad': '{btn} 暫停',
-            'hint.restartGamepad': '{btn} 重新開始',
-            'hint.restartTouch': '點擊螢幕重新開始',
-            'hint.restartKey': '↵ 重新開始',
-            'hint.combo.red': '×5 加速',
-            'hint.combo.blue': '×5 下雨',
-            'hint.combo.green': '×5 蛻皮',
-            'hint.combo.orange': '×5 金豆',
-            'hint.combo.purple': '×5 減半',
-            'btn.restart': '重新開始',
-            'btn.sound': '聲音',
-            'btn.language': '語言',
-            'ui.hiscore': '最高',
-            'ui.score': '得分',
-            'hint.langPauseFirst': '暫停後才能切換語言',
-            'start.gamepad': '按手把方向鍵 / 搖桿 開始遊戲！',
-            'start.touch': '點擊 / 滑動螢幕 開始遊戲！',
-            'start.both': '按 ← ↑ ↓ → / 點擊 / 滑動 開始遊戲！',
-            'start.keyboard': '按 ← ↑ ↓ → 開始遊戲！',
-            paused: '暫停中',
-            'over.new': '🏆 新紀錄！\n最終分數: {score}',
-            'over.normal': '遊戲結束！\n最終分數: {score}\n最高分: {hi}',
-            'fx.shed': '🎉 蛻皮！長度重置！',
-            'fx.boostEnd': '⏹️ 加速結束',
-            'fx.boost': '🔥 變速 ×{mult} 得分！(15s)',
-            'fx.rain': '🌧️ 降雨魔法！吃豆額外+10！',
-            'fx.green': '🌿 生機魔法！蛻皮變豆！',
-            'fx.gold': '✨ 聖光發射！擊中變金豆！',
-            'fx.halve': '💜 長度減半！',
-            'fx.godmode': '🌈 樊一鵬模式！無敵 + 彩虹 + 10×',
-            'fx.meteor': '☄️ 流星雨！',
-            'fx.lenPlus': '➕ 長度 +1',
-            subtitle: '❤️  致樊一鵬 —— 謝謝你寫出我們的童年  ❤️',
-        },
-        en: {
-            title: '"DAIDAI" Worm',
-            'loading.title': '"DAIDAI" Worm',
-            'loading.sub': 'Loading…',
-            'loading.fetching': 'Loading {name} …',
-            'loading.waiting': 'Still waiting: {names}',
-            'loading.ready': 'Tap / press any key to start',
-            'loading.failed': 'Load failed, continuing',
-            'hint.pauseKey': '␣ Pause',
-            'hint.pauseGamepad': '{btn} Pause',
-            'hint.restartGamepad': '{btn} Restart',
-            'hint.restartTouch': 'Tap to restart',
-            'hint.restartKey': '↵ Restart',
-            'hint.combo.red': '×5 Boost',
-            'hint.combo.blue': '×5 Rain',
-            'hint.combo.green': '×5 Shed',
-            'hint.combo.orange': '×5 Gold',
-            'hint.combo.purple': '×5 Halve',
-            'btn.restart': 'Restart',
-            'btn.sound': 'Sound',
-            'btn.language': 'Language',
-            'ui.hiscore': 'HISCORE',
-            'ui.score': 'SCORE',
-            'hint.langPauseFirst': 'Pause to change language',
-            'start.gamepad': 'Press D-Pad / stick to start!',
-            'start.touch': 'Tap / swipe to start!',
-            'start.both': 'Press ← ↑ ↓ → / tap / swipe to start!',
-            'start.keyboard': 'Press ← ↑ ↓ → to start!',
-            paused: 'Paused',
-            'over.new': '🏆 New record!\nScore: {score}',
-            'over.normal': 'Game Over!\nScore: {score}\nBest: {hi}',
-            'fx.shed': '🎉 Shed! Length reset!',
-            'fx.boostEnd': '⏹️ Boost ended',
-            'fx.boost': '🔥 Boost ×{mult}! (15s)',
-            'fx.rain': '🌧️ Rain! +10 per bean!',
-            'fx.green': '🌿 Regrowth! Skins → beans!',
-            'fx.gold': '✨ Holy Laser! Beans → gold!',
-            'fx.halve': '💜 Length halved!',
-            'fx.godmode': '🌈 Fan Yipeng mode! Invincible + 10×',
-            'fx.meteor': '☄️ Meteor shower!',
-            'fx.lenPlus': '➕ Length +1',
-            subtitle: '❤️  For Fan Yipeng — thanks for our childhood  ❤️',
-        },
-        ja: {
-            title: '豆豆池のダイダイ虫',
-            'loading.title': '豆豆池のダイダイ虫',
-            'loading.sub': '読み込み中…',
-            'loading.fetching': '{name} を読み込み中 …',
-            'loading.waiting': '待機中: {names}',
-            'loading.ready': 'タップ / キーで開始',
-            'loading.failed': '読み込み失敗、続行',
-            'hint.pauseKey': '␣ ポーズ',
-            'hint.pauseGamepad': '{btn} ポーズ',
-            'hint.restartGamepad': '{btn} リスタート',
-            'hint.restartTouch': 'タップでリスタート',
-            'hint.restartKey': '↵ リスタート',
-            'hint.combo.red': '×5 加速',
-            'hint.combo.blue': '×5 雨',
-            'hint.combo.green': '×5 脱皮',
-            'hint.combo.orange': '×5 金豆',
-            'hint.combo.purple': '×5 半減',
-            'btn.restart': 'リスタート',
-            'btn.sound': 'サウンド',
-            'btn.language': '言語',
-            'ui.hiscore': 'ハイスコア',
-            'ui.score': 'スコア',
-            'hint.langPauseFirst': '一時停止中のみ言語を切替',
-            'start.gamepad': '方向キー / スティックで開始！',
-            'start.touch': 'タップ / スワイプで開始！',
-            'start.both': '← ↑ ↓ → / タップ / スワイプで開始！',
-            'start.keyboard': '← ↑ ↓ → で開始！',
-            paused: 'ポーズ中',
-            'over.new': '🏆 新記録！\nスコア: {score}',
-            'over.normal': 'ゲームオーバー！\nスコア: {score}\nベスト: {hi}',
-            'fx.shed': '🎉 脱皮！長さリセット！',
-            'fx.boostEnd': '⏹️ 加速終了',
-            'fx.boost': '🔥 加速 ×{mult}！(15s)',
-            'fx.rain': '🌧️ 雨魔法！豆 +10！',
-            'fx.green': '🌿 生機魔法！皮 → 豆！',
-            'fx.gold': '✨ 聖光発射！豆 → 金豆！',
-            'fx.halve': '💜 長さ半減！',
-            'fx.godmode': '🌈 樊一鵬モード！無敵 + 10×',
-            'fx.meteor': '☄️ 流星雨！',
-            'fx.lenPlus': '➕ 長さ +1',
-            subtitle: '❤️  樊一鵬様へ — 子供時代をありがとう  ❤️',
-        },
-        ko: {
-            title: '콩 연못의 다이다이 벌레',
-            'loading.title': '콩 연못의 다이다이 벌레',
-            'loading.sub': '로딩 중…',
-            'loading.fetching': '{name} 로딩 중…',
-            'loading.waiting': '대기 중: {names}',
-            'loading.ready': '탭 / 키 입력으로 시작',
-            'loading.failed': '로드 실패, 계속',
-            'hint.pauseKey': '␣ 일시정지',
-            'hint.pauseGamepad': '{btn} 일시정지',
-            'hint.restartGamepad': '{btn} 재시작',
-            'hint.restartTouch': '탭하여 재시작',
-            'hint.restartKey': '↵ 재시작',
-            'hint.combo.red': '×5 가속',
-            'hint.combo.blue': '×5 비',
-            'hint.combo.green': '×5 탈피',
-            'hint.combo.orange': '×5 금콩',
-            'hint.combo.purple': '×5 반감',
-            'btn.restart': '재시작',
-            'btn.sound': '사운드',
-            'btn.language': '언어',
-            'ui.hiscore': '최고',
-            'ui.score': '점수',
-            'hint.langPauseFirst': '일시정지 후 언어 변경 가능',
-            'start.gamepad': '방향키 / 스틱으로 시작!',
-            'start.touch': '탭 / 스와이프로 시작!',
-            'start.both': '← ↑ ↓ → / 탭 / 스와이프로 시작!',
-            'start.keyboard': '← ↑ ↓ → 로 시작!',
-            paused: '일시정지',
-            'over.new': '🏆 신기록!\n점수: {score}',
-            'over.normal': '게임 오버!\n점수: {score}\n최고: {hi}',
-            'fx.shed': '🎉 탈피! 길이 리셋!',
-            'fx.boostEnd': '⏹️ 가속 종료',
-            'fx.boost': '🔥 가속 ×{mult}! (15s)',
-            'fx.rain': '🌧️ 비 마법! 콩 +10!',
-            'fx.green': '🌿 생기 마법! 껍질 → 콩!',
-            'fx.gold': '✨ 성광 발사! 콩 → 금콩!',
-            'fx.halve': '💜 길이 반감!',
-            'fx.godmode': '🌈 판이펑 모드! 무적 + 10×',
-            'fx.meteor': '☄️ 유성우!',
-            'fx.lenPlus': '➕ 길이 +1',
-            subtitle: '❤️  판이펑 님께 — 어린 시절을 감사합니다  ❤️',
-        },
-        es: {
-            title: 'Gusano DaiDai del Estanque DouDou',
-            'loading.title': 'Gusano DaiDai del Estanque DouDou',
-            'loading.sub': 'Cargando…',
-            'loading.fetching': 'Cargando {name}…',
-            'loading.waiting': 'Esperando: {names}',
-            'loading.ready': 'Toca / pulsa para empezar',
-            'loading.failed': 'Carga fallida, continuando',
-            'hint.pauseKey': '␣ Pausa',
-            'hint.pauseGamepad': '{btn} Pausa',
-            'hint.restartGamepad': '{btn} Reiniciar',
-            'hint.restartTouch': 'Toca para reiniciar',
-            'hint.restartKey': '↵ Reiniciar',
-            'hint.combo.red': '×5 Veloz',
-            'hint.combo.blue': '×5 Lluvia',
-            'hint.combo.green': '×5 Mudar',
-            'hint.combo.orange': '×5 Oro',
-            'hint.combo.purple': '×5 Mitad',
-            'btn.restart': 'Reiniciar',
-            'btn.sound': 'Sonido',
-            'btn.language': 'Idioma',
-            'ui.hiscore': 'RÉCORD',
-            'ui.score': 'PUNTOS',
-            'hint.langPauseFirst': 'Pausa para cambiar idioma',
-            'start.gamepad': '¡Usa el D-Pad / stick para empezar!',
-            'start.touch': '¡Toca / desliza para empezar!',
-            'start.both': '¡← ↑ ↓ → / toca / desliza para empezar!',
-            'start.keyboard': '¡Pulsa ← ↑ ↓ → para empezar!',
-            paused: 'Pausado',
-            'over.new': '🏆 ¡Nuevo récord!\nPuntos: {score}',
-            'over.normal': '¡Fin del juego!\nPuntos: {score}\nMejor: {hi}',
-            'fx.shed': '🎉 ¡Mudar! ¡Longitud reset!',
-            'fx.boostEnd': '⏹️ Velocidad terminada',
-            'fx.boost': '🔥 ¡Veloz ×{mult}! (15s)',
-            'fx.rain': '🌧️ ¡Lluvia! ¡+10 por frijol!',
-            'fx.green': '🌿 ¡Vida! ¡Pieles → frijoles!',
-            'fx.gold': '✨ ¡Láser sagrado! ¡A oro!',
-            'fx.halve': '💜 ¡Longitud a la mitad!',
-            'fx.godmode': '🌈 ¡Modo Fan Yipeng! Invencible + 10×',
-            'fx.meteor': '☄️ ¡Lluvia de meteoros!',
-            'fx.lenPlus': '➕ Longitud +1',
-            subtitle: '❤️  Para Fan Yipeng — gracias por nuestra infancia  ❤️',
-        },
-    };
-    function _pickLang() {
-        const url = new URLSearchParams(location.search).get('lang');
-        const stored = (() => { try { return localStorage.getItem('daidai_lang'); } catch(e) { return null; } })();
-        const candidates = [url, stored, ...(navigator.languages || [navigator.language || 'zh'])];
-        for (const raw of candidates) {
-            if (!raw) continue;
-            const lc = raw.toLowerCase();
-            // Explicit Traditional Chinese tags / region codes
-            if (lc === 'zh-tw' || lc === 'zh-hk' || lc === 'zh-mo'
-                || lc.startsWith('zh-hant') || lc.startsWith('zh-tw') || lc.startsWith('zh-hk') || lc.startsWith('zh-mo')) return 'zh-tw';
-            if (lc.startsWith('zh')) return 'zh';
-            if (lc.startsWith('en')) return 'en';
-            if (lc.startsWith('ja')) return 'ja';
-            if (lc.startsWith('ko')) return 'ko';
-            if (lc.startsWith('es')) return 'es';
-        }
-        return 'zh';
-    }
-    let LANG = _pickLang();
-    function t(key, params) {
-        const dict = I18N_DICT[LANG] || I18N_DICT.zh;
-        let s = dict[key];
-        if (s == null) s = (I18N_DICT.en[key] != null ? I18N_DICT.en[key] : (I18N_DICT.zh[key] != null ? I18N_DICT.zh[key] : key));
-        if (params) {
-            for (const k in params) s = s.split('{' + k + '}').join(params[k]);
-        }
-        return s;
-    }
+    // ============ I18N (dictionaries + helpers extracted to src/i18n/) ============
+    const I18N_DICT = DAIDAI.I18N_DICT;
+    let LANG = DAIDAI.pickLang({
+        url: new URLSearchParams(location.search).get('lang'),
+        stored: (() => { try { return localStorage.getItem('daidai_lang'); } catch(e) { return null; } })(),
+        navigator: (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'zh']),
+    });
+    const t = DAIDAI.createT(() => LANG);
     try { document.documentElement.lang = LANG; document.title = t('title'); } catch(e) {}
     function applyI18nDOM() {
         document.querySelectorAll('[data-i18n]').forEach(el => {
-            const k = el.getAttribute('data-i18n');
-            el.textContent = t(k);
+            el.textContent = t(el.getAttribute('data-i18n'));
         });
         document.querySelectorAll('[data-i18n-title]').forEach(el => {
             el.title = t(el.getAttribute('data-i18n-title'));
         });
     }
     function setLang(lang) {
-        if (!I18N_DICT[lang] || lang === LANG) return;
+        if (!DAIDAI.hasLocale(lang) || lang === LANG) return;
         LANG = lang;
         try { localStorage.setItem('daidai_lang', lang); } catch(_) {}
         try { document.documentElement.lang = lang; document.title = t('title'); } catch(_) {}
         applyI18nDOM();
-        // Mark active in menu
         document.querySelectorAll('#lang-menu button[data-lang]').forEach(b => {
             b.classList.toggle('active', b.getAttribute('data-lang') === lang);
         });
-        // Re-render dynamic UI text
         try { if (typeof refreshDynamicI18n === 'function') refreshDynamicI18n(); } catch(_) {}
     }
     applyI18nDOM();
@@ -1149,7 +618,7 @@
     let snake, direction, nextDirection, beans, shedSkin, score, beansEaten;
     let gameOver, paused, speed, baseSpeed, comboColor, comboCount;
     let goldBeans, growthPending;
-    let eatenColors = []; // queue of bean colors, [0]=most recent — displayed body[1]=eatenColors[0], body[2]=eatenColors[1], ...
+    const eatenColors = DAIDAI.createEatenColorsQueue(); // queue of bean colors behind the head
     let hasGamepad = false;
     const hasTouchEnv = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     const hasFineKeyboardEnv = window.matchMedia('(pointer: fine)').matches;
@@ -1158,30 +627,12 @@
     function detectGamepadNow() {
         try {
             const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-            for (const p of pads) {
-                if (!p || p.connected === false) continue;
-                const id = (p.id || '').trim();
-                if (!id) continue;
-                if (/dualshock|dualsense|playstation|ps[345]|sony|054c/i.test(id)) isPSGamepad = true;
-                return true;
-            }
-        } catch(e) {}
-        return false;
+            const r = DAIDAI.detectConnectedGamepad(pads);
+            if (r.isPS) isPSGamepad = true;
+            return r.connected;
+        } catch(e) { return false; }
     }
-    function gpBtn(btn) {
-        // btn: 'A' (confirm), 'B' (cancel/back), 'X' (square), 'Y' (triangle)
-        if (isPSGamepad) {
-            if (btn === 'A') return '✕';
-            if (btn === 'B') return '◯';
-            if (btn === 'X') return '☐';
-            if (btn === 'Y') return '△';
-        }
-        if (btn === 'A') return 'Ⓐ';
-        if (btn === 'B') return 'Ⓑ';
-        if (btn === 'X') return 'Ⓧ';
-        if (btn === 'Y') return 'Ⓨ';
-        return btn;
-    }
+    function gpBtn(btn) { return DAIDAI.glyphForButton(btn, isPSGamepad); }
     function getStartPrompt() {
         if (hasGamepad || detectGamepadNow()) {
             hasGamepad = true;
@@ -1217,13 +668,7 @@
     const konamiSeq = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
     let konamiBuf = [];
     let typedBuf = '';
-    const heartSeq = [
-        'ArrowDown','ArrowRight','ArrowUp','ArrowLeft',
-        'ArrowDown','ArrowRight','ArrowUp','ArrowLeft',
-        'ArrowDown','ArrowRight','ArrowUp','ArrowLeft',
-        'ArrowDown','ArrowRight','ArrowUp','ArrowLeft'
-    ];
-    let heartBuf = [];
+    const heartMatcher = DAIDAI.createHeartMatcher(DAIDAI.HEART_SEQUENCE);
 
     function announceDebugHelp() {
         const big = 'color:#ffd700;font-size:18px;font-weight:bold;text-shadow:1px 1px 0 #000';
@@ -2145,13 +1590,13 @@
             { x: startX - 3, y: startY },
             { x: startX - 4, y: startY }
         ];
-        eatenColors = [];
+        eatenColors.reset();
         godMode = false;
         isBoosted = false;
         boostMultiplier = 1;
         boostEndAt = 0;
         konamiBuf = [];
-        heartBuf = [];
+        heartMatcher.reset();
         typedBuf = '';
         direction = { x: 1, y: 0 };
         nextDirection = { x: 1, y: 0 };
@@ -2244,7 +1689,7 @@
             // Remove the corresponding mesh so the next spawned bean gets a fresh drop-in animation
             if (beanMeshes[beanIdx]) { scene.remove(beanMeshes[beanIdx]); beanMeshes.splice(beanIdx, 1); }
             // Newest eaten color goes to front of queue → displayed directly behind head
-            eatenColors.unshift(bean.color);
+            eatenColors.recordEaten(bean.color);
             eatBean(bean);
             spawnBean();
         }
@@ -2324,7 +1769,7 @@
                 shedSkin.push({ x: tail.x, y: tail.y, life: 600 });
             }
             // Keep most recent 4 eaten colors visible on body[1..4] after shed
-            eatenColors = eatenColors.slice(0, initLen - 1);
+            eatenColors.trimAfterShed(initLen);
             // Prevent the trailing snake.pop() in gameUpdate from shrinking us to 4
             growthPending = 1;
             showEffect(t('fx.shed'));
@@ -2410,7 +1855,7 @@
                 audio.play('magic_purple');
                 const halfLen = Math.max(3, Math.floor(snake.length / 2));
                 while (snake.length > halfLen) snake.pop();
-                eatenColors = eatenColors.slice(0, Math.max(0, halfLen - 1));
+                eatenColors.trimAfterHalve(halfLen);
                 // Stop heartbeat if we dropped below threshold
                 if (halfLen + growthPending < 20) {
                     audio.play('heartbeat_stop');
@@ -2673,7 +2118,7 @@
                     mesh.material.opacity = 0.8;
                     mesh.material.transmission = 0.1;
                 } else {
-                    const cIdx = eatenColors[i - 1];
+                    const cIdx = eatenColors.colorAt(i - 1);
                     if (cIdx != null) {
                         mesh.material.color.setHex(COLORS_HEX[cIdx]);
                         mesh.material.opacity = 0.88;
@@ -3007,11 +2452,7 @@
         // 5) Heart pattern → tribute
         const arrowOnly = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
         if (arrowOnly.includes(e.key)) {
-            heartBuf.push(e.key);
-            if (heartBuf.length > heartSeq.length) heartBuf.shift();
-            if (heartBuf.length === heartSeq.length &&
-                heartBuf.every((k, i) => k === heartSeq[i])) {
-                heartBuf = [];
+            if (heartMatcher.push(e.key)) {
                 activateTribute();
             }
         }
@@ -3408,7 +2849,7 @@
             beans: beans.map(b => ({ x: b.x, y: b.y, color: b.color })),
             goldBeans: goldBeans.map(g => ({ x: g.x, y: g.y, life: g.life })),
             shedSkin: shedSkin.map(s => ({ x: s.x, y: s.y, life: s.life })),
-            eatenColors: eatenColors.slice(),
+            eatenColors: eatenColors.snapshot(),
             comboColor, comboCount,
             isBoosted, boostMultiplier, isRaining,
             growthPending, beansEaten,
@@ -3417,7 +2858,7 @@
         }),
         setSnake: (cells) => {
             snake = cells.map(c => ({ x: c.x, y: c.y }));
-            eatenColors = [];
+            eatenColors.reset();
             growthPending = 0;
         },
         setDirection: (x, y) => {
