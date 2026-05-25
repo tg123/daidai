@@ -27,6 +27,13 @@ jobs:
       - name: Build (dist target only)
         if: matrix.target == 'dist'
         run: npm run build
+      - name: Upload dist artifact
+        if: matrix.target == 'dist'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 1
       - name: Test
         run: ${{ matrix.target == 'dist' && 'npm run test:dist' || 'npm test' }}
       - uses: actions/upload-artifact@v4
@@ -49,15 +56,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/download-artifact@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run build
+          name: dist
+          path: dist
       - name: Deploy dist to gh-pages
-        uses: JamesIves/github-pages-deploy-action@v4
+        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4
         with:
           branch: gh-pages
           folder: dist
@@ -76,14 +80,11 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/download-artifact@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run build
-      - uses: rossjrw/pr-preview-action@v1
+          name: dist
+          path: dist
+      - uses: rossjrw/pr-preview-action@ffa7509e91a3ec8dfc2e5536c4d5c1acdf7a6de9 # v1
         with:
           source-dir: dist
           preview-branch: gh-pages
@@ -102,7 +103,7 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      - uses: rossjrw/pr-preview-action@v1
+      - uses: rossjrw/pr-preview-action@ffa7509e91a3ec8dfc2e5536c4d5c1acdf7a6de9 # v1
         with:
           preview-branch: gh-pages
           umbrella-dir: pr-preview
