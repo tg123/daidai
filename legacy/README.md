@@ -1,7 +1,7 @@
 # Legacy
 
 This folder contains the original C++ / DirectX source code of
-**呆呆虫与豆豆潭 (DaiDai Worm and DouDou Pond)**, preserved here for
+**呆呆虫之豆豆潭**, preserved here for
 reference.
 
 Source: https://github.com/StellaJiangChina/daidaiworm

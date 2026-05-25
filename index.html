@@ -7,6 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>呆呆虫之豆豆潭</title>
     <link rel="icon" type="image/x-icon" href="fav.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -906,8 +907,8 @@
             subtitle: '❤️  致樊一鵬 —— 謝謝你寫出我們的童年  ❤️',
         },
         en: {
-            title: 'DaiDai Worm of DouDou Pond',
-            'loading.title': 'DaiDai Worm of DouDou Pond',
+            title: '"DAIDAI" Worm',
+            'loading.title': '"DAIDAI" Worm',
             'loading.sub': 'Loading…',
             'loading.fetching': 'Loading {name} …',
             'loading.waiting': 'Still waiting: {names}',
@@ -1151,9 +1152,10 @@
         try {
             const pads = navigator.getGamepads ? navigator.getGamepads() : [];
             for (const p of pads) {
-                if (!p) continue;
-                const id = (p.id || '').toLowerCase();
-                if (/dualshock|dualsense|playstation|ps[345]|sony|054c/.test(id)) isPSGamepad = true;
+                if (!p || p.connected === false) continue;
+                const id = (p.id || '').trim();
+                if (!id) continue;
+                if (/dualshock|dualsense|playstation|ps[345]|sony|054c/i.test(id)) isPSGamepad = true;
                 return true;
             }
         } catch(e) {}
@@ -3221,8 +3223,9 @@
             function poll() {
                 const pads = navigator.getGamepads ? navigator.getGamepads() : [];
                 for (const pad of pads) {
-                    if (!pad) continue;
-                    const idLower = (pad.id || '').toLowerCase();
+                    if (!pad || pad.connected === false) continue;
+                    const idLower = (pad.id || '').trim().toLowerCase();
+                    if (!idLower) continue;
                     if (!loggedPad) { console.log('[gamepad] detected:', pad.id, 'mapping:', pad.mapping); loggedPad = true; }
                     const wasPS = isPSGamepad;
                     if (/dualshock|dualsense|playstation|ps[345]|sony|054c/.test(idLower)) isPSGamepad = true;
