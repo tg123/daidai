@@ -2450,6 +2450,7 @@
             tributeActive = false;
         },
         tributeTriggered: () => tributeTriggeredThisLoad,
+        callActivateTribute: () => { activateTribute(); },
         COLS: () => COLS,
         ROWS: () => ROWS,
     };
