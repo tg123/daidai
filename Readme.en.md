@@ -1,4 +1,4 @@
-# DaiDai Worm & Beanie Pond
+# DaiDai Worm of DouDou Pond
 
 > A childhood favorite of mine (author: **Fan Yipeng**, developed in 1999, released in 2004).
 >
@@ -8,7 +8,7 @@
 >
 > I've long wanted to recreate it but never had the skill. Thanks to AI, this long-held wish finally came true.
 
-A nostalgic 3D remake of *DaiDai Worm & Beanie Pond*, built with Three.js and runs in your browser.
+A nostalgic 3D remake of *DaiDai Worm of DouDou Pond*, built with Three.js and runs in your browser.
 
 🎮 **Play online:** <https://tg123.github.io/daidai/>
 
