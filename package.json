@@ -1,0 +1,22 @@
+{
+  "name": "daidai-worm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DaiDai Worm 3D web game — test harness",
+  "scripts": {
+    "serve": "http-server -p 8080 -s -c-1 .",
+    "serve:dist": "http-server -p 8080 -s -c-1 dist",
+    "build": "node scripts/build.mjs",
+    "test": "playwright test",
+    "test:dist": "cross-env TEST_DIST=1 playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:install": "playwright install --with-deps chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "cross-env": "^7.0.3",
+    "html-minifier-terser": "^7.2.0",
+    "http-server": "^14.1.1"
+  }
+}

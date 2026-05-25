@@ -39,7 +39,7 @@ The remake keeps the core 1999 gameplay intact, with some extensions and modern 
 
 - **3D rendering** — The original was 2D pixel art; this version is rewritten in Three.js as a top-down 3D world (reflective metallic gold beans, pond ripples, weather effects, etc.).
 - **🔴 Red speed boost, enhanced** — Original: speed up + 5 bonus per bean. This version: 15-second speed boost, and re-triggering during the boost doubles the multiplier (×2 → ×4 → ×8 …), rewarding combos.
-- **🟠 Orange holy light** — Original used an "aura" that radiated outward to convert nearby objects into gold beans. This version uses a directed laser fired from the worm's head along the current direction; only beans hit by the beam convert (the +30 gold-bean reward itself matches the original).
+- **🟠 Orange holy light** — Original used an "aura" that radiated outward to convert nearby objects into gold beans. This version uses a directed laser fired from the worm's head along the current direction; both beans and shed skin segments hit by the beam convert into gold beans (matches the original where any nearby object — including sloughed-off skin — could be transmuted; the +30 gold-bean reward is preserved).
 - **🟢 Green vitality** — Old shed skins turn back into edible beans (with a new random color), so old skins don't just clutter the field.
 - **🔵 Blue rain** — Screen enters a heavy-rain mode; all beans grant +10 bonus during it.
 - **🟣 Purple shrink** — Length is halved (rounded up); use it to save yourself.
@@ -62,3 +62,21 @@ Any static file server will do:
 python -m http.server 8000
 # open http://localhost:8000/
 ```
+
+## Build & Test
+
+Requires Node ≥ 18:
+
+```sh
+npm install                  # install deps
+npm run test:install         # install Playwright browsers (one-time)
+
+npm test                     # run E2E tests against source
+npm run build                # bundle + minify into dist/ (HTML+JS+CSS, ~ -48%)
+npm run test:dist            # run E2E tests against the dist build
+```
+
+Build output is written to `dist/` (minified `index.html` plus runtime assets:
+`audio/`, favicon, `apple-touch-icon.png`, …). GitHub Pages auto-deploys
+`dist/` via [`.github/workflows/e2e.yml`](.github/workflows/e2e.yml).
+

@@ -88,6 +88,37 @@
             white-space: pre-line;
             display: none;
         }
+        #btn-restart {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, 0);
+            padding: 14px 38px;
+            font-size: 20px;
+            font-weight: bold;
+            font-family: inherit;
+            color: #2a1a00;
+            background: linear-gradient(135deg, #ffe680, #ffb347);
+            border: 2px solid rgba(255,255,255,0.7);
+            border-radius: 30px;
+            cursor: pointer;
+            white-space: nowrap;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.5), 0 0 24px rgba(255,200,0,0.55);
+            z-index: 25;
+            pointer-events: auto;
+            display: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #btn-restart.show { display: block; }
+        #btn-restart.gameover { animation: restartPulse 1.6s ease-in-out infinite; }
+        #btn-restart:hover, #btn-restart:active {
+            background: linear-gradient(135deg, #fff0a0, #ffc46b);
+            box-shadow: 0 6px 22px rgba(0,0,0,0.6), 0 0 36px rgba(255,210,80,0.85);
+        }
+        @keyframes restartPulse {
+            0%,100% { box-shadow: 0 6px 18px rgba(0,0,0,0.5), 0 0 24px rgba(255,200,0,0.55); }
+            50%     { box-shadow: 0 6px 22px rgba(0,0,0,0.6), 0 0 44px rgba(255,220,90,0.95); }
+        }
         #effect-text {
             position: absolute;
             top: 80px;
@@ -119,20 +150,6 @@
         .hint-key { opacity: 0.9; }
         .hint-sep { opacity: 0.4; margin: 0 4px; }
         .hint-label { margin-right: 4px; }
-        #btn-restart-inline {
-            display: block;
-            margin: 10px auto 0;
-            pointer-events: auto;
-            background: rgba(255,255,255,0.15);
-            border: 1px solid rgba(255,255,255,0.4);
-            color: #fff;
-            font-size: 13px;
-            padding: 6px 16px;
-            border-radius: 18px;
-            cursor: pointer;
-            font-family: inherit;
-        }
-        #btn-restart-inline:hover, #btn-restart-inline:active { background: rgba(255,255,255,0.3); }
         canvas { display: block; touch-action: none; position: absolute; left: 0; }
         .color-hint { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: middle; margin: 0 2px; border: 1px solid rgba(255,255,255,0.3); }
 
@@ -162,8 +179,6 @@
         }
         .touch-btn:active { background: rgba(255,255,255,0.3); }
         #btn-pause { top: 50px; right: 12px; width: 44px; height: 44px; font-size: 16px; }
-        #btn-restart { top: 50px; right: 64px; width: 44px; height: 44px; font-size: 18px; display: none; }
-        #btn-restart.show { display: flex; }
         #btn-mute { position: fixed; top: 100px; right: 12px; width: 44px; height: 44px; font-size: 18px; z-index: 50; display: none; }
         #btn-mute.muted { background: rgba(255,80,80,0.35); }
         #btn-lang { position: fixed; top: 100px; right: 12px; width: 44px; height: 44px; font-size: 13px; font-weight: bold; letter-spacing: 0.5px; z-index: 50; }
@@ -233,7 +248,6 @@
             .hint-key, .hint-sep { display: none; }
             .hint-label { margin-right: 0; }
             .color-hint { width: 10px; height: 10px; }
-            #btn-restart-inline { display: none; }
             #message { font-size: 20px; padding: 0 12px; }
             #effect-text { font-size: 22px; }
         }
@@ -327,6 +341,7 @@
         </div>
     </div>
     <div id="message"></div>
+    <button id="btn-restart" type="button">⟳ 重新开始</button>
     <div id="effect-text"></div>
     <div id="instructions">
         <div id="instr-line">
@@ -338,12 +353,10 @@
             <span class="color-hint" style="background:#ff8800;"></span><span class="hint-label" data-i18n="hint.combo.orange">×5 金豆</span>
             <span class="color-hint" style="background:#cc44ff;"></span><span class="hint-label" data-i18n="hint.combo.purple">×5 减半</span>
         </div>
-        <button id="btn-restart-inline" type="button" data-i18n="hint.restartInline">↵ 重新开始</button>
     </div>
 
     <div id="touch-controls">
         <button class="touch-btn" id="btn-pause" aria-label="Pause">⏸</button>
-        <button class="touch-btn" id="btn-restart" aria-label="Restart" data-i18n-title="btn.restart" title="重新开始">⟳</button>
     </div>
     <button class="touch-btn" id="btn-mute" aria-label="Sound" data-i18n-title="btn.sound" title="声音">🔊</button>
     <button class="touch-btn" id="btn-lang" aria-label="Language" data-i18n-title="btn.language" title="Language">🌐</button>
@@ -828,7 +841,6 @@
             'loading.failed': '加载失败，继续游戏',
             'hint.pauseKey': '␣ 暂停',
             'hint.pauseGamepad': '{btn} 暂停',
-            'hint.restartInline': '↵ 重新开始',
             'hint.restartGamepad': '{btn} 重新开始',
             'hint.restartTouch': '点击屏幕重新开始',
             'hint.restartKey': '↵ 重新开始',
@@ -848,8 +860,8 @@
             'start.both': '按 ← ↑ ↓ → / 点击 / 滑动 开始游戏！',
             'start.keyboard': '按 ← ↑ ↓ → 开始游戏！',
             paused: '暂停中',
-            'over.new': '🏆 新纪录！\n最终分数: {score}\n{hint}',
-            'over.normal': '游戏结束！\n最终分数: {score}\n最高分: {hi}\n{hint}',
+            'over.new': '🏆 新纪录！\n最终分数: {score}',
+            'over.normal': '游戏结束！\n最终分数: {score}\n最高分: {hi}',
             'fx.shed': '🎉 蜕皮！长度重置！',
             'fx.boostEnd': '⏹️ 加速结束',
             'fx.boost': '🔥 变速 ×{mult} 得分！(15s)',
@@ -872,7 +884,6 @@
             'loading.failed': '載入失敗，繼續遊戲',
             'hint.pauseKey': '␣ 暫停',
             'hint.pauseGamepad': '{btn} 暫停',
-            'hint.restartInline': '↵ 重新開始',
             'hint.restartGamepad': '{btn} 重新開始',
             'hint.restartTouch': '點擊螢幕重新開始',
             'hint.restartKey': '↵ 重新開始',
@@ -892,8 +903,8 @@
             'start.both': '按 ← ↑ ↓ → / 點擊 / 滑動 開始遊戲！',
             'start.keyboard': '按 ← ↑ ↓ → 開始遊戲！',
             paused: '暫停中',
-            'over.new': '🏆 新紀錄！\n最終分數: {score}\n{hint}',
-            'over.normal': '遊戲結束！\n最終分數: {score}\n最高分: {hi}\n{hint}',
+            'over.new': '🏆 新紀錄！\n最終分數: {score}',
+            'over.normal': '遊戲結束！\n最終分數: {score}\n最高分: {hi}',
             'fx.shed': '🎉 蛻皮！長度重置！',
             'fx.boostEnd': '⏹️ 加速結束',
             'fx.boost': '🔥 變速 ×{mult} 得分！(15s)',
@@ -916,7 +927,6 @@
             'loading.failed': 'Load failed, continuing',
             'hint.pauseKey': '␣ Pause',
             'hint.pauseGamepad': '{btn} Pause',
-            'hint.restartInline': '↵ Restart',
             'hint.restartGamepad': '{btn} Restart',
             'hint.restartTouch': 'Tap to restart',
             'hint.restartKey': '↵ Restart',
@@ -936,8 +946,8 @@
             'start.both': 'Press ← ↑ ↓ → / tap / swipe to start!',
             'start.keyboard': 'Press ← ↑ ↓ → to start!',
             paused: 'Paused',
-            'over.new': '🏆 New record!\nScore: {score}\n{hint}',
-            'over.normal': 'Game Over!\nScore: {score}\nBest: {hi}\n{hint}',
+            'over.new': '🏆 New record!\nScore: {score}',
+            'over.normal': 'Game Over!\nScore: {score}\nBest: {hi}',
             'fx.shed': '🎉 Shed! Length reset!',
             'fx.boostEnd': '⏹️ Boost ended',
             'fx.boost': '🔥 Boost ×{mult}! (15s)',
@@ -960,7 +970,6 @@
             'loading.failed': '読み込み失敗、続行',
             'hint.pauseKey': '␣ ポーズ',
             'hint.pauseGamepad': '{btn} ポーズ',
-            'hint.restartInline': '↵ リスタート',
             'hint.restartGamepad': '{btn} リスタート',
             'hint.restartTouch': 'タップでリスタート',
             'hint.restartKey': '↵ リスタート',
@@ -980,8 +989,8 @@
             'start.both': '← ↑ ↓ → / タップ / スワイプで開始！',
             'start.keyboard': '← ↑ ↓ → で開始！',
             paused: 'ポーズ中',
-            'over.new': '🏆 新記録！\nスコア: {score}\n{hint}',
-            'over.normal': 'ゲームオーバー！\nスコア: {score}\nベスト: {hi}\n{hint}',
+            'over.new': '🏆 新記録！\nスコア: {score}',
+            'over.normal': 'ゲームオーバー！\nスコア: {score}\nベスト: {hi}',
             'fx.shed': '🎉 脱皮！長さリセット！',
             'fx.boostEnd': '⏹️ 加速終了',
             'fx.boost': '🔥 加速 ×{mult}！(15s)',
@@ -1004,7 +1013,6 @@
             'loading.failed': '로드 실패, 계속',
             'hint.pauseKey': '␣ 일시정지',
             'hint.pauseGamepad': '{btn} 일시정지',
-            'hint.restartInline': '↵ 재시작',
             'hint.restartGamepad': '{btn} 재시작',
             'hint.restartTouch': '탭하여 재시작',
             'hint.restartKey': '↵ 재시작',
@@ -1024,8 +1032,8 @@
             'start.both': '← ↑ ↓ → / 탭 / 스와이프로 시작!',
             'start.keyboard': '← ↑ ↓ → 로 시작!',
             paused: '일시정지',
-            'over.new': '🏆 신기록!\n점수: {score}\n{hint}',
-            'over.normal': '게임 오버!\n점수: {score}\n최고: {hi}\n{hint}',
+            'over.new': '🏆 신기록!\n점수: {score}',
+            'over.normal': '게임 오버!\n점수: {score}\n최고: {hi}',
             'fx.shed': '🎉 탈피! 길이 리셋!',
             'fx.boostEnd': '⏹️ 가속 종료',
             'fx.boost': '🔥 가속 ×{mult}! (15s)',
@@ -1048,7 +1056,6 @@
             'loading.failed': 'Carga fallida, continuando',
             'hint.pauseKey': '␣ Pausa',
             'hint.pauseGamepad': '{btn} Pausa',
-            'hint.restartInline': '↵ Reiniciar',
             'hint.restartGamepad': '{btn} Reiniciar',
             'hint.restartTouch': 'Toca para reiniciar',
             'hint.restartKey': '↵ Reiniciar',
@@ -1068,8 +1075,8 @@
             'start.both': '¡← ↑ ↓ → / toca / desliza para empezar!',
             'start.keyboard': '¡Pulsa ← ↑ ↓ → para empezar!',
             paused: 'Pausado',
-            'over.new': '🏆 ¡Nuevo récord!\nPuntos: {score}\n{hint}',
-            'over.normal': '¡Fin del juego!\nPuntos: {score}\nMejor: {hi}\n{hint}',
+            'over.new': '🏆 ¡Nuevo récord!\nPuntos: {score}',
+            'over.normal': '¡Fin del juego!\nPuntos: {score}\nMejor: {hi}',
             'fx.shed': '🎉 ¡Mudar! ¡Longitud reset!',
             'fx.boostEnd': '⏹️ Velocidad terminada',
             'fx.boost': '🔥 ¡Veloz ×{mult}! (15s)',
@@ -2218,11 +2225,10 @@
             updateUI();
             audio.play('heartbeat_stop');
             audio.play('die');
-            const restartHint = getRestartHint();
             window.__gameOverInfo = { score, isNew, hi: hiScore };
             const msg = isNew
-                ? `${t('over.new', { score, hint: restartHint })}`
-                : `${t('over.normal', { score, hi: hiScore, hint: restartHint })}`;
+                ? `${t('over.new', { score })}`
+                : `${t('over.normal', { score, hi: hiScore })}`;
             showMessage(msg);
             return;
         }
@@ -2517,12 +2523,29 @@
 
     // ============ 3D SCENE SYNC ============
     function syncScene(time) {
-        // Show instructions + restart button only when paused or game not started/over
+        // Instructions show whenever paused/game-over; the big restart
+        // button only shows after a real game-over (not on the initial
+        // idle screen or a mid-run pause).
         const showHints = paused || gameOver;
         const instrEl = document.getElementById('instructions');
         const btnRestartEl = document.getElementById('btn-restart');
         if (instrEl) instrEl.classList.toggle('show', showHints);
-        if (btnRestartEl) btnRestartEl.classList.toggle('show', showHints);
+        if (btnRestartEl) {
+            btnRestartEl.classList.toggle('show', gameOver);
+            btnRestartEl.classList.toggle('gameover', gameOver);
+            // Anchor the button just below the game-over message so it
+            // visually replaces the old "↵ 重新开始" hint line.
+            if (gameOver) {
+                const msgEl = document.getElementById('message');
+                if (msgEl) {
+                    const r = msgEl.getBoundingClientRect();
+                    if (r.height > 0) {
+                        btnRestartEl.style.top = (r.bottom + 16) + 'px';
+                        btnRestartEl.style.transform = 'translate(-50%, 0)';
+                    }
+                }
+            }
+        }
         // Tick boost countdown every frame for smooth display
         if (isBoosted) {
             const boostEl = document.getElementById('boost-timer');
@@ -2795,6 +2818,21 @@
                     audio.play('gold');
                 }
             }
+            // Check collision with shed skin - also convert to gold (matches
+            // original game: the orange aura turned any nearby object, including
+            // sloughed-off skin segments, into gold beans).
+            for (let j = shedSkin.length - 1; j >= 0; j--) {
+                const s = shedSkin[j];
+                const sx = s.x * CELL;
+                const sz = s.y * CELL;
+                const dist = Math.sqrt((p.x - sx) ** 2 + (p.z - sz) ** 2);
+                if (dist < 0.8) {
+                    goldBeans.push({ x: s.x, y: s.y, life: 300 });
+                    shedSkin.splice(j, 1);
+                    spawnParticles3D(sx, sz, 0xffd700, 10);
+                    audio.play('gold');
+                }
+            }
             if (p.life <= 0 || p.x < -2 || p.x > COLS * CELL + 2 || p.z < -2 || p.z > ROWS * CELL + 2) {
                 scene.remove(p.mesh);
                 goldenProjectiles.splice(i, 1);
@@ -2988,8 +3026,14 @@
             return;
         }
         if (e.key === ' ') {
+            // Pause is meaningless when the run already ended — leave the
+            // game-over screen intact so the player can read their score
+            // and choose to restart.
+            if (gameOver) { e.preventDefault(); return; }
             paused = !paused;
-            showMessage(paused ? '暂停中' : '');
+            showMessage(paused ? t('paused') : '');
+            const bp = document.getElementById('btn-pause');
+            if (bp) bp.textContent = paused ? '▶' : '⏸';
             e.preventDefault();
             return;
         }
@@ -3063,7 +3107,7 @@
         const surface = renderer.domElement;
         surface.addEventListener('touchstart', e => {
             audio.init();
-            if (gameOver) { initGame(); return; }
+            if (gameOver) { e.preventDefault(); return; }
             const t = e.touches[0];
             sx = t.clientX; sy = t.clientY;
             tracking = true; moved = false;
@@ -3102,12 +3146,14 @@
         btnPause.addEventListener('click', e => {
             e.preventDefault();
             audio.init();
-            if (gameOver) { initGame(); return; }
+            // After game over the pause button is meaningless — the player
+            // must use the dedicated restart button (or ↵ / gamepad shortcut).
+            if (gameOver) return;
             paused = !paused;
             showMessage(paused ? t('paused') : '');
             btnPause.textContent = paused ? '▶' : '⏸';
         });
-        // Restart buttons (mobile touch + inline desktop)
+        // Restart button (single consolidated UI)
         function doRestart() {
             audio.init();
             initGame();
@@ -3117,8 +3163,20 @@
         }
         const btnRestart = document.getElementById('btn-restart');
         btnRestart.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); doRestart(); });
-        const btnRestartInline = document.getElementById('btn-restart-inline');
-        btnRestartInline.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); doRestart(); });
+        // Refresh the button label to reflect the active input modality
+        // (keyboard shortcut, gamepad glyph, or touch).
+        function refreshRestartBtnLabel() {
+            if (!btnRestart) return;
+            if (hasGamepad || (typeof detectGamepadNow === 'function' && detectGamepadNow())) {
+                btnRestart.textContent = t('hint.restartGamepad', { btn: gpBtn('B') });
+            } else if (hasTouchEnv && !hasFineKeyboardEnv) {
+                btnRestart.textContent = '⟳ ' + t('btn.restart');
+            } else {
+                btnRestart.textContent = t('hint.restartKey');
+            }
+        }
+        refreshRestartBtnLabel();
+        window.__refreshRestartBtnLabel = refreshRestartBtnLabel;
         // Mute button
         const btnMute = document.getElementById('btn-mute');
         function refreshMuteUI() {
@@ -3186,12 +3244,18 @@
             let prevButtons = [];
             const DEAD = 0.4;
             function applyGamepadGlyphs() {
+                // Defense-in-depth: this function paints the UI as if a gamepad
+                // is connected, so refuse to run when one isn't. Several callers
+                // (e.g. refreshDynamicI18n after a language switch) invoke this
+                // unconditionally — without this guard we'd light up the gamepad
+                // hints on keyboard / touch users every time they change locale.
+                if (!hasGamepad) return;
                 const hintKey = document.querySelector('#instr-line .hint-key');
                 if (hintKey) { hintKey.textContent = t('hint.pauseGamepad', { btn: gpBtn('A') }); hintKey.style.display = 'inline'; }
                 const hintSep = document.querySelector('#instr-line .hint-sep');
                 if (hintSep) hintSep.style.display = 'inline';
-                const restartBtn = document.getElementById('btn-restart-inline');
-                if (restartBtn) { restartBtn.textContent = t('hint.restartGamepad', { btn: gpBtn('B') }); restartBtn.style.display = 'inline-block'; }
+                // Restart button label now also reflects gamepad modality
+                if (typeof window.__refreshRestartBtnLabel === 'function') window.__refreshRestartBtnLabel();
                 const mb = document.getElementById('btn-mute');
                 if (mb && hasTouchEnv && !hasFineKeyboardEnv) mb.title = t('btn.sound') + ' (' + gpBtn('X') + ')';
                 const lb = document.getElementById('btn-lang');
@@ -3206,15 +3270,6 @@
                 if (!firstTime) return;
                 if (typeof window.__refreshIdlePrompt === 'function') window.__refreshIdlePrompt();
                 applyGamepadGlyphs();
-                if (gameOver) {
-                    const restartHint = getRestartHint();
-                    const msgEl = document.getElementById('message');
-                    const baseLines = msgEl ? msgEl.textContent.split('\n') : [];
-                    if (baseLines.length >= 2) {
-                        baseLines[baseLines.length - 1] = restartHint;
-                        showMessage(baseLines.join('\n'));
-                    }
-                }
             }
             window.__markGamepad = markGamepad;
             window.__applyGamepadGlyphs = applyGamepadGlyphs;
@@ -3257,8 +3312,10 @@
                     if (dx || dy) {
                         const nd = { x: dx, y: dy };
                         if (paused && !gameOver) { audio.init(); paused = false; showMessage(''); audio.play('start'); }
-                        if (gameOver) { doRestart(); }
-                        else if (nd.x !== -direction.x || nd.y !== -direction.y) nextDirection = nd;
+                        // After game over, direction input is ignored —
+                        // restart requires an explicit A/B/Start/Back press
+                        // (or the on-screen restart button / ↵ Enter).
+                        if (!gameOver && (nd.x !== -direction.x || nd.y !== -direction.y)) nextDirection = nd;
                     }
                     // Edge-triggered button presses
                     const prev = prevButtons[pad.index] || [];
@@ -3339,6 +3396,55 @@
         overlayMesh.scale.set(w, h, 1);
     });
 
+    // ============ TEST API (used by Playwright e2e specs) ============
+    // Intentionally exposed in production builds too — payload is tiny and lets
+    // bug reproductions run straight from devtools.
+    window.__test = {
+        state: () => ({
+            score, hiScore, gameOver, paused, godMode,
+            snake: snake.map(s => ({ x: s.x, y: s.y })),
+            direction: { x: direction.x, y: direction.y },
+            nextDirection: { x: nextDirection.x, y: nextDirection.y },
+            beans: beans.map(b => ({ x: b.x, y: b.y, color: b.color })),
+            goldBeans: goldBeans.map(g => ({ x: g.x, y: g.y, life: g.life })),
+            shedSkin: shedSkin.map(s => ({ x: s.x, y: s.y, life: s.life })),
+            eatenColors: eatenColors.slice(),
+            comboColor, comboCount,
+            isBoosted, boostMultiplier, isRaining,
+            growthPending, beansEaten,
+            goldenProjectiles: goldenProjectiles.length,
+            speed, baseSpeed,
+        }),
+        setSnake: (cells) => {
+            snake = cells.map(c => ({ x: c.x, y: c.y }));
+            eatenColors = [];
+            growthPending = 0;
+        },
+        setDirection: (x, y) => {
+            direction = { x, y };
+            nextDirection = { x, y };
+        },
+        clearBeans: () => { beans = []; },
+        placeBean: (x, y, color) => { beans.push({ x, y, color: color | 0 }); },
+        clearGold: () => { goldBeans = []; },
+        placeGold: (x, y) => { goldBeans.push({ x, y, life: 300 }); },
+        clearShed: () => { shedSkin = []; },
+        placeShed: (x, y) => { shedSkin.push({ x, y, life: 600 }); },
+        setPaused: (p) => { paused = !!p; },
+        setGameOver: (g) => { gameOver = !!g; },
+        setGodMode: (g) => { godMode = !!g; },
+        setComboColor: (c, n) => { comboColor = c; comboCount = n; },
+        setBaseSpeed: (s) => { baseSpeed = s; speed = s; },
+        step: () => {
+            const wasPaused = paused;
+            paused = false;
+            try { gameUpdate(); } finally { paused = wasPaused; }
+        },
+        triggerMagic: (c) => { triggerMagic(c); },
+        COLS: () => COLS,
+        ROWS: () => ROWS,
+    };
+
     // ============ START ============
     initGame();
     // Check for already-connected gamepad and prefer its prompts
@@ -3363,10 +3469,9 @@
         // Re-render visible message based on game state
         if (gameOver && window.__gameOverInfo) {
             const { score, isNew, hi } = window.__gameOverInfo;
-            const restartHint = getRestartHint();
             const msg = isNew
-                ? t('over.new', { score, hint: restartHint })
-                : t('over.normal', { score, hi, hint: restartHint });
+                ? t('over.new', { score })
+                : t('over.normal', { score, hi });
             showMessage(msg);
         } else if (paused) {
             // Distinguish initial-idle (score==0, hasn't moved) from mid-game pause
@@ -3380,6 +3485,8 @@
         }
         // Gamepad glyphs (also updates btn-mute/btn-lang titles)
         try { if (typeof window.__applyGamepadGlyphs === 'function') window.__applyGamepadGlyphs(); } catch(_) {}
+        // Refresh the consolidated restart button label after locale change
+        try { if (typeof window.__refreshRestartBtnLabel === 'function') window.__refreshRestartBtnLabel(); } catch(_) {}
     }
     window.__refreshDynamicI18n = refreshDynamicI18n;
     // Update prompt dynamically if first interaction reveals a different modality
