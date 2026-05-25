@@ -163,14 +163,60 @@
         #btn-pause { top: 50px; right: 12px; width: 44px; height: 44px; font-size: 16px; }
         #btn-restart { top: 50px; right: 64px; width: 44px; height: 44px; font-size: 18px; display: none; }
         #btn-restart.show { display: flex; }
-        #btn-mute { top: 100px; right: 12px; width: 44px; height: 44px; font-size: 18px; }
+        #btn-mute { position: fixed; top: 100px; right: 12px; width: 44px; height: 44px; font-size: 18px; z-index: 50; display: none; }
         #btn-mute.muted { background: rgba(255,80,80,0.35); }
+        #btn-lang { position: fixed; top: 100px; right: 12px; width: 44px; height: 44px; font-size: 13px; font-weight: bold; letter-spacing: 0.5px; z-index: 50; }
+        /* Show mute button only on touch / mobile (iOS silent-switch workaround) */
+        @media (max-width: 720px), (pointer: coarse) {
+            #btn-mute { display: flex; }
+            #btn-lang { top: 150px; }
+            #mute-hint { top: 100px; right: 64px; }
+        }
+        /* Small badge showing gamepad shortcut on top-right of utility buttons */
+        .gp-badge {
+            position: absolute;
+            top: -6px; right: -6px;
+            min-width: 18px; height: 18px;
+            padding: 0 4px;
+            background: rgba(255,213,74,0.95);
+            color: #000;
+            border-radius: 9px;
+            font-size: 11px;
+            font-weight: bold;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            pointer-events: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+        .gp-badge.show { display: flex; }
+        #btn-mute, #btn-lang { overflow: visible; }
+        #btn-lang.disabled, #btn-mute.disabled { opacity: 0.35; cursor: not-allowed; }
+        #lang-menu {
+            display: none;
+            position: fixed; top: 150px; right: 64px;
+            background: rgba(0,0,0,0.85); color: #fff;
+            border: 1px solid rgba(255,255,255,0.25); border-radius: 10px;
+            padding: 6px; z-index: 70; min-width: 140px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+        }
+        #lang-menu.open { display: block; }
+        #lang-menu button {
+            display: block; width: 100%; text-align: left;
+            background: transparent; color: #fff; border: none;
+            padding: 8px 12px; font-size: 14px; cursor: pointer;
+            border-radius: 6px;
+        }
+        #lang-menu button:hover, #lang-menu button.active { background: rgba(255,255,255,0.15); }
+        #lang-menu button.active { color: #ffd54a; }
         #mute-hint {
-            position: fixed; top: 150px; right: 12px;
+            position: fixed; top: 100px; right: 64px;
             background: rgba(0,0,0,0.75); color: #ffd; padding: 6px 10px;
             border-radius: 8px; font-size: 12px; pointer-events: none;
             border: 1px solid rgba(255,255,200,0.4); z-index: 60;
             animation: muteHintPulse 1.6s ease-in-out infinite;
+            white-space: nowrap;
         }
         @keyframes muteHintPulse {
             0%,100% { transform: translateX(0); opacity: 1; }
@@ -253,15 +299,15 @@
 <body>
     <div id="loading-screen">
         <div id="loading-worm">🐛</div>
-        <div id="loading-title">呆呆虫之豆豆潭</div>
-        <div id="loading-sub">加载中…</div>
+        <div id="loading-title" data-i18n="loading.title">呆呆虫之豆豆潭</div>
+        <div id="loading-sub" data-i18n="loading.sub">加载中…</div>
         <div id="loading-bar-outer"><div id="loading-bar-inner"></div></div>
         <div id="loading-pct">0%</div>
     </div>
     <div id="ui-overlay">
         <div id="info-bar" class="compact">
-            <span id="hiscore-item">HISCORE &nbsp;<b id="hiscore">00000</b></span>
-            <span>SCORE &nbsp;<b id="score">00000</b></span>
+            <span id="hiscore-item"><span data-i18n="ui.hiscore">HISCORE</span> &nbsp;<b id="hiscore">00000</b></span>
+            <span><span data-i18n="ui.score">SCORE</span> &nbsp;<b id="score">00000</b></span>
             <span>⏱️ <b id="timer">00:00</b></span>
             <span>📏 <b id="length">5</b></span>
             <span><b id="combo"></b></span>
@@ -271,7 +317,7 @@
             </a>
             <span id="more-menu" title="More" aria-label="More">⋯
                 <div id="more-popup">
-                    <div>HISCORE&nbsp;<b id="hiscore-m">00000</b></div>
+                    <div><span data-i18n="ui.hiscore">HISCORE</span>&nbsp;<b id="hiscore-m">00000</b></div>
                     <div><a href="https://github.com/tg123/daidai" target="_blank" rel="noopener">
                         <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
                         GitHub</a></div>
@@ -283,21 +329,30 @@
     <div id="effect-text"></div>
     <div id="instructions">
         <div id="instr-line">
-            <span class="hint-key">␣ 暂停</span>
+            <span class="hint-key" data-i18n="hint.pauseKey">␣ 暂停</span>
             <span class="hint-sep">|</span>
-            <span class="color-hint" style="background:#ff4444;"></span><span class="hint-label">红×5 加速</span>
-            <span class="color-hint" style="background:#4488ff;"></span><span class="hint-label">蓝×5 下雨</span>
-            <span class="color-hint" style="background:#44cc44;"></span><span class="hint-label">绿×5 蜕皮</span>
-            <span class="color-hint" style="background:#ff8800;"></span><span class="hint-label">橙×5 金豆</span>
-            <span class="color-hint" style="background:#cc44ff;"></span><span class="hint-label">紫×5 减半</span>
+            <span class="color-hint" style="background:#ff4444;"></span><span class="hint-label" data-i18n="hint.combo.red">×5 加速</span>
+            <span class="color-hint" style="background:#4488ff;"></span><span class="hint-label" data-i18n="hint.combo.blue">×5 下雨</span>
+            <span class="color-hint" style="background:#44cc44;"></span><span class="hint-label" data-i18n="hint.combo.green">×5 蜕皮</span>
+            <span class="color-hint" style="background:#ff8800;"></span><span class="hint-label" data-i18n="hint.combo.orange">×5 金豆</span>
+            <span class="color-hint" style="background:#cc44ff;"></span><span class="hint-label" data-i18n="hint.combo.purple">×5 减半</span>
         </div>
-        <button id="btn-restart-inline" type="button">↵ 重新开始</button>
+        <button id="btn-restart-inline" type="button" data-i18n="hint.restartInline">↵ 重新开始</button>
     </div>
 
     <div id="touch-controls">
         <button class="touch-btn" id="btn-pause" aria-label="Pause">⏸</button>
-        <button class="touch-btn" id="btn-restart" aria-label="Restart" title="重新开始">⟳</button>
-        <button class="touch-btn" id="btn-mute" aria-label="Sound" title="声音">🔊</button>
+        <button class="touch-btn" id="btn-restart" aria-label="Restart" data-i18n-title="btn.restart" title="重新开始">⟳</button>
+    </div>
+    <button class="touch-btn" id="btn-mute" aria-label="Sound" data-i18n-title="btn.sound" title="声音">🔊</button>
+    <button class="touch-btn" id="btn-lang" aria-label="Language" data-i18n-title="btn.language" title="Language">🌐</button>
+    <div id="lang-menu" role="menu">
+        <button data-lang="zh">🇨🇳 简体中文</button>
+        <button data-lang="zh-tw">🇹🇼 繁體中文</button>
+        <button data-lang="en">🇬🇧 English</button>
+        <button data-lang="ja">🇯🇵 日本語</button>
+        <button data-lang="ko">🇰🇷 한국어</button>
+        <button data-lang="es">🇪🇸 Español</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -601,18 +656,18 @@
             const pct = Math.round((loaded / total) * 100);
             if (barInner) barInner.style.width = pct + '%';
             if (pctEl) pctEl.textContent = pct + '%  (' + loaded + '/' + total + ')';
-            if (subEl && lastName) subEl.textContent = '加载 ' + lastName + ' …';
+            if (subEl && lastName) subEl.textContent = t('loading.fetching', { name: lastName });
         };
         // After 10s, surface which files are still pending in the UI
         const pendingTimer = setInterval(() => {
             if (audio.loaded >= audio.total) { clearInterval(pendingTimer); return; }
             const pending = Object.keys(audio.files).filter(n => !audio.rawBuffers[n]);
             if (pending.length && subEl) {
-                subEl.textContent = '仍在等待: ' + pending.slice(0, 3).join(', ') + (pending.length > 3 ? '…' : '');
+                subEl.textContent = t('loading.waiting', { names: pending.slice(0, 3).join(', ') + (pending.length > 3 ? '…' : '') });
             }
         }, 5000);
         audio.preload().then(() => {
-            if (subEl) subEl.textContent = '点击 / 按键开始';
+            if (subEl) subEl.textContent = t('loading.ready');
             if (barInner) barInner.style.width = '100%';
             if (pctEl) pctEl.textContent = '100%';
             // Hide shortly after — keep the screen long enough to be readable
@@ -622,7 +677,7 @@
             }, 250);
         }).catch(err => {
             console.warn('Preload error:', err);
-            if (subEl) subEl.textContent = '加载失败，继续游戏';
+            if (subEl) subEl.textContent = t('loading.failed');
             setTimeout(() => screen.classList.add('hidden'), 500);
         });
     })();
@@ -760,6 +815,325 @@
         COLS = Math.min(60, COLS);
         ROWS = Math.min(60, ROWS);
     })();
+    // ============ I18N ============
+    const I18N_DICT = {
+        zh: {
+            title: '呆呆虫与豆豆潭',
+            'loading.title': '呆呆虫之豆豆潭',
+            'loading.sub': '加载中…',
+            'loading.fetching': '加载 {name} …',
+            'loading.waiting': '仍在等待: {names}',
+            'loading.ready': '点击 / 按键开始',
+            'loading.failed': '加载失败，继续游戏',
+            'hint.pauseKey': '␣ 暂停',
+            'hint.pauseGamepad': '{btn} 暂停',
+            'hint.restartInline': '↵ 重新开始',
+            'hint.restartGamepad': '{btn} 重新开始',
+            'hint.restartTouch': '点击屏幕重新开始',
+            'hint.restartKey': '↵ 重新开始',
+            'hint.combo.red': '×5 加速',
+            'hint.combo.blue': '×5 下雨',
+            'hint.combo.green': '×5 蜕皮',
+            'hint.combo.orange': '×5 金豆',
+            'hint.combo.purple': '×5 减半',
+            'btn.restart': '重新开始',
+            'btn.sound': '声音',
+            'btn.language': '语言',
+            'ui.hiscore': '最高',
+            'ui.score': '得分',
+            'hint.langPauseFirst': '暂停后才能切换语言',
+            'start.gamepad': '按手柄方向键 / 摇杆 开始游戏！',
+            'start.touch': '点击 / 滑动屏幕 开始游戏！',
+            'start.both': '按 ← ↑ ↓ → / 点击 / 滑动 开始游戏！',
+            'start.keyboard': '按 ← ↑ ↓ → 开始游戏！',
+            paused: '暂停中',
+            'over.new': '🏆 新纪录！\n最终分数: {score}\n{hint}',
+            'over.normal': '游戏结束！\n最终分数: {score}\n最高分: {hi}\n{hint}',
+            'fx.shed': '🎉 蜕皮！长度重置！',
+            'fx.boostEnd': '⏹️ 加速结束',
+            'fx.boost': '🔥 变速 ×{mult} 得分！(15s)',
+            'fx.rain': '🌧️ 降雨魔法！吃豆额外+10！',
+            'fx.green': '🌿 生机魔法！蜕皮变豆！',
+            'fx.gold': '✨ 圣光发射！击中变金豆！',
+            'fx.halve': '💜 长度减半！',
+            'fx.godmode': '🌈 樊一鹏模式！无敌 + 彩虹 + 10×',
+            'fx.meteor': '☄️ 流星雨！',
+            'fx.lenPlus': '➕ 长度 +1',
+            subtitle: '❤️  致樊一鹏 —— 谢谢你写出我们的童年  ❤️',
+        },
+        'zh-tw': {
+            title: '呆呆蟲與豆豆潭',
+            'loading.title': '呆呆蟲之豆豆潭',
+            'loading.sub': '載入中…',
+            'loading.fetching': '載入 {name} …',
+            'loading.waiting': '仍在等待: {names}',
+            'loading.ready': '點擊 / 按鍵開始',
+            'loading.failed': '載入失敗，繼續遊戲',
+            'hint.pauseKey': '␣ 暫停',
+            'hint.pauseGamepad': '{btn} 暫停',
+            'hint.restartInline': '↵ 重新開始',
+            'hint.restartGamepad': '{btn} 重新開始',
+            'hint.restartTouch': '點擊螢幕重新開始',
+            'hint.restartKey': '↵ 重新開始',
+            'hint.combo.red': '×5 加速',
+            'hint.combo.blue': '×5 下雨',
+            'hint.combo.green': '×5 蛻皮',
+            'hint.combo.orange': '×5 金豆',
+            'hint.combo.purple': '×5 減半',
+            'btn.restart': '重新開始',
+            'btn.sound': '聲音',
+            'btn.language': '語言',
+            'ui.hiscore': '最高',
+            'ui.score': '得分',
+            'hint.langPauseFirst': '暫停後才能切換語言',
+            'start.gamepad': '按手把方向鍵 / 搖桿 開始遊戲！',
+            'start.touch': '點擊 / 滑動螢幕 開始遊戲！',
+            'start.both': '按 ← ↑ ↓ → / 點擊 / 滑動 開始遊戲！',
+            'start.keyboard': '按 ← ↑ ↓ → 開始遊戲！',
+            paused: '暫停中',
+            'over.new': '🏆 新紀錄！\n最終分數: {score}\n{hint}',
+            'over.normal': '遊戲結束！\n最終分數: {score}\n最高分: {hi}\n{hint}',
+            'fx.shed': '🎉 蛻皮！長度重置！',
+            'fx.boostEnd': '⏹️ 加速結束',
+            'fx.boost': '🔥 變速 ×{mult} 得分！(15s)',
+            'fx.rain': '🌧️ 降雨魔法！吃豆額外+10！',
+            'fx.green': '🌿 生機魔法！蛻皮變豆！',
+            'fx.gold': '✨ 聖光發射！擊中變金豆！',
+            'fx.halve': '💜 長度減半！',
+            'fx.godmode': '🌈 樊一鵬模式！無敵 + 彩虹 + 10×',
+            'fx.meteor': '☄️ 流星雨！',
+            'fx.lenPlus': '➕ 長度 +1',
+            subtitle: '❤️  致樊一鵬 —— 謝謝你寫出我們的童年  ❤️',
+        },
+        en: {
+            title: 'DaiDai Worm & DouDou Pond',
+            'loading.title': 'DaiDai Worm & DouDou Pond',
+            'loading.sub': 'Loading…',
+            'loading.fetching': 'Loading {name} …',
+            'loading.waiting': 'Still waiting: {names}',
+            'loading.ready': 'Tap / press any key to start',
+            'loading.failed': 'Load failed, continuing',
+            'hint.pauseKey': '␣ Pause',
+            'hint.pauseGamepad': '{btn} Pause',
+            'hint.restartInline': '↵ Restart',
+            'hint.restartGamepad': '{btn} Restart',
+            'hint.restartTouch': 'Tap to restart',
+            'hint.restartKey': '↵ Restart',
+            'hint.combo.red': '×5 Boost',
+            'hint.combo.blue': '×5 Rain',
+            'hint.combo.green': '×5 Shed',
+            'hint.combo.orange': '×5 Gold',
+            'hint.combo.purple': '×5 Halve',
+            'btn.restart': 'Restart',
+            'btn.sound': 'Sound',
+            'btn.language': 'Language',
+            'ui.hiscore': 'HISCORE',
+            'ui.score': 'SCORE',
+            'hint.langPauseFirst': 'Pause to change language',
+            'start.gamepad': 'Press D-Pad / stick to start!',
+            'start.touch': 'Tap / swipe to start!',
+            'start.both': 'Press ← ↑ ↓ → / tap / swipe to start!',
+            'start.keyboard': 'Press ← ↑ ↓ → to start!',
+            paused: 'Paused',
+            'over.new': '🏆 New record!\nScore: {score}\n{hint}',
+            'over.normal': 'Game Over!\nScore: {score}\nBest: {hi}\n{hint}',
+            'fx.shed': '🎉 Shed! Length reset!',
+            'fx.boostEnd': '⏹️ Boost ended',
+            'fx.boost': '🔥 Boost ×{mult}! (15s)',
+            'fx.rain': '🌧️ Rain! +10 per bean!',
+            'fx.green': '🌿 Regrowth! Skins → beans!',
+            'fx.gold': '✨ Holy Laser! Beans → gold!',
+            'fx.halve': '💜 Length halved!',
+            'fx.godmode': '🌈 Fan Yipeng mode! Invincible + 10×',
+            'fx.meteor': '☄️ Meteor shower!',
+            'fx.lenPlus': '➕ Length +1',
+            subtitle: '❤️  For Fan Yipeng — thanks for our childhood  ❤️',
+        },
+        ja: {
+            title: 'ダイダイ虫と豆豆池',
+            'loading.title': 'ダイダイ虫と豆豆池',
+            'loading.sub': '読み込み中…',
+            'loading.fetching': '{name} を読み込み中 …',
+            'loading.waiting': '待機中: {names}',
+            'loading.ready': 'タップ / キーで開始',
+            'loading.failed': '読み込み失敗、続行',
+            'hint.pauseKey': '␣ ポーズ',
+            'hint.pauseGamepad': '{btn} ポーズ',
+            'hint.restartInline': '↵ リスタート',
+            'hint.restartGamepad': '{btn} リスタート',
+            'hint.restartTouch': 'タップでリスタート',
+            'hint.restartKey': '↵ リスタート',
+            'hint.combo.red': '×5 加速',
+            'hint.combo.blue': '×5 雨',
+            'hint.combo.green': '×5 脱皮',
+            'hint.combo.orange': '×5 金豆',
+            'hint.combo.purple': '×5 半減',
+            'btn.restart': 'リスタート',
+            'btn.sound': 'サウンド',
+            'btn.language': '言語',
+            'ui.hiscore': 'ハイスコア',
+            'ui.score': 'スコア',
+            'hint.langPauseFirst': '一時停止中のみ言語を切替',
+            'start.gamepad': '方向キー / スティックで開始！',
+            'start.touch': 'タップ / スワイプで開始！',
+            'start.both': '← ↑ ↓ → / タップ / スワイプで開始！',
+            'start.keyboard': '← ↑ ↓ → で開始！',
+            paused: 'ポーズ中',
+            'over.new': '🏆 新記録！\nスコア: {score}\n{hint}',
+            'over.normal': 'ゲームオーバー！\nスコア: {score}\nベスト: {hi}\n{hint}',
+            'fx.shed': '🎉 脱皮！長さリセット！',
+            'fx.boostEnd': '⏹️ 加速終了',
+            'fx.boost': '🔥 加速 ×{mult}！(15s)',
+            'fx.rain': '🌧️ 雨魔法！豆 +10！',
+            'fx.green': '🌿 生機魔法！皮 → 豆！',
+            'fx.gold': '✨ 聖光発射！豆 → 金豆！',
+            'fx.halve': '💜 長さ半減！',
+            'fx.godmode': '🌈 樊一鵬モード！無敵 + 10×',
+            'fx.meteor': '☄️ 流星雨！',
+            'fx.lenPlus': '➕ 長さ +1',
+            subtitle: '❤️  樊一鵬様へ — 子供時代をありがとう  ❤️',
+        },
+        ko: {
+            title: '다이다이 벌레와 콩 연못',
+            'loading.title': '다이다이 벌레와 콩 연못',
+            'loading.sub': '로딩 중…',
+            'loading.fetching': '{name} 로딩 중…',
+            'loading.waiting': '대기 중: {names}',
+            'loading.ready': '탭 / 키 입력으로 시작',
+            'loading.failed': '로드 실패, 계속',
+            'hint.pauseKey': '␣ 일시정지',
+            'hint.pauseGamepad': '{btn} 일시정지',
+            'hint.restartInline': '↵ 재시작',
+            'hint.restartGamepad': '{btn} 재시작',
+            'hint.restartTouch': '탭하여 재시작',
+            'hint.restartKey': '↵ 재시작',
+            'hint.combo.red': '×5 가속',
+            'hint.combo.blue': '×5 비',
+            'hint.combo.green': '×5 탈피',
+            'hint.combo.orange': '×5 금콩',
+            'hint.combo.purple': '×5 반감',
+            'btn.restart': '재시작',
+            'btn.sound': '사운드',
+            'btn.language': '언어',
+            'ui.hiscore': '최고',
+            'ui.score': '점수',
+            'hint.langPauseFirst': '일시정지 후 언어 변경 가능',
+            'start.gamepad': '방향키 / 스틱으로 시작!',
+            'start.touch': '탭 / 스와이프로 시작!',
+            'start.both': '← ↑ ↓ → / 탭 / 스와이프로 시작!',
+            'start.keyboard': '← ↑ ↓ → 로 시작!',
+            paused: '일시정지',
+            'over.new': '🏆 신기록!\n점수: {score}\n{hint}',
+            'over.normal': '게임 오버!\n점수: {score}\n최고: {hi}\n{hint}',
+            'fx.shed': '🎉 탈피! 길이 리셋!',
+            'fx.boostEnd': '⏹️ 가속 종료',
+            'fx.boost': '🔥 가속 ×{mult}! (15s)',
+            'fx.rain': '🌧️ 비 마법! 콩 +10!',
+            'fx.green': '🌿 생기 마법! 껍질 → 콩!',
+            'fx.gold': '✨ 성광 발사! 콩 → 금콩!',
+            'fx.halve': '💜 길이 반감!',
+            'fx.godmode': '🌈 판이펑 모드! 무적 + 10×',
+            'fx.meteor': '☄️ 유성우!',
+            'fx.lenPlus': '➕ 길이 +1',
+            subtitle: '❤️  판이펑 님께 — 어린 시절을 감사합니다  ❤️',
+        },
+        es: {
+            title: 'Gusano DaiDai y Estanque DouDou',
+            'loading.title': 'Gusano DaiDai y Estanque DouDou',
+            'loading.sub': 'Cargando…',
+            'loading.fetching': 'Cargando {name}…',
+            'loading.waiting': 'Esperando: {names}',
+            'loading.ready': 'Toca / pulsa para empezar',
+            'loading.failed': 'Carga fallida, continuando',
+            'hint.pauseKey': '␣ Pausa',
+            'hint.pauseGamepad': '{btn} Pausa',
+            'hint.restartInline': '↵ Reiniciar',
+            'hint.restartGamepad': '{btn} Reiniciar',
+            'hint.restartTouch': 'Toca para reiniciar',
+            'hint.restartKey': '↵ Reiniciar',
+            'hint.combo.red': '×5 Veloz',
+            'hint.combo.blue': '×5 Lluvia',
+            'hint.combo.green': '×5 Mudar',
+            'hint.combo.orange': '×5 Oro',
+            'hint.combo.purple': '×5 Mitad',
+            'btn.restart': 'Reiniciar',
+            'btn.sound': 'Sonido',
+            'btn.language': 'Idioma',
+            'ui.hiscore': 'RÉCORD',
+            'ui.score': 'PUNTOS',
+            'hint.langPauseFirst': 'Pausa para cambiar idioma',
+            'start.gamepad': '¡Usa el D-Pad / stick para empezar!',
+            'start.touch': '¡Toca / desliza para empezar!',
+            'start.both': '¡← ↑ ↓ → / toca / desliza para empezar!',
+            'start.keyboard': '¡Pulsa ← ↑ ↓ → para empezar!',
+            paused: 'Pausado',
+            'over.new': '🏆 ¡Nuevo récord!\nPuntos: {score}\n{hint}',
+            'over.normal': '¡Fin del juego!\nPuntos: {score}\nMejor: {hi}\n{hint}',
+            'fx.shed': '🎉 ¡Mudar! ¡Longitud reset!',
+            'fx.boostEnd': '⏹️ Velocidad terminada',
+            'fx.boost': '🔥 ¡Veloz ×{mult}! (15s)',
+            'fx.rain': '🌧️ ¡Lluvia! ¡+10 por frijol!',
+            'fx.green': '🌿 ¡Vida! ¡Pieles → frijoles!',
+            'fx.gold': '✨ ¡Láser sagrado! ¡A oro!',
+            'fx.halve': '💜 ¡Longitud a la mitad!',
+            'fx.godmode': '🌈 ¡Modo Fan Yipeng! Invencible + 10×',
+            'fx.meteor': '☄️ ¡Lluvia de meteoros!',
+            'fx.lenPlus': '➕ Longitud +1',
+            subtitle: '❤️  Para Fan Yipeng — gracias por nuestra infancia  ❤️',
+        },
+    };
+    function _pickLang() {
+        const url = new URLSearchParams(location.search).get('lang');
+        const stored = (() => { try { return localStorage.getItem('daidai_lang'); } catch(e) { return null; } })();
+        const candidates = [url, stored, ...(navigator.languages || [navigator.language || 'zh'])];
+        for (const raw of candidates) {
+            if (!raw) continue;
+            const lc = raw.toLowerCase();
+            // Explicit Traditional Chinese tags / region codes
+            if (lc === 'zh-tw' || lc === 'zh-hk' || lc === 'zh-mo'
+                || lc.startsWith('zh-hant') || lc.startsWith('zh-tw') || lc.startsWith('zh-hk') || lc.startsWith('zh-mo')) return 'zh-tw';
+            if (lc.startsWith('zh')) return 'zh';
+            if (lc.startsWith('en')) return 'en';
+            if (lc.startsWith('ja')) return 'ja';
+            if (lc.startsWith('ko')) return 'ko';
+            if (lc.startsWith('es')) return 'es';
+        }
+        return 'zh';
+    }
+    let LANG = _pickLang();
+    function t(key, params) {
+        const dict = I18N_DICT[LANG] || I18N_DICT.zh;
+        let s = dict[key];
+        if (s == null) s = (I18N_DICT.en[key] != null ? I18N_DICT.en[key] : (I18N_DICT.zh[key] != null ? I18N_DICT.zh[key] : key));
+        if (params) {
+            for (const k in params) s = s.split('{' + k + '}').join(params[k]);
+        }
+        return s;
+    }
+    try { document.documentElement.lang = LANG; document.title = t('title'); } catch(e) {}
+    function applyI18nDOM() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            el.textContent = t(k);
+        });
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            el.title = t(el.getAttribute('data-i18n-title'));
+        });
+    }
+    function setLang(lang) {
+        if (!I18N_DICT[lang] || lang === LANG) return;
+        LANG = lang;
+        try { localStorage.setItem('daidai_lang', lang); } catch(_) {}
+        try { document.documentElement.lang = lang; document.title = t('title'); } catch(_) {}
+        applyI18nDOM();
+        // Mark active in menu
+        document.querySelectorAll('#lang-menu button[data-lang]').forEach(b => {
+            b.classList.toggle('active', b.getAttribute('data-lang') === lang);
+        });
+        // Re-render dynamic UI text
+        try { if (typeof refreshDynamicI18n === 'function') refreshDynamicI18n(); } catch(_) {}
+    }
+    applyI18nDOM();
     const COLORS_HEX = [0xff3333, 0x2266ff, 0x22ee22, 0xffaa00, 0xdd55ff];
     const COLORS_STR = ['#ff3333', '#2266ff', '#22ee22', '#ffaa00', '#dd55ff'];
     const COLOR_NAMES = ['红', '蓝', '绿', '橙', '紫'];
@@ -786,26 +1160,35 @@
         return false;
     }
     function gpBtn(btn) {
-        // btn: 'A' (confirm) or 'B' (cancel/back)
-        if (isPSGamepad) return btn === 'A' ? '✕' : '◯';
-        return btn === 'A' ? 'Ⓐ' : 'Ⓑ';
+        // btn: 'A' (confirm), 'B' (cancel/back), 'X' (square), 'Y' (triangle)
+        if (isPSGamepad) {
+            if (btn === 'A') return '✕';
+            if (btn === 'B') return '◯';
+            if (btn === 'X') return '☐';
+            if (btn === 'Y') return '△';
+        }
+        if (btn === 'A') return 'Ⓐ';
+        if (btn === 'B') return 'Ⓑ';
+        if (btn === 'X') return 'Ⓧ';
+        if (btn === 'Y') return 'Ⓨ';
+        return btn;
     }
     function getStartPrompt() {
         if (hasGamepad || detectGamepadNow()) {
             hasGamepad = true;
-            return '按手柄方向键 / 摇杆 开始游戏！';
+            return t('start.gamepad');
         }
-        if (hasTouchEnv && !hasFineKeyboardEnv) return '点击 / 滑动屏幕 开始游戏！';
-        if (hasTouchEnv && hasFineKeyboardEnv) return '按 ← ↑ ↓ → / 点击 / 滑动 开始游戏！';
-        return '按 ← ↑ ↓ → 开始游戏！';
+        if (hasTouchEnv && !hasFineKeyboardEnv) return t('start.touch');
+        if (hasTouchEnv && hasFineKeyboardEnv) return t('start.both');
+        return t('start.keyboard');
     }
     function getRestartHint() {
-        if (hasGamepad || detectGamepadNow()) { hasGamepad = true; return gpBtn('B') + ' 重新开始'; }
-        if (hasTouchEnv) return '点击屏幕重新开始';
-        return '↵ 重新开始';
+        if (hasGamepad || detectGamepadNow()) { hasGamepad = true; return t('hint.restartGamepad', { btn: gpBtn('B') }); }
+        if (hasTouchEnv) return t('hint.restartTouch');
+        return t('hint.restartKey');
     }
     function getPausePrompt() {
-        return '暂停中';
+        return t('paused');
     }
     let hiScore = 0;
     try { hiScore = parseInt(localStorage.getItem('daidai_hiscore') || '0', 10) || 0; } catch(e) {}
@@ -821,10 +1204,16 @@
     let devtoolsOpen = isLocalhost; // on localhost: backdoor enabled by default
     let godMode = false;          // Konami: rainbow + invincible + 10x score
     let tributeActive = false;    // Heart pattern: tribute screen + TV static
+    let tributeTriggeredThisLoad = false; // Once per page load only
     const konamiSeq = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
     let konamiBuf = [];
     let typedBuf = '';
-    const heartSeq = ['ArrowDown','ArrowRight','ArrowUp','ArrowLeft','ArrowDown','ArrowRight','ArrowUp','ArrowLeft'];
+    const heartSeq = [
+        'ArrowDown','ArrowRight','ArrowUp','ArrowLeft',
+        'ArrowDown','ArrowRight','ArrowUp','ArrowLeft',
+        'ArrowDown','ArrowRight','ArrowUp','ArrowLeft',
+        'ArrowDown','ArrowRight','ArrowUp','ArrowLeft'
+    ];
     let heartBuf = [];
 
     function announceDebugHelp() {
@@ -1765,6 +2154,7 @@
         try { hiScore = parseInt(localStorage.getItem('daidai_hiscore') || '0', 10) || 0; } catch(e) { hiScore = 0; }
         beansEaten = 0;
         gameOver = false;
+        window.__gameOverInfo = null;
         paused = false;
         baseSpeed = 150;
         speed = baseSpeed;
@@ -1827,9 +2217,10 @@
             audio.play('heartbeat_stop');
             audio.play('die');
             const restartHint = getRestartHint();
+            window.__gameOverInfo = { score, isNew, hi: hiScore };
             const msg = isNew
-                ? `🏆 新纪录！\n最终分数: ${score}\n${restartHint}`
-                : `游戏结束！\n最终分数: ${score}\n最高分: ${hiScore}\n${restartHint}`;
+                ? `${t('over.new', { score, hint: restartHint })}`
+                : `${t('over.normal', { score, hi: hiScore, hint: restartHint })}`;
             showMessage(msg);
             return;
         }
@@ -1928,7 +2319,7 @@
             eatenColors = eatenColors.slice(0, initLen - 1);
             // Prevent the trailing snake.pop() in gameUpdate from shrinking us to 4
             growthPending = 1;
-            showEffect('🎉 蜕皮！长度重置！');
+            showEffect(t('fx.shed'));
             baseSpeed = Math.max(80, baseSpeed - 5);
             speed = baseSpeed;
         }
@@ -1946,7 +2337,7 @@
         boostEndAt = 0;
         speed = baseSpeed;
         audio.play('speed_end');
-        showEffect('⏹️ 加速结束');
+        showEffect(t('fx.boostEnd'));
     }
 
     function triggerMagic(colorIdx) {
@@ -1961,13 +2352,13 @@
                 if (snake.length > 0) {
                     spawnParticles3D(snake[0].x * CELL, snake[0].y * CELL, 0xff4444, 15);
                 }
-                showEffect(`🔥 变速 ×${boostMultiplier} 得分！(15s)`);
+                showEffect(t('fx.boost', { mult: boostMultiplier }));
                 break;
             case 1:
                 audio.play('magic_blue');
                 // Rain: blur vision, each bean eaten +10 bonus (handled in eatBean)
                 spawnHeavyRain();
-                showEffect('🌧️ 降雨魔法！吃豆额外+10！');
+                showEffect(t('fx.rain'));
                 break;
             case 2:
                 audio.play('magic_green');
@@ -1980,7 +2371,7 @@
                         spawnFallingBean(s.x, s.y, Math.floor(Math.random() * COLORS_HEX.length));
                     }
                 }
-                showEffect('🌿 生机魔法！蜕皮变豆！');
+                showEffect(t('fx.green'));
                 break;
             case 3:
                 audio.play('magic_orange');
@@ -2005,7 +2396,7 @@
                     const pLight = new THREE.PointLight(0xffd700, 1.5, 5);
                     pMesh.add(pLight);
                 }
-                showEffect('✨ 圣光发射！击中变金豆！');
+                showEffect(t('fx.gold'));
                 break;
             case 4:
                 audio.play('magic_purple');
@@ -2016,7 +2407,7 @@
                 if (halfLen + growthPending < 20) {
                     audio.play('heartbeat_stop');
                 }
-                showEffect('💜 长度减半！');
+                showEffect(t('fx.halve'));
                 break;
         }
     }
@@ -2032,7 +2423,7 @@
     function activateGodMode() {
         if (godMode) return;
         godMode = true;
-        showEffect('🌈 樊一鹏模式！无敌 + 彩虹 + 10×');
+        showEffect(t('fx.godmode'));
         audio.play('magic_orange');
         // sparkle
         if (snake && snake[0]) {
@@ -2044,7 +2435,7 @@
         }
     }
     function spawnMeteorShower() {
-        showEffect('☄️ 流星雨！');
+        showEffect(t('fx.meteor'));
         audio.play('magic_blue');
         for (let i = 0; i < 30; i++) {
             const x = Math.floor(Math.random() * COLS);
@@ -2055,7 +2446,8 @@
         }
     }
     function activateTribute() {
-        if (tributeActive) return;
+        if (tributeActive || tributeTriggeredThisLoad) return;
+        tributeTriggeredThisLoad = true;
         tributeActive = true;
         audio.play('magic_orange');
         // Create overlay: TV static + scrolling subtitle
@@ -2080,7 +2472,7 @@
         // Scrolling subtitle
         const subtitle = document.createElement('div');
         subtitle.style.cssText = 'position:absolute;left:100%;top:50%;transform:translateY(-50%);white-space:nowrap;font-size:56px;font-weight:bold;color:#fff;text-shadow:0 0 18px #ff66aa, 0 0 4px #000;font-family:"Microsoft YaHei",sans-serif;letter-spacing:6px;transition:left 5s linear;';
-        subtitle.textContent = '❤️  致樊一鹏 —— 谢谢你写出我们的童年  ❤️';
+        subtitle.textContent = t('subtitle');
         wrap.appendChild(subtitle);
         document.body.appendChild(wrap);
         requestAnimationFrame(() => { subtitle.style.left = '-100%'; });
@@ -2608,7 +3000,7 @@
             }
             if (e.key === '6') {
                 growthPending++;
-                showEffect('➕ 长度 +1');
+                showEffect(t('fx.lenPlus'));
                 e.preventDefault();
                 return;
             }
@@ -2621,21 +3013,47 @@
         };
         const newDir = keyMap[e.key];
         if (newDir) {
-            if (newDir.x !== -direction.x || newDir.y !== -direction.y) {
-                nextDirection = newDir;
+            heldDirKeys.add(e.key);
+            const combined = combineHeldDir();
+            if (combined && (combined.x !== -direction.x || combined.y !== -direction.y)) {
+                nextDirection = combined;
             }
             e.preventDefault();
         }
     });
+    // ============ DIAGONAL MOVEMENT (held-key tracking) ============
+    const heldDirKeys = new Set();
+    function combineHeldDir() {
+        let dx = 0, dy = 0;
+        if (heldDirKeys.has('ArrowUp') || heldDirKeys.has('w') || heldDirKeys.has('W')) dy = -1;
+        else if (heldDirKeys.has('ArrowDown') || heldDirKeys.has('s') || heldDirKeys.has('S')) dy = 1;
+        if (heldDirKeys.has('ArrowLeft') || heldDirKeys.has('a') || heldDirKeys.has('A')) dx = -1;
+        else if (heldDirKeys.has('ArrowRight') || heldDirKeys.has('d') || heldDirKeys.has('D')) dx = 1;
+        if (!dx && !dy) return null;
+        return { x: dx, y: dy };
+    }
+    window.addEventListener('keyup', e => { heldDirKeys.delete(e.key); });
+    window.addEventListener('blur', () => heldDirKeys.clear());
 
     // ============ TOUCH / SWIPE CONTROLS ============
     (function() {
         let sx = 0, sy = 0, tracking = false, moved = false;
         const SWIPE_THRESHOLD = 24; // px
         function applyDir(dx, dy) {
-            const nd = Math.abs(dx) > Math.abs(dy)
-                ? { x: dx > 0 ? 1 : -1, y: 0 }
-                : { x: 0, y: dy > 0 ? 1 : -1 };
+            const ax = Math.abs(dx), ay = Math.abs(dy);
+            if (!ax && !ay) return;
+            let ndx = 0, ndy = 0;
+            // If smaller axis is >= 50% of larger, treat as diagonal
+            const max = Math.max(ax, ay), min = Math.min(ax, ay);
+            if (max > 0 && min / max >= 0.5) {
+                ndx = dx > 0 ? 1 : -1;
+                ndy = dy > 0 ? 1 : -1;
+            } else if (ax > ay) {
+                ndx = dx > 0 ? 1 : -1;
+            } else {
+                ndy = dy > 0 ? 1 : -1;
+            }
+            const nd = { x: ndx, y: ndy };
             if (nd.x !== -direction.x || nd.y !== -direction.y) {
                 nextDirection = nd;
             }
@@ -2684,7 +3102,7 @@
             audio.init();
             if (gameOver) { initGame(); return; }
             paused = !paused;
-            showMessage(paused ? '暂停中' : '');
+            showMessage(paused ? t('paused') : '');
             btnPause.textContent = paused ? '▶' : '⏸';
         });
         // Restart buttons (mobile touch + inline desktop)
@@ -2716,18 +3134,70 @@
             refreshMuteUI();
         });
         refreshMuteUI();
+        // Language switcher
+        (function setupLangMenu() {
+            const btn = document.getElementById('btn-lang');
+            const menu = document.getElementById('lang-menu');
+            if (!btn || !menu) return;
+            // Add gamepad-shortcut badge to button (shown only when gamepad detected)
+            const badge = document.createElement('span');
+            badge.className = 'gp-badge';
+            badge.id = 'btn-lang-badge';
+            btn.appendChild(badge);
+            menu.querySelectorAll('button[data-lang]').forEach(b => {
+                if (b.getAttribute('data-lang') === LANG) b.classList.add('active');
+            });
+            function canSwitch() { return paused && !gameOver; }
+            function updateBtnState() {
+                btn.style.display = canSwitch() ? 'flex' : 'none';
+                if (!canSwitch()) menu.classList.remove('open');
+            }
+            window.__updateLangBtnState = updateBtnState;
+            btn.addEventListener('click', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!canSwitch()) {
+                    showEffect('⏸ ' + t('hint.langPauseFirst'));
+                    return;
+                }
+                menu.classList.toggle('open');
+            });
+            menu.addEventListener('click', e => {
+                const target = e.target.closest('button[data-lang]');
+                if (!target) return;
+                e.preventDefault();
+                e.stopPropagation();
+                const lang = target.getAttribute('data-lang');
+                setLang(lang);
+                menu.classList.remove('open');
+            });
+            document.addEventListener('click', e => {
+                if (!menu.classList.contains('open')) return;
+                if (e.target === btn || menu.contains(e.target)) return;
+                menu.classList.remove('open');
+            });
+            updateBtnState();
+            setInterval(updateBtnState, 250);
+        })();
         // ============ GAMEPAD CONTROLLER SUPPORT ============
         (function setupGamepad() {
             let prevButtons = [];
             const DEAD = 0.4;
             function applyGamepadGlyphs() {
                 const hintKey = document.querySelector('#instr-line .hint-key');
-                if (hintKey) { hintKey.textContent = gpBtn('A') + ' 暂停'; hintKey.style.display = 'inline'; }
+                if (hintKey) { hintKey.textContent = t('hint.pauseGamepad', { btn: gpBtn('A') }); hintKey.style.display = 'inline'; }
                 const hintSep = document.querySelector('#instr-line .hint-sep');
                 if (hintSep) hintSep.style.display = 'inline';
                 const restartBtn = document.getElementById('btn-restart-inline');
-                if (restartBtn) { restartBtn.textContent = gpBtn('B') + ' 重新开始'; restartBtn.style.display = 'inline-block'; }
+                if (restartBtn) { restartBtn.textContent = t('hint.restartGamepad', { btn: gpBtn('B') }); restartBtn.style.display = 'inline-block'; }
+                const mb = document.getElementById('btn-mute');
+                if (mb && hasTouchEnv && !hasFineKeyboardEnv) mb.title = t('btn.sound') + ' (' + gpBtn('X') + ')';
+                const lb = document.getElementById('btn-lang');
+                if (lb) lb.title = t('btn.language') + ' (' + gpBtn('Y') + ')';
+                const lbadge = document.getElementById('btn-lang-badge');
+                if (lbadge) { lbadge.textContent = isPSGamepad ? '△' : 'Y'; lbadge.classList.add('show'); }
             }
+            window.__applyGamepadGlyphs = applyGamepadGlyphs;
             function markGamepad() {
                 const firstTime = !hasGamepad;
                 hasGamepad = true;
@@ -2770,8 +3240,16 @@
                     else if (pad.buttons[15]?.pressed) dx = 1;
                     const ax = pad.axes[0] || 0, ay = pad.axes[1] || 0;
                     if (!dx && !dy && (Math.abs(ax) > DEAD || Math.abs(ay) > DEAD)) {
-                        if (Math.abs(ax) > Math.abs(ay)) dx = ax > 0 ? 1 : -1;
-                        else dy = ay > 0 ? 1 : -1;
+                        const aax = Math.abs(ax), aay = Math.abs(ay);
+                        const max = Math.max(aax, aay), min = Math.min(aax, aay);
+                        if (max > 0 && min / max >= 0.5) {
+                            dx = ax > 0 ? 1 : -1;
+                            dy = ay > 0 ? 1 : -1;
+                        } else if (aax > aay) {
+                            dx = ax > 0 ? 1 : -1;
+                        } else {
+                            dy = ay > 0 ? 1 : -1;
+                        }
                     }
                     if (dx || dy) {
                         const nd = { x: dx, y: dy };
@@ -2788,11 +3266,26 @@
                             if (i === 0 || i === 9) {
                                 audio.init();
                                 if (gameOver) doRestart();
-                                else { paused = !paused; showMessage(paused ? '暂停中' : ''); btnPause.textContent = paused ? '▶' : '⏸'; }
+                                else { paused = !paused; showMessage(paused ? t('paused') : ''); btnPause.textContent = paused ? '▶' : '⏸'; }
                             }
                             // B/Circle (1) or Back (8): restart — only when paused or game over
                             if (i === 1 || i === 8) {
                                 if (paused || gameOver) { audio.init(); doRestart(); }
+                            }
+                            // X/Square (2): toggle mute (mobile / touch only — desktop uses system volume)
+                            if (i === 2 && hasTouchEnv && !hasFineKeyboardEnv) {
+                                audio.init();
+                                audio.setMuted(!audio.muted);
+                                refreshMuteUI();
+                                showEffect(audio.muted ? '🔇 ' + t('btn.sound') : '🔊 ' + t('btn.sound'));
+                            }
+                            // Y/Triangle (3): cycle language — only while paused / waiting to start (not game over)
+                            if (i === 3 && paused && !gameOver) {
+                                const langs = ['zh', 'zh-tw', 'en', 'ja', 'ko', 'es'];
+                                const idx = langs.indexOf(LANG);
+                                const next = langs[(idx + 1) % langs.length];
+                                setLang(next);
+                                showEffect('🌐 ' + next.toUpperCase());
                             }
                         }
                     });
@@ -2863,6 +3356,29 @@
         if (gameOver) return; // gameOver renders its own message
         showMessage(getStartPrompt());
     }
+    function refreshDynamicI18n() {
+        // Re-render visible message based on game state
+        if (gameOver && window.__gameOverInfo) {
+            const { score, isNew, hi } = window.__gameOverInfo;
+            const restartHint = getRestartHint();
+            const msg = isNew
+                ? t('over.new', { score, hint: restartHint })
+                : t('over.normal', { score, hi, hint: restartHint });
+            showMessage(msg);
+        } else if (paused) {
+            // Distinguish initial-idle (score==0, hasn't moved) from mid-game pause
+            const isInitial = (typeof score !== 'undefined' && score === 0)
+                && (typeof snake !== 'undefined' && snake && snake.length <= 5);
+            if (isInitial) {
+                showMessage(getStartPrompt());
+            } else {
+                showMessage(t('paused'));
+            }
+        }
+        // Gamepad glyphs (also updates btn-mute/btn-lang titles)
+        try { if (typeof window.__applyGamepadGlyphs === 'function') window.__applyGamepadGlyphs(); } catch(_) {}
+    }
+    window.__refreshDynamicI18n = refreshDynamicI18n;
     // Update prompt dynamically if first interaction reveals a different modality
     window.addEventListener('touchstart', () => { if (!hasGamepad) refreshIdlePrompt(); }, { once: true, passive: true });
     window.addEventListener('keydown', () => { if (!hasGamepad) refreshIdlePrompt(); }, { once: true });
