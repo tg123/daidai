@@ -435,6 +435,10 @@
             // iOS silent-switch bypass: start a looping silent <video> (audio
             // alone doesn't work on iOS 15+). Video playback uses the
             // "playback" audio session category, ignoring the mute switch.
+            this._ensureSilentVideo();
+            this._decodeAll();
+        }
+        _ensureSilentVideo() {
             try {
                 let v = this._silentVideo;
                 if (!v) {
@@ -445,14 +449,21 @@
                     v.volume = 0.01;
                     v.setAttribute('playsinline', '');
                     v.setAttribute('webkit-playsinline', '');
+                    v.setAttribute('preload', 'auto');
+                    v.crossOrigin = 'anonymous';
                     v.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px';
                     document.body.appendChild(v);
                     this._silentVideo = v;
+                    // If iOS pauses it (e.g. on backgrounding or interruption),
+                    // quietly restart whenever any user gesture happens.
+                    v.addEventListener('pause', () => console.log('[audio] silent-video paused'));
+                    v.addEventListener('ended', () => { try { v.currentTime = 0; v.play().catch(()=>{}); } catch(_){} });
                 }
-                const p = v.play();
-                if (p && p.then) p.then(() => console.log('[audio] silent-video playing → playback session')).catch(err => console.warn('[audio] silent-video fail:', err.message));
-            } catch(e) { console.warn('[audio] silent-video create fail:', e); }
-            this._decodeAll();
+                if (v.paused || v.ended) {
+                    const p = v.play();
+                    if (p && p.then) p.then(() => console.log('[audio] silent-video playing → playback session')).catch(err => console.warn('[audio] silent-video play fail:', err.message));
+                }
+            } catch(e) { console.warn('[audio] silent-video fail:', e); }
         }
         _flushQueue() {
             if (!this._pendingPlays || this._pendingPlays.length === 0) return;
@@ -562,6 +573,22 @@
             events.forEach(ev => window.removeEventListener(ev, handler, true));
         };
         events.forEach(ev => window.addEventListener(ev, handler, true));
+    })();
+    // Keep the iOS silent-switch bypass alive: every subsequent gesture also
+    // re-kicks the silent video in case iOS paused it (interruption, app
+    // backgrounded, audio route change, etc).
+    (function keepSilentVideoAlive() {
+        const refresh = () => {
+            if (audio.initialized && !audio.muted) audio._ensureSilentVideo();
+        };
+        ['touchend', 'click', 'keydown'].forEach(ev => window.addEventListener(ev, refresh, true));
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && audio.initialized) {
+                if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume().catch(()=>{});
+                if (!audio.muted) audio._ensureSilentVideo();
+            }
+        });
+        window.addEventListener('focus', refresh);
     })();
     // ============ LOADING SCREEN ============
     (function setupLoadingScreen() {
@@ -1391,6 +1418,19 @@
     const snakeBodyGeom = new THREE.SphereGeometry(0.42, 12, 12);
     const beanGeom = new THREE.SphereGeometry(0.35, 12, 12);
     const goldGeom = new THREE.DodecahedronGeometry(0.4);
+    // Shared material — MeshPhysicalMaterial with clearcoat is the heaviest
+    // shader in three.js; creating a new one per bean would re-link the
+    // program for the first instance of each color/uniform combo and stall
+    // the GPU. One shared material avoids the hitch and is also cheaper.
+    const goldMat = new THREE.MeshPhysicalMaterial({
+        color: 0xffd700,
+        roughness: 0.1,
+        metalness: 0.9,
+        emissive: 0xffaa00,
+        emissiveIntensity: 0.5,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.05,
+    });
     const skinGeom = new THREE.TorusGeometry(0.3, 0.1, 8, 12);
     const particleGeom = new THREE.SphereGeometry(0.12, 6, 6);
 
@@ -1538,22 +1578,25 @@
     }
 
     function createGoldMesh() {
-        const mat = new THREE.MeshPhysicalMaterial({
-            color: 0xffd700,
-            roughness: 0.1,
-            metalness: 0.9,
-            emissive: 0xffaa00,
-            emissiveIntensity: 0.5,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.05,
-        });
-        const mesh = new THREE.Mesh(goldGeom, mat);
+        const mesh = new THREE.Mesh(goldGeom, goldMat);
         mesh.castShadow = false;
         mesh.userData.dropPhase = 1.0;
         mesh.userData.dropBounce = 0;
         scene.add(mesh);
         return mesh;
     }
+    // Pre-compile the heavy gold/physical shader at startup so the first
+    // gold bean does not stall the GPU during gameplay.
+    (function warmupGoldShader() {
+        const warm = new THREE.Mesh(goldGeom, goldMat);
+        warm.position.set(0, -10000, 0); // off-screen but still in scene
+        scene.add(warm);
+        // Render once on next frame to force shader link
+        requestAnimationFrame(() => {
+            try { renderer.compile(scene, camera); } catch(_) {}
+            scene.remove(warm);
+        });
+    })();
 
     function createSkinMesh() {
         const mat = new THREE.MeshStandardMaterial({
@@ -2835,14 +2878,25 @@
     });
     requestAnimationFrame(mainLoop);
 
-    // Every 60 seconds, remove a random bean from the field
+    // Random sky-drop event: every frame we roll the dice, but at most one
+    // event per 60 s. Each event drops 0–3 random beans from the sky.
+    let nextSkyDropAt = performance.now() + 60000 + Math.random() * 60000;
     setInterval(() => {
-        if (!gameOver && !paused && beans.length > 1) {
-            const idx = Math.floor(Math.random() * beans.length);
-            const removed = beans.splice(idx, 1)[0];
-            spawnParticles3D(removed.x * CELL, removed.y * CELL, 0x888888, 5);
+        if (gameOver || paused) return;
+        if (performance.now() < nextSkyDropAt) return;
+        nextSkyDropAt = performance.now() + 60000 + Math.random() * 30000;
+        const count = Math.floor(Math.random() * 4); // 0..3
+        for (let i = 0; i < count; i++) {
+            let tries = 0, x, y;
+            do {
+                x = Math.floor(Math.random() * COLS);
+                y = Math.floor(Math.random() * ROWS);
+            } while (isOccupied(x, y) && ++tries < 30);
+            if (tries >= 30) continue;
+            const c = Math.floor(Math.random() * COLORS_HEX.length);
+            setTimeout(() => spawnFallingBean(x, y, c), i * 180);
         }
-    }, 60000);
+    }, 1000);
     </script>
 </body>
 </html>
