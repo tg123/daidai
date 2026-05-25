@@ -2449,6 +2449,7 @@
             }
             tributeActive = false;
         },
+        tributeTriggered: () => tributeTriggeredThisLoad,
         COLS: () => COLS,
         ROWS: () => ROWS,
     };
