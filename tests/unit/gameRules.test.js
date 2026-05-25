@@ -42,6 +42,13 @@ describe('eatScore', () => {
     it('defensive: missing multiplier treated as 1', () => {
         expect(eatScore({ isBoosted: true })).toBe(5);
     });
+    it('large multiplier survives bitwise overflow (regression)', () => {
+        expect(eatScore({ isBoosted: true, boostMultiplier: 2 ** 31 })).toBe(5 * (2 ** 31));
+    });
+    it('negative/NaN multiplier clamped to 1', () => {
+        expect(eatScore({ isBoosted: true, boostMultiplier: -4 })).toBe(5);
+        expect(eatScore({ isBoosted: true, boostMultiplier: NaN })).toBe(5);
+    });
 });
 
 describe('isCellOccupied', () => {
@@ -81,9 +88,11 @@ describe('findFreeCell', () => {
         expect(cell).toBeNull();
     });
     it('respects maxAttempts', () => {
-        // Always returns (0,0) which is blocked → null after `tries` attempts
         const blocked = [{ x: 0, y: 0 }];
         expect(findFreeCell(10, 10, [blocked], () => 0, 5)).toBeNull();
+    });
+    it('honors maxAttempts=0 (no fallback to default)', () => {
+        expect(findFreeCell(10, 10, [[]], Math.random, 0)).toBeNull();
     });
     it('falls back to Math.random when rng omitted', () => {
         const cell = findFreeCell(10, 10, [[]]);

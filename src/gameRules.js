@@ -23,7 +23,10 @@
         const o = opts || {};
         let pts = 5;
         if (o.isRaining) pts += 10;
-        if (o.isBoosted) pts *= (o.boostMultiplier | 0 || 1);
+        if (o.isBoosted) {
+            const m = Number(o.boostMultiplier);
+            pts *= Number.isFinite(m) && m >= 1 ? Math.floor(m) : 1;
+        }
         if (o.godMode) pts *= 10;
         return pts;
     }
@@ -50,7 +53,9 @@
      */
     function findFreeCell(cols, rows, occupants, rng, maxAttempts) {
         const r = typeof rng === 'function' ? rng : Math.random;
-        const tries = (maxAttempts | 0) || 100;
+        const tries = (maxAttempts === undefined || maxAttempts === null)
+            ? 100
+            : Math.max(0, Math.floor(Number(maxAttempts) || 0));
         for (let i = 0; i < tries; i++) {
             const x = Math.floor(r() * cols);
             const y = Math.floor(r() * rows);

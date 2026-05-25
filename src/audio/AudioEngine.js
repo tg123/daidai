@@ -42,13 +42,12 @@
         async _fetchOne(name, url) {
             const t0 = performance.now();
             console.log(`[audio] fetching ${name} (${url})`);
+            const ctrl = new AbortController();
+            const tid = setTimeout(() => { console.warn(`[audio] timeout ${name}`); ctrl.abort(); }, 60000);
             try {
-                const ctrl = new AbortController();
-                const tid = setTimeout(() => { console.warn(`[audio] timeout ${name}`); ctrl.abort(); }, 60000);
                 const resp = await fetch(url, { signal: ctrl.signal });
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 const arrayBuf = await resp.arrayBuffer();
-                clearTimeout(tid);
                 this.rawBuffers[name] = arrayBuf;
                 console.log(`[audio] loaded ${name} (${(arrayBuf.byteLength/1024).toFixed(1)} KB, ${(performance.now()-t0).toFixed(0)} ms)`);
                 if (this.ctx) {
@@ -58,6 +57,8 @@
             } catch (e) {
                 console.warn(`[audio] failed ${name}:`, e.message || e);
                 return false;
+            } finally {
+                clearTimeout(tid);
             }
         }
         _ensureCtx() {

@@ -726,7 +726,7 @@
     })();
     const rippleQuadGeom = new THREE.PlaneGeometry(1, 1);
     function spawnRipple(x, z) {
-        // Spawn 2 concentric ripples with slight delay/scale offset for a layered wave look
+        // Single ripple quad per drop — kept as a loop in case we want layered waves later.
         for (let k = 0; k < 1; k++) {
             const mat = new THREE.MeshBasicMaterial({
                 map: rippleTex,
@@ -2082,7 +2082,6 @@
                 return;
             }
         }
-        const keyMap = DAIDAI; // proxy access not needed; use keyToDirection directly
         const newDir = DAIDAI.keyToDirection(e.key);
         if (newDir) {
             heldDirKeys.add(e.key);
