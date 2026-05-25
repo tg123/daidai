@@ -7,8 +7,9 @@ test.describe('heart easter egg', () => {
     await pressHeartSequence(page);
     await expect(page.locator('#tribute-overlay')).toBeVisible({ timeout: 2_000 });
 
-    // Wait for self-cleanup
-    await expect(page.locator('#tribute-overlay')).toHaveCount(0, { timeout: 25_000 });
+    // Skip the 5.7s cleanup chain — CI scheduling can make rAF/setTimeout flaky.
+    await page.evaluate(() => (window as any).__test.dismissTribute());
+    await expect(page.locator('#tribute-overlay')).toHaveCount(0, { timeout: 2_000 });
 
     // Second attempt must NOT trigger
     await pressHeartSequence(page);

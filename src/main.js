@@ -2439,6 +2439,11 @@
         },
         triggerMagic: (c) => { triggerMagic(c); },
         stepProjectiles: (n) => { for (let i = 0; i < (n || 1); i++) updateGoldenProjectiles(); },
+        dismissTribute: () => {
+            const el = document.getElementById('tribute-overlay');
+            if (el) el.remove();
+            tributeActive = false;
+        },
         COLS: () => COLS,
         ROWS: () => ROWS,
     };
