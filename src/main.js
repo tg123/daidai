@@ -1510,6 +1510,7 @@
             }
             ctx.putImageData(img, 0, 0);
         }, 60);
+        wrap.dataset.staticTimer = String(staticTimer);
         // Scrolling subtitle
         const subtitle = document.createElement('div');
         subtitle.style.cssText = 'position:absolute;left:100%;top:50%;transform:translateY(-50%);white-space:nowrap;font-size:56px;font-weight:bold;color:#fff;text-shadow:0 0 18px #ff66aa, 0 0 4px #000;font-family:"Microsoft YaHei",sans-serif;letter-spacing:6px;transition:left 5s linear;';
@@ -2441,7 +2442,11 @@
         stepProjectiles: (n) => { for (let i = 0; i < (n || 1); i++) updateGoldenProjectiles(); },
         dismissTribute: () => {
             const el = document.getElementById('tribute-overlay');
-            if (el) el.remove();
+            if (el) {
+                const t = Number(el.dataset.staticTimer);
+                if (t) clearInterval(t);
+                el.remove();
+            }
             tributeActive = false;
         },
         COLS: () => COLS,

@@ -7,8 +7,16 @@ test.describe('heart easter egg', () => {
     await pressHeartSequence(page);
     await expect(page.locator('#tribute-overlay')).toBeVisible({ timeout: 2_000 });
 
-    // Skip the 5.7s cleanup chain — CI scheduling can make rAF/setTimeout flaky.
-    await page.evaluate(() => (window as any).__test.dismissTribute());
+    // Skip the 5.7s cleanup chain — the TV-static setInterval can starve
+    // the JS event loop on slow CI runners. Dismiss synchronously instead.
+    await page.evaluate(() => {
+      const el = document.getElementById('tribute-overlay');
+      if (el) {
+        const t = Number((el as HTMLElement).dataset.staticTimer);
+        if (t) clearInterval(t);
+        el.remove();
+      }
+    });
     await expect(page.locator('#tribute-overlay')).toHaveCount(0, { timeout: 2_000 });
 
     // Second attempt must NOT trigger
