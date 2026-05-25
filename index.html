@@ -372,6 +372,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="./src/heartSequence.js"></script>
     <script src="./src/eatenColors.js"></script>
+    <script src="./src/combo.js"></script>
+    <script src="./src/gameRules.js"></script>
     <script src="./src/i18n/index.js"></script>
     <script src="./src/i18n/zh.js"></script>
     <script src="./src/i18n/zh-tw.js"></script>
@@ -617,7 +619,8 @@
     const COLOR_NAMES = ['红', '蓝', '绿', '橙', '紫'];
 
     let snake, direction, nextDirection, beans, shedSkin, score, beansEaten;
-    let gameOver, paused, speed, baseSpeed, comboColor, comboCount;
+    let gameOver, paused, speed, baseSpeed;
+    const combo = DAIDAI.createComboCounter();
     let goldBeans, growthPending;
     const eatenColors = DAIDAI.createEatenColorsQueue(); // queue of bean colors behind the head
     let hasGamepad = false;
@@ -1613,8 +1616,7 @@
         paused = false;
         baseSpeed = 150;
         speed = baseSpeed;
-        comboColor = -1;
-        comboCount = 0;
+        combo.reset();
         growthPending = 0;
         gameStartTime = performance.now();
         elapsedSeconds = 0;
@@ -1626,24 +1628,12 @@
     }
 
     function spawnBean() {
-        let attempts = 0;
-        while (attempts < 100) {
-            const x = Math.floor(Math.random() * COLS);
-            const y = Math.floor(Math.random() * ROWS);
-            if (!isOccupied(x, y)) {
-                beans.push({ x, y, color: Math.floor(Math.random() * COLORS_HEX.length) });
-                return;
-            }
-            attempts++;
-        }
+        const cell = DAIDAI.findFreeCell(COLS, ROWS, [snake, beans, shedSkin, goldBeans]);
+        if (cell) beans.push({ x: cell.x, y: cell.y, color: Math.floor(Math.random() * COLORS_HEX.length) });
     }
 
     function isOccupied(x, y) {
-        if (snake.some(s => s.x === x && s.y === y)) return true;
-        if (beans.some(b => b.x === x && b.y === y)) return true;
-        if (shedSkin.some(s => s.x === x && s.y === y)) return true;
-        if (goldBeans.some(b => b.x === x && b.y === y)) return true;
-        return false;
+        return DAIDAI.isCellOccupied(x, y, [snake, beans, shedSkin, goldBeans]);
     }
 
     function gameUpdate() {
@@ -1655,13 +1645,11 @@
         }
 
         direction = nextDirection;
-        const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
-
-        // Wrap
-        if (head.x < 0) head.x = COLS - 1;
-        if (head.x >= COLS) head.x = 0;
-        if (head.y < 0) head.y = ROWS - 1;
-        if (head.y >= ROWS) head.y = 0;
+        const head = DAIDAI.wrapPosition(
+            snake[0].x + direction.x,
+            snake[0].y + direction.y,
+            COLS, ROWS
+        );
 
         if (!godMode && (snake.some(s => s.x === head.x && s.y === head.y) ||
             shedSkin.some(s => s.x === head.x && s.y === head.y))) {
@@ -1722,12 +1710,7 @@
 
     function eatBean(bean) {
         beansEaten++;
-        let basePoints = 5;
-        // Bonus during blue rain
-        if (isRaining) basePoints += 10;
-        // Red boost multiplier (stackable 2x/4x/8x ...)
-        if (isBoosted) basePoints *= boostMultiplier;
-        if (godMode) basePoints *= 10;
+        const basePoints = DAIDAI.eatScore({ isRaining, isBoosted, boostMultiplier, godMode });
         score += basePoints;
         growthPending++;
         audio.play('eat');
@@ -1737,17 +1720,8 @@
             snakeMeshes[0].userData.eatTimer = 220;
         }
 
-        if (bean.color === comboColor) {
-            comboCount++;
-        } else {
-            comboColor = bean.color;
-            comboCount = 1;
-        }
-
-        if (comboCount >= 5) {
+        if (combo.recordEat(bean.color)) {
             triggerMagic(bean.color);
-            comboCount = 0;
-            comboColor = -1;
         }
 
         // Anticipated length after growthPending applied
@@ -1951,9 +1925,9 @@
         if (hm) hm.textContent = String(hiScore).padStart(5, '0');
         document.getElementById('length').textContent = snake.length;
         const comboEl = document.getElementById('combo');
-        if (comboCount > 0) {
-            const color = COLORS_STR[comboColor];
-            comboEl.innerHTML = `<span style="display:inline-block;width:10px;height:10px;min-width:10px;min-height:10px;flex:0 0 10px;border-radius:50%;background:${color};vertical-align:middle;margin-right:3px;"></span>×${comboCount}`;
+        if (combo.count > 0) {
+            const color = COLORS_STR[combo.color];
+            comboEl.innerHTML = `<span style="display:inline-block;width:10px;height:10px;min-width:10px;min-height:10px;flex:0 0 10px;border-radius:50%;background:${color};vertical-align:middle;margin-right:3px;"></span>×${combo.count}`;
         } else {
             comboEl.innerHTML = '';
         }
@@ -2818,7 +2792,7 @@
             goldBeans: goldBeans.map(g => ({ x: g.x, y: g.y, life: g.life })),
             shedSkin: shedSkin.map(s => ({ x: s.x, y: s.y, life: s.life })),
             eatenColors: eatenColors.snapshot(),
-            comboColor, comboCount,
+            comboColor: combo.color, comboCount: combo.count,
             isBoosted, boostMultiplier, isRaining,
             growthPending, beansEaten,
             goldenProjectiles: goldenProjectiles.length,
@@ -2842,7 +2816,7 @@
         setPaused: (p) => { paused = !!p; },
         setGameOver: (g) => { gameOver = !!g; },
         setGodMode: (g) => { godMode = !!g; },
-        setComboColor: (c, n) => { comboColor = c; comboCount = n; },
+        setComboColor: (c, n) => { combo.color = c; combo.count = n; },
         setBaseSpeed: (s) => { baseSpeed = s; speed = s; },
         step: () => {
             const wasPaused = paused;
