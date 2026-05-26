@@ -29,12 +29,34 @@
         window.addEventListener('focus', refresh);
     })();
     // ============ LOADING SCREEN ============
+    // Test fast-boot: when running under e2e tests we don't need to wait for
+    // audio preload / decode (which can take seconds and stall under headless
+    // WebGL contention). Detected via either ?test=1 in the URL or a flag set
+    // by Playwright's addInitScript. The loading screen is hidden immediately
+    // and audio preload runs in the background (best-effort).
+    const __FAST_BOOT = (() => {
+        try {
+            if (typeof window !== 'undefined' && window.__TEST_FAST_BOOT) return true;
+            if (typeof location !== 'undefined' && location.search
+                && /(?:^|[?&])test=1(?:&|$)/.test(location.search)) return true;
+        } catch (_) {}
+        return false;
+    })();
     (function setupLoadingScreen() {
         const screen = document.getElementById('loading-screen');
         const barInner = document.getElementById('loading-bar-inner');
         const pctEl = document.getElementById('loading-pct');
         const subEl = document.getElementById('loading-sub');
         if (!screen) return;
+        if (__FAST_BOOT) {
+            // Hide immediately — don't gate test boot on audio fetch/decode.
+            // Still kick off preload in the background for any tests that may
+            // poke at the audio engine, but never block on it.
+            try { audio.preload().catch(() => {}); } catch (_) {}
+            screen.classList.add('hidden');
+            screen.remove();
+            return;
+        }
         audio.onProgress = (loaded, total, lastName) => {
             const pct = Math.round((loaded / total) * 100);
             if (barInner) barInner.style.width = pct + '%';
@@ -324,10 +346,14 @@
     // ============ THREE.JS SETUP ============
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    const renderer = new THREE.WebGLRenderer({ antialias: !__FAST_BOOT, alpha: false });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
+    // Under fast-boot (e2e) drop pixel ratio + shadows so two parallel WebGL
+    // pages don't starve each other's rAF loop on headless CI. Tests don't
+    // inspect pixels (only DOM HUD elements + the canvas's existence), so
+    // rendering quality here is irrelevant.
+    renderer.setPixelRatio(__FAST_BOOT ? 0.25 : Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = !__FAST_BOOT;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
