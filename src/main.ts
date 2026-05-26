@@ -99,23 +99,16 @@
     // ============ GAME STATE ============
     // Pond grid dimensions — match screen aspect so the playfield fills the viewport edge-to-edge
     const CELL = 1.0;
-    let COLS, ROWS;
+    let COLS: number, ROWS: number;
     (function pickGridForAspect() {
-        // Estimate the canvas height after info-bar takes its share (~42px on desktop, ~38 on mobile)
-        const reservedTop = window.matchMedia('(max-width: 720px), (pointer: coarse)').matches ? 38 : 42;
-        const w = window.innerWidth;
-        const h = Math.max(200, window.innerHeight - reservedTop);
-        const aspect = w / h;
-        const SHORT = 22;
-        if (aspect >= 1) {
-            ROWS = SHORT;
-            COLS = Math.max(SHORT, Math.round(SHORT * aspect));
-        } else {
-            COLS = SHORT;
-            ROWS = Math.max(SHORT, Math.round(SHORT / aspect));
-        }
-        COLS = Math.min(60, COLS);
-        ROWS = Math.min(60, ROWS);
+        const isMobile = window.matchMedia('(max-width: 720px), (pointer: coarse)').matches;
+        const dims = DAIDAI.computeGridDims({
+            winW: window.innerWidth,
+            winH: window.innerHeight,
+            isMobile,
+        });
+        COLS = dims.cols;
+        ROWS = dims.rows;
     })();
     // ============ I18N ============
     // ============ I18N (dictionaries + helpers extracted to src/i18n/) ============
@@ -260,23 +253,20 @@
     applyCanvasSize();
     const BASE_FOG_DENSITY = 0.016;
     function fitCameraToPond() {
-        const aspect = camera.aspect;
-        const vFov = camera.fov * Math.PI / 180;
-        const RIM = 0;
-        const margin = 1.02;
-        const W = (COLS * CELL + RIM * 2) * margin;
-        const H = (ROWS * CELL + RIM * 2) * margin;
-        const distForH = (H / 2) / Math.tan(vFov / 2);
-        const distForW = (W / 2) / (Math.tan(vFov / 2) * aspect);
-        const dist = Math.max(distForH, distForW);
-        const cx = (COLS - 1) * CELL / 2;
-        const cz = (ROWS - 1) * CELL / 2;
+        const fit = DAIDAI.computeCameraFit({
+            aspect: camera.aspect,
+            cols: COLS,
+            rows: ROWS,
+            cell: CELL,
+            vFovDeg: camera.fov,
+            margin: 1.02,
+        });
         camera.up.set(0, 1, 0);
-        camera.position.set(cx, dist, cz + 0.5);
-        camera.lookAt(cx, 0, cz);
+        camera.position.set(fit.centerX, fit.distance, fit.centerZ + 0.5);
+        camera.lookAt(fit.centerX, 0, fit.centerZ);
         camera.updateProjectionMatrix();
         // Keep fog visual constant regardless of camera distance (portrait vs landscape)
-        if (scene.fog) (scene.fog as THREE.FogExp2).density = BASE_FOG_DENSITY * (25 / dist);
+        if (scene.fog) (scene.fog as THREE.FogExp2).density = BASE_FOG_DENSITY * (25 / fit.distance);
     }
     fitCameraToPond();
 
