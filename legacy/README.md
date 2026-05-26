@@ -8,10 +8,11 @@ Source: https://github.com/StellaJiangChina/daidaiworm
 
 ## Contents
 
-- `Main.cpp`, `Std*.h`, `Refresh.h`, `Keydef.h`, `SpecialE.h`, `resource.h`
-  — original game source.
-- `GAMEVISION.DSP`, `GAMEVISION.DSW` — Visual C++ 6 project / workspace files.
-- `ICON.rc`, `id.ico` — original icon resource.
+- `SourceCode/` — original C++ / DirectX game source:
+  - `Main.cpp`, `Std*.h`, `Refresh.h`, `Keydef.h`, `SpecialE.h`, `resource.h`
+    — original game source.
+  - `GAMEVISION.DSP`, `GAMEVISION.DSW` — Visual C++ 6 project / workspace files.
+  - `ICON.rc`, `id.ico` — original icon resource.
 - `DAT/` — original binary game data assets.
 - `BIGTITLE.GIF`, `DaiDai.JPG` — original title / cover artwork.
 - `DaiDai.txt` — original game description (re-encoded as UTF-8).
