@@ -25,13 +25,13 @@
 每吃一颗豆子长一节并得 5 分；每吃 20 颗蜕一次皮。
 连续吃下 5 颗相同颜色的豆子会触发魔法：
 
-| 颜色 | 魔法 | 效果 |
-| --- | --- | --- |
-| 🔴 红 | 变速 | 奔走如飞，每豆 +5 |
+| 颜色  | 魔法 | 效果                 |
+| ----- | ---- | -------------------- |
+| 🔴 红 | 变速 | 奔走如飞，每豆 +5    |
 | 🟠 橙 | 圣光 | 物体变金豆，吃下 +30 |
-| 🟢 绿 | 生机 | 蜕的皮重新变回豆子 |
-| 🔵 蓝 | 降雨 | 天降骤雨，每豆 +10 |
-| 🟣 紫 | 寸缩 | 长度减半 |
+| 🟢 绿 | 生机 | 蜕的皮重新变回豆子   |
+| 🔵 蓝 | 降雨 | 天降骤雨，每豆 +10   |
+| 🟣 紫 | 寸缩 | 长度减半             |
 
 ## 与原版的不同
 
@@ -56,16 +56,23 @@
 
 ## 本地开发
 
-任意静态文件服务器即可：
+源码使用 TypeScript / ES Modules，需要 Vite 来转译：
 
 ```sh
-python -m http.server 8000
-# 打开 http://localhost:8000/
+npm install
+npm run dev                  # 启动 Vite 开发服务器（默认 http://localhost:5173/）
+```
+
+如果只想本地预览已经构建好的产物，可以用任意静态文件服务器指向 `dist/`：
+
+```sh
+npm run build
+npm run serve:dist           # 等价于 vite preview --outDir dist
 ```
 
 ## 构建与测试
 
-需要 Node ≥ 18：
+需要 Node `^20.19.0 || ^22.13.0 || >=24`（与 `package.json` 的 `engines` 字段一致）：
 
 ```sh
 npm install                  # 装依赖
@@ -76,5 +83,4 @@ npm run build                # 编译 + 压缩到 dist/（HTML+JS+CSS 一起压�
 npm run test:dist            # 跑 E2E 测试（dist 产物，验证压缩没破功能）
 ```
 
-构建产物会输出到 `dist/`，包含压缩后的 `index.html` 加运行时静态资源（`audio/`、favicon、`apple-touch-icon.png` 等）。GitHub Pages 通过 [`.github/workflows/e2e.yml`](.github/workflows/e2e.yml) 自动构建并发布 `dist/`。
-
+构建产物会输出到 `dist/`，包含压缩后的 `index.html` 加运行时静态资源（`audio/`、favicon、`apple-touch-icon.png` 等）。GitHub Pages 通过 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) 自动构建并发布 `dist/`。

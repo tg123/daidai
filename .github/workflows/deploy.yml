@@ -1,0 +1,104 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+jobs:
+  build:
+    name: build
+    # Only build when we actually need a dist artifact: pushes to main
+    # (for gh-pages deploy) and non-closed PR events from same-repo
+    # branches (for PR previews). Fork PRs and PR-close events skip.
+    if: |
+      (github.event_name == 'push') ||
+      (github.event_name == 'pull_request'
+        && github.event.action != 'closed'
+        && github.event.pull_request.head.repo.full_name == github.repository)
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+          cache: 'npm'
+      - run: npm ci
+      - name: Build
+        # See ci.yml `build` step for rationale on DAIDAI_BUILD_SHA.
+        env:
+          DAIDAI_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-deploy
+          path: dist
+          retention-days: 1
+
+  deploy:
+    name: deploy to GitHub Pages
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: gh-pages-deploy
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4.1.3
+        with:
+          name: dist-deploy
+          path: dist
+      - name: Deploy dist to gh-pages
+        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4
+        with:
+          branch: gh-pages
+          folder: dist
+          clean-exclude: pr-preview/
+          force: false
+
+  pr-preview:
+    name: deploy PR preview
+    needs: build
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    concurrency:
+      group: gh-pages-deploy
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4.1.3
+        with:
+          name: dist-deploy
+          path: dist
+      - uses: rossjrw/pr-preview-action@ffa7509e91a3ec8dfc2e5536c4d5c1acdf7a6de9 # v1
+        with:
+          source-dir: dist
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          action: deploy
+
+  pr-preview-cleanup:
+    name: remove PR preview
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    concurrency:
+      group: gh-pages-deploy
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rossjrw/pr-preview-action@ffa7509e91a3ec8dfc2e5536c4d5c1acdf7a6de9 # v1
+        with:
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          action: remove

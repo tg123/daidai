@@ -1,96 +1,233 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <title>呆呆虫之豆豆潭</title>
-    <link rel="icon" type="image/x-icon" href="./fav.ico">
-    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
-    <link rel="stylesheet" href="./src/styles/main.css">
-    <script>
-        // On-screen console (Eruda) — enable by adding ?debug to URL
-        if (location.search.includes('debug') || location.hash.includes('debug')) {
-            const s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/eruda';
-            s.onload = () => window.eruda && eruda.init();
-            document.head.appendChild(s);
-        }
-    </script>
-</head>
-<body>
-    <div id="loading-screen">
-        <div id="loading-worm">🐛</div>
-        <div id="loading-title" data-i18n="loading.title">呆呆虫之豆豆潭</div>
-        <div id="loading-sub" data-i18n="loading.sub">加载中…</div>
-        <div id="loading-bar-outer"><div id="loading-bar-inner"></div></div>
-        <div id="loading-pct">0%</div>
-    </div>
-    <div id="ui-overlay">
-        <div id="info-bar" class="compact">
-            <span id="hiscore-item"><span data-i18n="ui.hiscore">HISCORE</span> &nbsp;<b id="hiscore">00000</b></span>
-            <span><span data-i18n="ui.score">SCORE</span> &nbsp;<b id="score">00000</b></span>
-            <span>⏱️ <b id="timer">00:00</b></span>
-            <span>📏 <b id="length">5</b></span>
-            <span><b id="combo"></b></span>
-            <span id="boost-timer" style="display:none;color:#ff6644;font-weight:bold;"></span>
-            <a id="gh-link" href="https://github.com/tg123/daidai" target="_blank" rel="noopener" title="View on GitHub" aria-label="GitHub">
-                <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-            </a>
-            <span id="more-menu" title="More" aria-label="More">⋯
-                <div id="more-popup">
-                    <div><span data-i18n="ui.hiscore">HISCORE</span>&nbsp;<b id="hiscore-m">00000</b></div>
-                    <div><a href="https://github.com/tg123/daidai" target="_blank" rel="noopener">
-                        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-                        GitHub</a></div>
-                </div>
-            </span>
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+        />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <title>呆呆虫之豆豆潭</title>
+        <link rel="icon" type="image/x-icon" href="./fav.ico" />
+        <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
+        <!-- main.css is imported from src/main.ts so Vite handles it
+             through its JS module pipeline (HMR + production bundling).
+             A static <link> here would race with Vite's CSS module in
+             dev (we saw unstyled flashes in iframed DevTools device
+             mode). -->
+        <!-- Critical inline CSS: shows the loading screen IMMEDIATELY
+             (before main.css loads via JS module) and hides the rest of
+             the unstyled HUD HTML so there's no flash. main.css then
+             takes over with full styling. -->
+        <style>
+            html,
+            body {
+                margin: 0;
+                background: #02101c;
+                font-family: monospace;
+            }
+            body > *:not(#loading-screen) {
+                visibility: hidden;
+            }
+            #loading-screen {
+                position: fixed;
+                inset: 0;
+                z-index: 1000;
+                background: radial-gradient(ellipse at center, #1a4a6a 0%, #062032 70%, #02101c 100%);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                color: #cfe9ff;
+            }
+            #loading-worm {
+                font-size: 28px;
+                margin-bottom: 14px;
+            }
+            #loading-dots {
+                font-size: 14px;
+                color: #cfe9ff;
+                letter-spacing: 2px;
+                margin-bottom: 14px;
+                opacity: 0.85;
+            }
+            /* Once JS has applied the right language, hide the
+             * pre-i18n placeholder dots — the translated title +
+             * sub take their place. */
+            body.i18n-ready #loading-dots {
+                display: none;
+            }
+            /* Hide language-bound text until JS applies i18n. Without
+             * this, every non-zh-CN user sees a flash of Chinese
+             * before the translated strings render. JS adds the
+             * .i18n-ready class on <body> once applyI18nDOM() runs. */
+            #loading-title,
+            #loading-sub {
+                visibility: hidden;
+            }
+            body.i18n-ready #loading-title,
+            body.i18n-ready #loading-sub {
+                visibility: visible;
+            }
+            #loading-title {
+                font-size: 22px;
+                letter-spacing: 2px;
+                margin-bottom: 6px;
+                color: #fff;
+                min-height: 22px;
+            }
+            #loading-sub {
+                font-size: 10px;
+                opacity: 0.7;
+                margin-bottom: 28px;
+                min-height: 10px;
+            }
+            #loading-bar-outer {
+                width: 260px;
+                max-width: 70vw;
+                height: 14px;
+                border: 2px solid #4cd1ff;
+                border-radius: 8px;
+                background: rgba(0, 0, 0, 0.4);
+                overflow: hidden;
+            }
+            #loading-bar-inner {
+                height: 100%;
+                width: 0%;
+                background: linear-gradient(90deg, #4cd1ff, #88f5ff);
+            }
+            #loading-pct {
+                margin-top: 10px;
+                font-size: 10px;
+            }
+        </style>
+        <script>
+            // On-screen console (Eruda) — enable by adding ?debug to URL
+            if (location.search.includes('debug') || location.hash.includes('debug')) {
+                const s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/eruda';
+                s.onload = () => window.eruda && eruda.init();
+                document.head.appendChild(s);
+            }
+        </script>
+    </head>
+    <body>
+        <div id="loading-screen">
+            <div id="loading-worm">🐛</div>
+            <div id="loading-dots" aria-hidden="true">Loading…</div>
+            <div id="loading-title" data-i18n="loading.title">呆呆虫之豆豆潭</div>
+            <div id="loading-sub" data-i18n="loading.sub">加载中…</div>
+            <div id="loading-bar-outer"><div id="loading-bar-inner"></div></div>
+            <div id="loading-pct">0%</div>
         </div>
-    </div>
-    <div id="message"></div>
-    <button id="btn-restart" type="button">⟳ 重新开始</button>
-    <div id="effect-text"></div>
-    <div id="instructions">
-        <div id="instr-line">
-            <span class="hint-key" data-i18n="hint.pauseKey">␣ 暂停</span>
-            <span class="hint-sep">|</span>
-            <span class="color-hint" style="background:#ff4444;"></span><span class="hint-label" data-i18n="hint.combo.red">×5 加速</span>
-            <span class="color-hint" style="background:#4488ff;"></span><span class="hint-label" data-i18n="hint.combo.blue">×5 下雨</span>
-            <span class="color-hint" style="background:#44cc44;"></span><span class="hint-label" data-i18n="hint.combo.green">×5 蜕皮</span>
-            <span class="color-hint" style="background:#ff8800;"></span><span class="hint-label" data-i18n="hint.combo.orange">×5 金豆</span>
-            <span class="color-hint" style="background:#cc44ff;"></span><span class="hint-label" data-i18n="hint.combo.purple">×5 减半</span>
+        <div id="ui-overlay">
+            <div id="info-bar" class="compact">
+                <span id="hiscore-item"
+                    ><span data-i18n="ui.hiscore">HISCORE</span> &nbsp;<b id="hiscore">00000</b></span
+                >
+                <span><span data-i18n="ui.score">SCORE</span> &nbsp;<b id="score">00000</b></span>
+                <span>⏱️ <b id="timer">00:00</b></span>
+                <span>📏 <b id="length">5</b></span>
+                <span><b id="combo"></b></span>
+                <span id="boost-timer" style="display: none; color: #ff6644; font-weight: bold"></span>
+                <a
+                    id="gh-link"
+                    href="https://github.com/tg123/daidai"
+                    target="_blank"
+                    rel="noopener"
+                    title="View on GitHub"
+                    aria-label="GitHub"
+                >
+                    <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true">
+                        <path
+                            d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+                        />
+                    </svg>
+                </a>
+                <span id="more-menu" title="More" aria-label="More"
+                    >⋯
+                    <div id="more-popup">
+                        <div><span data-i18n="ui.hiscore">HISCORE</span>&nbsp;<b id="hiscore-m">00000</b></div>
+                        <div>
+                            <a href="https://github.com/tg123/daidai" target="_blank" rel="noopener">
+                                <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                    <path
+                                        d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+                                    />
+                                </svg>
+                                GitHub</a
+                            >
+                        </div>
+                    </div>
+                </span>
+            </div>
         </div>
-    </div>
+        <div id="message"></div>
+        <button id="btn-restart" type="button">⟳ 重新开始</button>
+        <div id="effect-text"></div>
+        <div id="instructions">
+            <div id="instr-line">
+                <span class="hint-key" data-i18n="hint.pauseKey">␣ 暂停</span>
+                <span class="hint-sep">|</span>
+                <span class="color-hint" style="background: #ff4444"></span
+                ><span class="hint-label" data-i18n="hint.combo.red">×5 加速</span>
+                <span class="color-hint" style="background: #4488ff"></span
+                ><span class="hint-label" data-i18n="hint.combo.blue">×5 下雨</span>
+                <span class="color-hint" style="background: #44cc44"></span
+                ><span class="hint-label" data-i18n="hint.combo.green">×5 蜕皮</span>
+                <span class="color-hint" style="background: #ff8800"></span
+                ><span class="hint-label" data-i18n="hint.combo.orange">×5 金豆</span>
+                <span class="color-hint" style="background: #cc44ff"></span
+                ><span class="hint-label" data-i18n="hint.combo.purple">×5 减半</span>
+            </div>
+        </div>
 
-    <div id="touch-controls">
-        <button class="touch-btn" id="btn-pause" aria-label="Pause">⏸</button>
-    </div>
-    <button class="touch-btn" id="btn-mute" aria-label="Sound" data-i18n-title="btn.sound" title="声音">🔊</button>
-    <button class="touch-btn" id="btn-lang" aria-label="Language" data-i18n-title="btn.language" title="Language">🌐</button>
-    <div id="lang-menu" role="menu">
-        <button data-lang="zh-cn">🇨🇳 简体中文</button>
-        <button data-lang="zh-tw">🇹🇼 繁體中文</button>
-        <button data-lang="en-us">🇬🇧 English</button>
-        <button data-lang="ja-jp">🇯🇵 日本語</button>
-        <button data-lang="ko-kr">🇰🇷 한국어</button>
-        <button data-lang="es-es">🇪🇸 Español</button>
-    </div>
+        <div id="touch-controls">
+            <button class="touch-btn" id="btn-pause" aria-label="Pause">⏸</button>
+        </div>
+        <button class="touch-btn" id="btn-mute" aria-label="Sound" data-i18n-title="btn.sound" title="声音">🔊</button>
+        <button class="touch-btn" id="btn-lang" aria-label="Language" data-i18n-title="btn.language" title="Language">
+            🌐
+        </button>
+        <div id="lang-menu" role="menu">
+            <button data-lang="zh-cn">🇨🇳 简体中文</button>
+            <button data-lang="zh-tw">🇹🇼 繁體中文</button>
+            <button data-lang="en-us">🇬🇧 English</button>
+            <button data-lang="ja-jp">🇯🇵 日本語</button>
+            <button data-lang="ko-kr">🇰🇷 한국어</button>
+            <button data-lang="es-es">🇪🇸 Español</button>
+        </div>
 
-    <script type="module" src="./src/heartSequence.js"></script>
-    <script type="module" src="./src/eatenColors.js"></script>
-    <script type="module" src="./src/combo.js"></script>
-    <script type="module" src="./src/gameRules.js"></script>
-    <script type="module" src="./src/i18n/index.js"></script>
-    <script type="module" src="./src/i18n/zh-cn.js"></script>
-    <script type="module" src="./src/i18n/zh-tw.js"></script>
-    <script type="module" src="./src/i18n/en-us.js"></script>
-    <script type="module" src="./src/i18n/ja-jp.js"></script>
-    <script type="module" src="./src/i18n/ko-kr.js"></script>
-    <script type="module" src="./src/i18n/es-es.js"></script>
-    <script type="module" src="./src/audio/AudioEngine.js"></script>
-    <script type="module" src="./src/input/gamepad.js"></script>
-    <script type="module" src="./src/input/direction.js"></script>
-    <script type="module" src="./src/main.js"></script>
-</body>
+        <script type="module" src="./src/heartSequence.ts"></script>
+        <script type="module" src="./src/konami.ts"></script>
+        <script type="module" src="./src/game/boost.ts"></script>
+        <script type="module" src="./src/game/projectiles.ts"></script>
+        <!-- textures.ts registers DAIDAI.makeTuftTexture / makeGrassTexture used by scene/* modules
+             below; keep it above them so the global namespace is populated in source order even
+             though module scripts only invoke each other lazily via main.ts. -->
+        <script type="module" src="./src/textures.ts"></script>
+        <script type="module" src="./src/scene/grass.ts"></script>
+        <script type="module" src="./src/scene/atmosphere.ts"></script>
+        <script type="module" src="./src/scene/pond.ts"></script>
+        <script type="module" src="./src/scene/water.ts"></script>
+        <script type="module" src="./src/scene/meshFactories.ts"></script>
+        <script type="module" src="./src/eatenColors.ts"></script>
+        <script type="module" src="./src/combo.ts"></script>
+        <script type="module" src="./src/gameRules.ts"></script>
+        <script type="module" src="./src/i18n/index.ts"></script>
+        <script type="module" src="./src/i18n/zh-cn.ts"></script>
+        <script type="module" src="./src/i18n/zh-tw.ts"></script>
+        <script type="module" src="./src/i18n/en-us.ts"></script>
+        <script type="module" src="./src/i18n/ja-jp.ts"></script>
+        <script type="module" src="./src/i18n/ko-kr.ts"></script>
+        <script type="module" src="./src/i18n/es-es.ts"></script>
+        <script type="module" src="./src/audio/AudioEngine.ts"></script>
+        <script type="module" src="./src/input/gamepad.ts"></script>
+        <script type="module" src="./src/input/direction.ts"></script>
+        <script type="module" src="./src/storage.ts"></script>
+        <script type="module" src="./src/layout.ts"></script>
+        <script type="module" src="./src/input/promptStrings.ts"></script>
+        <script type="module" src="./src/main.ts"></script>
+    </body>
 </html>

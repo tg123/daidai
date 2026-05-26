@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  quality:
+    name: typecheck + lint + format + unit
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run test:unit
+
+  build:
+    name: build
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+          cache: 'npm'
+      - run: npm ci
+      - name: Build
+        # On pull_request events the default checkout is a synthetic
+        # base⊕head merge commit, so `git rev-parse HEAD` (used by
+        # vite.config.js as a fallback) returns that merge SHA rather
+        # than the contributor's head SHA. Pass the PR head SHA via
+        # env so the banner matches what users see in the PR UI,
+        # without altering checkout semantics for fork PRs or losing
+        # CI coverage of base-branch incompatibilities.
+        env:
+          DAIDAI_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 1

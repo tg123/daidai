@@ -8,7 +8,7 @@
 >
 > I've long wanted to recreate it but never had the skill. Thanks to AI, this long-held wish finally came true.
 
-A nostalgic 3D remake of *"DAIDAI" Worm*, built with Three.js and runs in your browser.
+A nostalgic 3D remake of _"DAIDAI" Worm_, built with Three.js and runs in your browser.
 
 🎮 **Play online:** <https://tg123.github.io/daidai/>
 
@@ -25,13 +25,13 @@ A nostalgic 3D remake of *"DAIDAI" Worm*, built with Three.js and runs in your b
 Each bean eaten grows you by one segment and gives 5 points; every 20 beans you molt.
 Eating 5 beans of the same color in a row triggers a magic effect:
 
-| Color | Magic | Effect |
-| --- | --- | --- |
-| 🔴 Red | Speed | Run blazing fast; +5 per bean |
+| Color     | Magic      | Effect                                 |
+| --------- | ---------- | -------------------------------------- |
+| 🔴 Red    | Speed      | Run blazing fast; +5 per bean          |
 | 🟠 Orange | Holy Light | Turn objects into gold beans; +30 each |
-| 🟢 Green | Vitality | Shed skins turn back into beans |
-| 🔵 Blue | Rain | Sudden downpour; +10 per bean |
-| 🟣 Purple | Shrink | Length halved |
+| 🟢 Green  | Vitality   | Shed skins turn back into beans        |
+| 🔵 Blue   | Rain       | Sudden downpour; +10 per bean          |
+| 🟣 Purple | Shrink     | Length halved                          |
 
 ## Differences from the Original
 
@@ -56,16 +56,23 @@ The remake keeps the core 1999 gameplay intact, with some extensions and modern 
 
 ## Local Development
 
-Any static file server will do:
+The source uses TypeScript / ES Modules, so it needs Vite to transpile:
 
 ```sh
-python -m http.server 8000
-# open http://localhost:8000/
+npm install
+npm run dev                  # start the Vite dev server (default http://localhost:5173/)
+```
+
+If you only want to preview a pre-built bundle, point any static file server at `dist/`:
+
+```sh
+npm run build
+npm run serve:dist           # equivalent to: vite preview --outDir dist
 ```
 
 ## Build & Test
 
-Requires Node ≥ 18:
+Requires Node `^20.19.0 || ^22.13.0 || >=24` (matches the `engines` field in `package.json`):
 
 ```sh
 npm install                  # install deps
@@ -78,5 +85,4 @@ npm run test:dist            # run E2E tests against the dist build
 
 Build output is written to `dist/` (minified `index.html` plus runtime assets:
 `audio/`, favicon, `apple-touch-icon.png`, …). GitHub Pages auto-deploys
-`dist/` via [`.github/workflows/e2e.yml`](.github/workflows/e2e.yml).
-
+`dist/` via [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).

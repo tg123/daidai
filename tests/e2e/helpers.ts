@@ -5,32 +5,36 @@ import { Page, expect } from '@playwright/test';
  * world is fully initialised before any test interaction.
  */
 export async function gotoGame(page: Page, opts: { hash?: string; lang?: string } = {}) {
-  // Force a deterministic language (some tests check translations).
-  // We do this BEFORE the page loads so the script picks it up.
-  await page.addInitScript((lang) => {
-    if (lang) {
-      try { localStorage.setItem('daidai_lang', lang); } catch (_) {}
-    }
-    // Fast-boot flag: tells main.js to skip the audio-gated loading screen
-    // delay. Keeps e2e tests fast and stops the #loading-screen timeout
-    // from flaking under headless WebGL contention.
-    try { (window as any).__TEST_FAST_BOOT = true; } catch (_) {}
-  }, opts.lang ?? '');
-  await page.goto('/index.html' + (opts.hash ?? ''));
-  // With __TEST_FAST_BOOT the loading screen is removed before main.js
-  // finishes its first frame, so this resolves almost instantly. The
-  // generous timeout is just a safety net.
-  await expect(page.locator('#loading-screen')).toHaveCount(0, { timeout: 15_000 });
-  // The loading screen is removed at the very top of main.js, but the
-  // keyboard listeners (notably the start handler that unpauses the game)
-  // and the window.__test hook are registered later in the same synchronous
-  // init pass — after the Three.js scene/material setup. Under heavier
-  // renderers (e.g. three r184) that init can take long enough on CI that a
-  // keyboard.press fired immediately after gotoGame would be delivered
-  // before the listener exists, leaving the game stuck on the title prompt.
-  // Waiting for window.__test to exist (set just before the listeners are
-  // attached, with no async break in between) closes that race window.
-  await page.waitForFunction(() => !!(window as any).__test, null, { timeout: 15_000 });
+    // Force a deterministic language (some tests check translations).
+    // We do this BEFORE the page loads so the script picks it up.
+    await page.addInitScript((lang) => {
+        if (lang) {
+            try {
+                localStorage.setItem('daidai_lang', lang);
+            } catch (_) {}
+        }
+        // Fast-boot flag: tells main.js to skip the audio-gated loading screen
+        // delay. Keeps e2e tests fast and stops the #loading-screen timeout
+        // from flaking under headless WebGL contention.
+        try {
+            (window as any).__TEST_FAST_BOOT = true;
+        } catch (_) {}
+    }, opts.lang ?? '');
+    await page.goto('/index.html' + (opts.hash ?? ''));
+    // With __TEST_FAST_BOOT the loading screen is removed before main.js
+    // finishes its first frame, so this resolves almost instantly. The
+    // generous timeout is just a safety net.
+    await expect(page.locator('#loading-screen')).toHaveCount(0, { timeout: 15_000 });
+    // The loading screen is removed at the very top of main.js, but the
+    // keyboard listeners (notably the start handler that unpauses the game)
+    // and the window.__test hook are registered later in the same synchronous
+    // init pass — after the Three.js scene/material setup. Under heavier
+    // renderers (e.g. three r184) that init can take long enough on CI that a
+    // keyboard.press fired immediately after gotoGame would be delivered
+    // before the listener exists, leaving the game stuck on the title prompt.
+    // Waiting for window.__test to exist (set just before the listeners are
+    // attached, with no async break in between) closes that race window.
+    await page.waitForFunction(() => !!(window as any).__test, null, { timeout: 15_000 });
 }
 
 /**
@@ -38,34 +42,41 @@ export async function gotoGame(page: Page, opts: { hash?: string; lang?: string 
  * Must be called BEFORE gotoGame so the override is installed before the
  * game script runs detectGamepadNow().
  */
-export async function stubGamepads(page: Page, pads: Array<null | {
-  id?: string;
-  connected?: boolean;
-  mapping?: string;
-}>) {
-  await page.addInitScript((rawPads) => {
-    const fakePads = rawPads.map((p, i) => {
-      if (!p) return null;
-      return {
-        id: p.id ?? '',
-        index: i,
-        connected: p.connected ?? true,
-        mapping: p.mapping ?? 'standard',
-        buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0, touched: false })),
-        axes: [0, 0, 0, 0],
-        timestamp: 0,
-      };
-    });
-    const fn = () => fakePads as any;
-    try { Object.defineProperty(navigator, 'getGamepads', { value: fn, configurable: true }); } catch (_) {}
-    try { (Navigator.prototype as any).getGamepads = fn; } catch (_) {}
-  }, pads);
+export async function stubGamepads(
+    page: Page,
+    pads: Array<null | {
+        id?: string;
+        connected?: boolean;
+        mapping?: string;
+    }>,
+) {
+    await page.addInitScript((rawPads) => {
+        const fakePads = rawPads.map((p, i) => {
+            if (!p) return null;
+            return {
+                id: p.id ?? '',
+                index: i,
+                connected: p.connected ?? true,
+                mapping: p.mapping ?? 'standard',
+                buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0, touched: false })),
+                axes: [0, 0, 0, 0],
+                timestamp: 0,
+            };
+        });
+        const fn = () => fakePads as any;
+        try {
+            Object.defineProperty(navigator, 'getGamepads', { value: fn, configurable: true });
+        } catch (_) {}
+        try {
+            (Navigator.prototype as any).getGamepads = fn;
+        } catch (_) {}
+    }, pads);
 }
 
 /** Read the displayed score as a number. */
 export async function readScore(page: Page): Promise<number> {
-  const txt = await page.locator('#score').innerText();
-  return parseInt(txt, 10);
+    const txt = await page.locator('#score').innerText();
+    return parseInt(txt, 10);
 }
 
 /**
@@ -73,67 +84,71 @@ export async function readScore(page: Page): Promise<number> {
  * Keep loosely typed — see index.html for the canonical shape.
  */
 export type GameState = {
-  score: number;
-  hiScore: number;
-  gameOver: boolean;
-  paused: boolean;
-  godMode: boolean;
-  snake: Array<{ x: number; y: number }>;
-  direction: { x: number; y: number };
-  nextDirection: { x: number; y: number };
-  beans: Array<{ x: number; y: number; color: number }>;
-  goldBeans: Array<{ x: number; y: number; life: number }>;
-  shedSkin: Array<{ x: number; y: number; life: number }>;
-  eatenColors: number[];
-  comboColor: number;
-  comboCount: number;
-  isBoosted: boolean;
-  boostMultiplier: number;
-  isRaining: boolean;
-  growthPending: number;
-  beansEaten: number;
-  goldenProjectiles: number;
-  speed: number;
-  baseSpeed: number;
+    score: number;
+    hiScore: number;
+    gameOver: boolean;
+    paused: boolean;
+    godMode: boolean;
+    snake: Array<{ x: number; y: number }>;
+    direction: { x: number; y: number };
+    nextDirection: { x: number; y: number };
+    beans: Array<{ x: number; y: number; color: number }>;
+    goldBeans: Array<{ x: number; y: number; life: number }>;
+    shedSkin: Array<{ x: number; y: number; life: number }>;
+    eatenColors: number[];
+    comboColor: number;
+    comboCount: number;
+    isBoosted: boolean;
+    boostMultiplier: number;
+    isRaining: boolean;
+    growthPending: number;
+    beansEaten: number;
+    goldenProjectiles: number;
+    speed: number;
+    baseSpeed: number;
+    cameraOffsetX: number;
 };
 
 /** Read the current in-game state snapshot. */
 export async function getState(page: Page): Promise<GameState> {
-  return await page.evaluate(() => (window as any).__test.state());
+    return await page.evaluate(() => (window as any).__test.state());
 }
 
 /**
  * Place a fresh snake + direction and clear all beans/gold/shed. The game stays
  * paused unless caller flips it. Use stepN() to advance the simulation.
  */
-export async function resetWorld(page: Page, opts: {
-  snake?: Array<{ x: number; y: number }>;
-  direction?: { x: number; y: number };
-} = {}) {
-  await page.evaluate((o) => {
-    const T = (window as any).__test;
-    T.clearBeans();
-    T.clearGold();
-    T.clearShed();
-    if (o.snake) T.setSnake(o.snake);
-    if (o.direction) T.setDirection(o.direction.x, o.direction.y);
-  }, opts as any);
+export async function resetWorld(
+    page: Page,
+    opts: {
+        snake?: Array<{ x: number; y: number }>;
+        direction?: { x: number; y: number };
+    } = {},
+) {
+    await page.evaluate((o) => {
+        const T = (window as any).__test;
+        T.clearBeans();
+        T.clearGold();
+        T.clearShed();
+        if (o.snake) T.setSnake(o.snake);
+        if (o.direction) T.setDirection(o.direction.x, o.direction.y);
+    }, opts as any);
 }
 
 /** Run gameUpdate() N times, synchronously inside the page. */
 export async function stepN(page: Page, n: number) {
-  await page.evaluate((count) => {
-    const T = (window as any).__test;
-    for (let i = 0; i < count; i++) T.step();
-  }, n);
+    await page.evaluate((count) => {
+        const T = (window as any).__test;
+        for (let i = 0; i < count; i++) T.step();
+    }, n);
 }
 
 /** Press the 16-key heart easter-egg sequence (DRUL × 4). */
 export async function pressHeartSequence(page: Page) {
-  const seq = ['ArrowDown','ArrowRight','ArrowUp','ArrowLeft'];
-  for (let i = 0; i < 4; i++) {
-    for (const k of seq) {
-      await page.keyboard.press(k);
+    const seq = ['ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft'];
+    for (let i = 0; i < 4; i++) {
+        for (const k of seq) {
+            await page.keyboard.press(k);
+        }
     }
-  }
 }
