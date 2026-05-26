@@ -5,3 +5,5 @@ public/
 src/audio/
 *.min.js
 package-lock.json
+# Upstream archival assets — keep byte-for-byte, do not reflow.
+legacy/
