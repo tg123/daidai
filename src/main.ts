@@ -161,14 +161,17 @@
         } catch (_e) { return false; }
     }
     function gpBtn(btn) { return DAIDAI.glyphForButton(btn, isPSGamepad); }
+    function currentModality() {
+        return {
+            hasGamepad: hasGamepad || detectGamepadNow(),
+            hasTouch: hasTouchEnv,
+            hasFineKeyboard: hasFineKeyboardEnv,
+        };
+    }
     function getStartPrompt() {
-        if (hasGamepad || detectGamepadNow()) {
-            hasGamepad = true;
-            return t('start.gamepad');
-        }
-        if (hasTouchEnv && !hasFineKeyboardEnv) return t('start.touch');
-        if (hasTouchEnv && hasFineKeyboardEnv) return t('start.both');
-        return t('start.keyboard');
+        const m = currentModality();
+        if (m.hasGamepad) hasGamepad = true;
+        return DAIDAI.getStartPrompt(t, m);
     }
     let hiScore = 0;
     const hiScoreStore = DAIDAI.createHiScoreStorage();
@@ -2258,13 +2261,9 @@
         // (keyboard shortcut, gamepad glyph, or touch).
         function refreshRestartBtnLabel() {
             if (!btnRestart) return;
-            if (hasGamepad || (typeof detectGamepadNow === 'function' && detectGamepadNow())) {
-                btnRestart.textContent = t('hint.restartGamepad', { btn: gpBtn('B') });
-            } else if (hasTouchEnv && !hasFineKeyboardEnv) {
-                btnRestart.textContent = '⟳ ' + t('btn.restart');
-            } else {
-                btnRestart.textContent = t('hint.restartKey');
-            }
+            btnRestart.textContent = DAIDAI.getRestartLabel(t, currentModality(), {
+                gpBtnB: () => gpBtn('B'),
+            });
         }
         refreshRestartBtnLabel();
         window.__refreshRestartBtnLabel = refreshRestartBtnLabel;
