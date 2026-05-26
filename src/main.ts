@@ -1555,40 +1555,32 @@
     function updateGoldenProjectiles() {
         for (let i = goldenProjectiles.length - 1; i >= 0; i--) {
             const p = goldenProjectiles[i];
-            p.x += p.dx;
-            p.z += p.dz;
-            p.life--;
+            DAIDAI.stepProjectile(p);
             if (p.mesh) {
                 p.mesh.position.set(p.x, 0.5, p.z);
                 p.mesh.rotation.y += 0.2;
             }
             for (let j = beans.length - 1; j >= 0; j--) {
                 const b = beans[j];
-                const bx = b.x * CELL;
-                const bz = b.y * CELL;
-                const dist = Math.sqrt((p.x - bx) ** 2 + (p.z - bz) ** 2);
-                if (dist < 0.8) {
+                if (DAIDAI.projectileHits(p, b.x, b.y, CELL)) {
                     goldBeans.push({ x: b.x, y: b.y, life: 300 });
                     beans.splice(j, 1);
                     if (beanMeshes[j]) { scene.remove(beanMeshes[j]); beanMeshes.splice(j, 1); }
                     spawnBean();
-                    spawnParticles3D(bx, bz, 0xffd700, 8);
+                    spawnParticles3D(b.x * CELL, b.y * CELL, 0xffd700, 8);
                     audio.play('gold');
                 }
             }
             for (let j = shedSkin.length - 1; j >= 0; j--) {
                 const s = shedSkin[j];
-                const sx = s.x * CELL;
-                const sz = s.y * CELL;
-                const dist = Math.sqrt((p.x - sx) ** 2 + (p.z - sz) ** 2);
-                if (dist < 0.8) {
+                if (DAIDAI.projectileHits(p, s.x, s.y, CELL)) {
                     goldBeans.push({ x: s.x, y: s.y, life: 300 });
                     shedSkin.splice(j, 1);
-                    spawnParticles3D(sx, sz, 0xffd700, 10);
+                    spawnParticles3D(s.x * CELL, s.y * CELL, 0xffd700, 10);
                     audio.play('gold');
                 }
             }
-            if (p.life <= 0 || p.x < -2 || p.x > COLS * CELL + 2 || p.z < -2 || p.z > ROWS * CELL + 2) {
+            if (DAIDAI.isProjectileDead(p, COLS, ROWS, CELL)) {
                 if (p.mesh) scene.remove(p.mesh);
                 goldenProjectiles.splice(i, 1);
             }
