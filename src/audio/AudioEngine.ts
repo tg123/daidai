@@ -1,10 +1,24 @@
 // AudioEngine: tiny Web Audio + decoded buffer cache, with iOS unlock helpers.
 // Exposed as DAIDAI.AudioEngine. Browser-only — Web Audio APIs are not stubbed
 // for Vitest, so no unit tests; the class is exercised by E2E.
-(function (g) {
+(function (g: any) {
     'use strict';
 
     class AudioEngine {
+        ctx: any;
+        initialized: boolean;
+        buffers: Record<string, AudioBuffer>;
+        rawBuffers: Record<string, ArrayBuffer>;
+        loopSources: Record<string, any>;
+        masterGain: any;
+        muted: boolean;
+        files: Record<string, string>;
+        deferredFiles: Record<string, string>;
+        loaded: number;
+        total: number;
+        onProgress: ((loaded: number, total: number, name?: string) => void) | null;
+        [k: string]: any;
+
         constructor() {
             this.ctx = null;
             this.initialized = false;
@@ -57,7 +71,7 @@
                 const arrayBuf = await resp.arrayBuffer();
                 this.rawBuffers[name] = arrayBuf;
                 if (this.ctx) {
-                    try { this.buffers[name] = await this.ctx.decodeAudioData(arrayBuf.slice(0)); } catch(e) {}
+                    try { this.buffers[name] = await this.ctx.decodeAudioData(arrayBuf.slice(0)); } catch (_e) { /* decode failures are non-fatal */ }
                 }
                 return true;
             } catch (e) {
@@ -250,4 +264,4 @@
 
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.AudioEngine = AudioEngine;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
