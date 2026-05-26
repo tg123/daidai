@@ -39,7 +39,8 @@ async function copyAsset(name) {
 }
 
 async function buildHtml() {
-  const html = await fs.readFile(path.join(ROOT, 'index.html'), 'utf8');
+  let html = await fs.readFile(path.join(ROOT, 'index.html'), 'utf8');
+  html = await inlineSrcScripts(html);
   const minified = await minify(html, {
     collapseWhitespace: true,
     conservativeCollapse: true,
@@ -61,6 +62,20 @@ async function buildHtml() {
   });
   await fs.writeFile(path.join(DIST, 'index.html'), minified, 'utf8');
   return { srcBytes: Buffer.byteLength(html, 'utf8'), outBytes: Buffer.byteLength(minified, 'utf8') };
+}
+
+// Replaces <script src="./src/foo.js"></script> tags with inline <script>…</script>
+// so dist/index.html stays single-file. Tags must point under ./src/ (any depth).
+async function inlineSrcScripts(html) {
+  const re = /<script\s+src="\.\/(src\/[^"]+)"\s*><\/script>/g;
+  const matches = [...html.matchAll(re)];
+  for (const m of matches) {
+    const rel = m[1];
+    const abs = path.join(ROOT, rel);
+    const src = await fs.readFile(abs, 'utf8');
+    html = html.replace(m[0], `<script>${src}</script>`);
+  }
+  return html;
 }
 
 const fmt = (n) => (n / 1024).toFixed(1) + ' KB';

@@ -3,7 +3,7 @@ import { gotoGame } from './helpers';
 
 test.describe('pause / restart', () => {
   test('Space toggles pause and shows the i18n paused message', async ({ page }) => {
-    await gotoGame(page, { lang: 'zh' });
+    await gotoGame(page, { lang: 'zh-cn' });
     await page.keyboard.press('Space');
     await page.waitForTimeout(150);
     await page.keyboard.press('Space');
@@ -26,7 +26,7 @@ test.describe('pause / restart', () => {
   });
 
   test('Space is a no-op after game over (keeps the failure screen visible)', async ({ page }) => {
-    await gotoGame(page, { lang: 'zh' });
+    await gotoGame(page, { lang: 'zh-cn' });
     // Force a game-over via the test API.
     await page.evaluate(() => {
       const T = (window as any).__test;

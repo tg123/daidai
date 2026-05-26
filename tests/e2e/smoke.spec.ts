@@ -3,7 +3,7 @@ import { gotoGame } from './helpers';
 
 test.describe('smoke', () => {
   test('page loads with title and core HUD', async ({ page }) => {
-    await gotoGame(page, { lang: 'zh' });
+    await gotoGame(page, { lang: 'zh-cn' });
     await expect(page).toHaveTitle('呆呆虫之豆豆潭');
     await expect(page.locator('#score')).toHaveText('00000');
     await expect(page.locator('#hiscore')).toBeVisible();
@@ -11,7 +11,7 @@ test.describe('smoke', () => {
   });
 
   test('English locale uses the original author\'s "DAIDAI" Worm name', async ({ page }) => {
-    await gotoGame(page, { lang: 'en' });
+    await gotoGame(page, { lang: 'en-us' });
     await expect(page).toHaveTitle('"DAIDAI" Worm');
   });
 
