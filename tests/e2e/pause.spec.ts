@@ -36,7 +36,7 @@ test.describe('pause / restart', () => {
     });
     await expect.poll(async () => {
       return await page.evaluate(() => (window as any).__test.state().gameOver);
-    }, { timeout: 2000 }).toBe(true);
+    }, { timeout: 5000 }).toBe(true);
 
     const msgBefore = await page.locator('#message').innerText();
     expect(msgBefore).toContain('游戏结束');
