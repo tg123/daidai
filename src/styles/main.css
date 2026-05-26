@@ -3,6 +3,13 @@
     padding: 0;
     box-sizing: border-box;
 }
+/* Override the critical-inline visibility:hidden in index.html — once
+ * main.css is injected by Vite's JS module pipeline, all HUD elements
+ * become visible. (Same specificity as the inline rule; main.css is
+ * appended after the <style> block so it wins the cascade.) */
+body > *:not(#loading-screen) {
+    visibility: visible;
+}
 body {
     background: #000;
     display: flex;

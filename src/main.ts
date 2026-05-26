@@ -1,5 +1,9 @@
 // main.ts migrated as-is from main.js. Progressive typing is a follow-up.
 import * as THREE from 'three';
+// Explicit CSS import so Vite reliably injects the stylesheet via its
+// JS module pipeline (HMR-friendly). The <link> in index.html alone can
+// race / fall out of sync in iframed DevTools device mode.
+import './styles/main.css';
 // ============ AUDIO ENGINE (extracted to src/audio/AudioEngine.ts) ============
 const AudioEngine = DAIDAI.AudioEngine;
 const audio = new AudioEngine();
@@ -111,7 +115,7 @@ let COLS: number, ROWS: number;
 (function pickGridForAspect() {
     const isMobile = window.matchMedia('(max-width: 720px), (pointer: coarse)').matches;
     const dims = DAIDAI.computeGridDims({
-        winW: window.innerWidth - getRightGutterPx(),
+        winW: window.innerWidth,
         winH: window.innerHeight,
         isMobile,
     });
@@ -146,6 +150,10 @@ function applyI18nDOM() {
     document.querySelectorAll('[data-i18n-title]').forEach((el) => {
         (el as HTMLElement).title = t(el.getAttribute('data-i18n')!);
     });
+    // Reveal the i18n-bound nodes in the loading screen (kept hidden
+    // by critical inline CSS until this runs, to avoid a flash of
+    // hard-coded zh-CN text for non-CN users).
+    document.body.classList.add('i18n-ready');
 }
 function setLang(lang) {
     if (!DAIDAI.hasLocale(lang) || lang === LANG) return;
@@ -282,48 +290,20 @@ renderer.toneMappingExposure = 1.2;
 document.body.appendChild(renderer.domElement);
 
 // Camera position - top-down, auto-fit to screen
-function getRightGutterPx(): number {
-    // Reserve a vertical strip on the right for the floating pause/mute/
-    // lang buttons on touch/mobile. Without this the play field extends
-    // underneath the buttons and the worm visually disappears at the
-    // right wall on iPhone in portrait mode.
-    //
-    // Implementation: the WebGL canvas still spans the full window (no
-    // body-bg "gap" on the right) — we use renderer.setViewport() to
-    // confine the actual draw region to the left strip, and rely on the
-    // scene's clear colour (scene.background, dark green) to fill the
-    // gutter. This keeps the camera perfectly centred over the pond, so
-    // the perspective is symmetric and the worm does not appear tilted
-    // when it hugs the right wall (a regression we saw on iPhone after
-    // the earlier camera-shift approach).
-    const isMobile = window.matchMedia('(max-width: 720px), (pointer: coarse)').matches;
-    return isMobile ? 56 : 0;
-}
 function getVisibleArea() {
     const infoEl = document.getElementById('info-bar');
     const top = infoEl ? infoEl.getBoundingClientRect().bottom : 0;
-    const gutter = getRightGutterPx();
     return {
         top,
         height: Math.max(150, window.innerHeight - top),
-        // Full window width — canvas spans the screen, no body-bg gap.
         width: window.innerWidth,
-        // Width of the actually-rendered region (the rest of the canvas
-        // shows the scene clear colour).
-        drawWidth: Math.max(1, window.innerWidth - gutter),
     };
 }
 function applyCanvasSize() {
     const v = getVisibleArea();
     renderer.setSize(v.width, v.height);
-    // Restrict the draw region to the left side so the right gutter is
-    // available for the floating HUD buttons. Must be re-applied after
-    // every setSize() because three.js resets the viewport.
-    renderer.setViewport(0, 0, v.drawWidth, v.height);
     renderer.domElement.style.top = v.top + 'px';
-    // Camera aspect matches the DRAW region (not the canvas) so the
-    // perspective stays correct inside the visible strip.
-    camera.aspect = v.drawWidth / v.height;
+    camera.aspect = v.width / v.height;
     camera.updateProjectionMatrix();
 }
 applyCanvasSize();
@@ -407,6 +387,58 @@ let goldMeshes = [];
 
 // Golden projectile system
 let goldenProjectiles = [];
+
+// Shared geometry/material + PointLight pool for golden projectiles.
+// Without this, every key-4 fire created a fresh MeshStandardMaterial
+// AND added a new PointLight to the scene — the new light count forced
+// THREE to recompile every standard material in the scene on the first
+// frame after firing, causing a visible stutter ("初次还是有些卡").
+// With shared resources warmed up at startup, the projectile shader is
+// already compiled and the scene light count never changes when firing.
+const GOLDEN_PROJ_LIGHT_POOL = 4;
+const goldenProjGeom = new THREE.SphereGeometry(0.3, 12, 12);
+const goldenProjMat = new THREE.MeshStandardMaterial({
+    color: 0xffd700,
+    emissive: 0xffaa00,
+    emissiveIntensity: 1.0,
+    metalness: 0.9,
+    roughness: 0.1,
+});
+const goldenProjLightPool: THREE.PointLight[] = [];
+for (let __i = 0; __i < GOLDEN_PROJ_LIGHT_POOL; __i++) {
+    const l = new THREE.PointLight(0xffd700, 0, 5);
+    l.position.set(0, -10000, 0);
+    scene.add(l);
+    goldenProjLightPool.push(l);
+}
+function acquireGoldenProjLight(): THREE.PointLight | null {
+    for (const l of goldenProjLightPool) {
+        if (l.intensity === 0) {
+            l.intensity = 1.5 * Math.PI;
+            return l;
+        }
+    }
+    return null; // pool exhausted; projectile fires unlit (rare)
+}
+function releaseGoldenProjLight(l: THREE.PointLight | null) {
+    if (!l) return;
+    l.intensity = 0;
+    l.position.set(0, -10000, 0);
+}
+// Pre-warm the projectile shader so the first key-4 press doesn't hitch.
+(function warmupGoldenProjShader() {
+    const warm = new THREE.Mesh(goldenProjGeom, goldenProjMat);
+    warm.position.set(0, -10000, 0);
+    scene.add(warm);
+    requestAnimationFrame(() => {
+        try {
+            renderer.compile(scene, camera);
+        } catch (_) {
+            /* shader compile failure isn't fatal */
+        }
+        scene.remove(warm);
+    });
+})();
 
 // Falling bean system - beans that drop from sky
 let fallingBeans = [];
@@ -493,7 +525,10 @@ function initGame() {
     goldMeshes.forEach((m) => scene.remove(m));
     particles3D.forEach((p) => scene.remove(p.mesh));
     rain3D.forEach((r) => scene.remove(r.mesh));
-    goldenProjectiles.forEach((p) => scene.remove(p.mesh));
+    goldenProjectiles.forEach((p) => {
+        scene.remove(p.mesh);
+        releaseGoldenProjLight(p.light);
+    });
     fallingBeans.forEach((fb) => scene.remove(fb.mesh));
     snakeMeshes = [];
     beanMeshes = [];
@@ -745,29 +780,20 @@ function triggerMagic(colorIdx) {
             // Shoot a golden projectile from head in current direction
             if (snake.length > 0) {
                 const head = snake[0];
+                const pMesh = new THREE.Mesh(goldenProjGeom, goldenProjMat);
+                pMesh.position.set(head.x * CELL, 0.5, head.y * CELL);
+                scene.add(pMesh);
+                const pLight = acquireGoldenProjLight();
+                if (pLight) pLight.position.set(head.x * CELL, 0.5, head.y * CELL);
                 goldenProjectiles.push({
                     x: head.x * CELL,
                     z: head.y * CELL,
                     dx: direction.x * 0.4,
                     dz: direction.y * 0.4,
                     life: 120,
-                    mesh: null,
+                    mesh: pMesh,
+                    light: pLight,
                 });
-                // Create projectile mesh
-                const pMat = new THREE.MeshStandardMaterial({
-                    color: 0xffd700,
-                    emissive: 0xffaa00,
-                    emissiveIntensity: 1.0,
-                    metalness: 0.9,
-                    roughness: 0.1,
-                });
-                const pMesh = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), pMat);
-                pMesh.position.set(head.x * CELL, 0.5, head.y * CELL);
-                scene.add(pMesh);
-                goldenProjectiles[goldenProjectiles.length - 1].mesh = pMesh;
-                // Add a light to the projectile
-                const pLight = new THREE.PointLight(0xffd700, 1.5 * Math.PI, 5);
-                pMesh.add(pLight);
             }
             showEffect(t('fx.gold'));
             break;
@@ -908,6 +934,7 @@ function updateGoldenProjectiles() {
             p.mesh.position.set(p.x, 0.5, p.z);
             p.mesh.rotation.y += 0.2;
         }
+        if (p.light) p.light.position.set(p.x, 0.5, p.z);
         for (let j = beans.length - 1; j >= 0; j--) {
             const b = beans[j];
             if (DAIDAI.projectileHits(p, b.x, b.y, CELL)) {
@@ -933,6 +960,7 @@ function updateGoldenProjectiles() {
         }
         if (DAIDAI.isProjectileDead(p, COLS, ROWS, CELL)) {
             if (p.mesh) scene.remove(p.mesh);
+            releaseGoldenProjLight(p.light);
             goldenProjectiles.splice(i, 1);
         }
     }
@@ -1958,9 +1986,6 @@ window.__test = {
         goldenProjectiles: goldenProjectiles.length,
         speed,
         baseSpeed,
-        // Difference between the camera's horizontal position and the pond
-        // centre. Used by mobile-layout e2e specs to assert the right-side
-        // gutter (for floating pause/mute/lang buttons) is applied.
         cameraOffsetX: camera.position.x - ((COLS - 1) * CELL) / 2,
     }),
     setSnake: (cells) => {

@@ -6,8 +6,8 @@ import { getState, gotoGame } from './helpers';
 // only spotted on a real device — adding both unit + e2e coverage so they
 // can't silently come back.
 
-test.describe('mobile right gutter (canvas full-size, viewport-restricted draw)', () => {
-    test('iPhone-sized portrait viewport: camera stays centered AND camera aspect is narrower than the canvas', async ({
+test.describe('canvas spans full window on every viewport (HUD buttons float on top)', () => {
+    test('iPhone-sized portrait viewport: canvas full width, camera centered, no body-bg gutter', async ({
         browser,
     }) => {
         const context = await browser.newContext({
@@ -18,31 +18,29 @@ test.describe('mobile right gutter (canvas full-size, viewport-restricted draw)'
         const page = await context.newPage();
         await gotoGame(page);
 
-        // Camera stays centered on the pond — NO horizontal offset. That's
-        // what keeps the perspective symmetric so the worm does not appear
-        // tilted at the right wall.
+        // Camera stays centered on the pond — no horizontal offset, no
+        // perspective tilt at the right wall.
         const s = await getState(page);
         expect(s.cameraOffsetX).toBeCloseTo(0, 5);
 
-        // The canvas itself still spans the full window (no body-bg gap on
-        // the right) — the gutter is implemented via renderer.setViewport.
+        // Canvas fills the whole window. The floating pause/mute/lang
+        // buttons sit on top of the canvas (position:fixed) instead of
+        // taking up a reserved gutter — that's intentional, an earlier
+        // "reserve a right strip" approach left a visible dark bar on
+        // iPhone that looked broken.
         const layout = await page.evaluate(() => {
             const canvas = document.querySelector('canvas')!;
             return {
                 canvasWidth: canvas.getBoundingClientRect().width,
                 windowWidth: window.innerWidth,
-                // Aspect actually used by the perspective camera (narrower
-                // than the canvas because of the right gutter).
-                cameraAspect: (window as any).__test.state().cameraOffsetX === 0 ? 'centered' : 'shifted',
             };
         });
         expect(layout.canvasWidth).toBe(layout.windowWidth);
-        expect(layout.cameraAspect).toBe('centered');
 
         await context.close();
     });
 
-    test('desktop viewport: camera centered and canvas fills the full window', async ({ page }) => {
+    test('desktop viewport: canvas full width, camera centered', async ({ page }) => {
         await page.setViewportSize({ width: 1280, height: 800 });
         await gotoGame(page);
         const s = await getState(page);

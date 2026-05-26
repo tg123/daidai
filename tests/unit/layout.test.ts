@@ -120,25 +120,21 @@ describe('computeCameraFit', () => {
     });
 });
 
-describe('iPhone-portrait gutter (renderer-shrink approach)', () => {
-    // The mobile right-side gutter (for floating pause/mute/lang buttons)
-    // is implemented by SHRINKING the renderer width (and thus the grid's
-    // input width) by ~56px, not by offsetting the camera. Keeping the
-    // camera perfectly centered avoids the perspective tilt that showed up
-    // when the worm hugged the right wall on a real iPhone — a top-down
-    // perspective camera distorts objects off the optical axis.
-    it('shrinking winW by the gutter keeps cols = SHORT in portrait (just makes it taller)', () => {
+describe('iPhone-portrait full-window canvas (no gutter; HUD buttons float on top)', () => {
+    // On mobile we render the canvas at the full window width and let the
+    // pause/mute/lang buttons (position:fixed) float on top of the canvas.
+    // An earlier "reserve a right-side strip" approach left a visible dark
+    // bar on iPhone and was reverted; these tests pin the contract that
+    // the canvas uses the full window width so it can't silently regress.
+    it('full-window canvas keeps the grid identical to the unshrunk computation', () => {
         const full = computeGridDims({ winW: 390, winH: 844, isMobile: true });
-        const shrunk = computeGridDims({ winW: 390 - 56, winH: 844, isMobile: true });
+        // Sanity: portrait short-side rule still kicks in.
         expect(full.cols).toBe(22);
-        expect(shrunk.cols).toBe(22);
-        // Shrinking the width makes the viewport more portrait → grid grows
-        // taller (more rows). Sanity-check that direction is preserved.
-        expect(shrunk.rows).toBeGreaterThanOrEqual(full.rows);
+        expect(full.rows).toBeGreaterThan(full.cols);
     });
 
-    it('camera fit on the gutter-shrunk aspect produces a finite, sensible distance and centered lookAt', () => {
-        const winW = 390 - 56;
+    it('camera fit on the full-window aspect produces a finite, sensible distance and centered lookAt', () => {
+        const winW = 390;
         const winH = 844;
         const grid = computeGridDims({ winW, winH, isMobile: true });
         const fit = computeCameraFit({
