@@ -14,7 +14,7 @@ Source: https://github.com/StellaJiangChina/daidaiworm
 - `ICON.rc`, `id.ico` — original icon resource.
 - `DAT/` — original binary game data assets.
 - `BIGTITLE.GIF`, `DaiDai.JPG` — original title / cover artwork.
-- `DaiDai.txt` — original game description (GB2312).
+- `DaiDai.txt` — original game description (re-encoded as UTF-8).
 - `README.HTM` (merged into this file), `FORUM.HTM` — original HTML pages
   that shipped with the game.
 
