@@ -90,7 +90,6 @@
 
     // ============ TEXTURE GENERATION (extracted to src/textures.ts) ============
     const makeGrassTexture = DAIDAI.makeGrassTexture;
-    const makeTuftTexture = DAIDAI.makeTuftTexture;
 
     // ============ TEXTURE LOADING ============
     // (All image textures previously loaded from img/ were unused —
@@ -484,38 +483,7 @@
     }
 
     // ============ GRASS TUFTS - 3D clumps that sway and react to snake ============
-    const tuftTexture = makeTuftTexture(128);
-    const tuftMat = new THREE.MeshBasicMaterial({
-        map: tuftTexture,
-        transparent: true,
-        opacity: 0.55,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-    });
-    const tuftGeom = new THREE.PlaneGeometry(1.4, 1.4);
-    const grassTufts = [];
-    const TUFT_COUNT = 280;
-    const tuftSpread = 1.3; // place tufts in 1.3x the play field area
-    for (let i = 0; i < TUFT_COUNT; i++) {
-        const m = new THREE.Mesh(tuftGeom, tuftMat);
-        m.rotation.x = -Math.PI / 2;
-        const px = (Math.random() - 0.5) * COLS * CELL * tuftSpread + COLS * CELL / 2;
-        const pz = (Math.random() - 0.5) * ROWS * CELL * tuftSpread + ROWS * CELL / 2;
-        m.position.set(px, -0.18, pz);
-        const baseRot = Math.random() * Math.PI * 2;
-        m.rotation.z = baseRot;
-        const scl = 0.6 + Math.random() * 0.7;
-        m.scale.set(scl, scl, 1);
-        scene.add(m);
-        grassTufts.push({
-            mesh: m,
-            baseX: px, baseZ: pz,
-            baseRot,
-            baseScale: scl,
-            phase: Math.random() * Math.PI * 2,
-            freq: 0.0015 + Math.random() * 0.001,
-        });
-    }
+    const grassTufts = DAIDAI.buildGrass(scene, THREE, { cols: COLS, rows: ROWS, cell: CELL });
 
     // ============ CAUSTICS + WATER SURFACE for underwater feel ============
     function makeCausticsTexture(size) {
