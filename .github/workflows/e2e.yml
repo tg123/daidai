@@ -19,7 +19,17 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npm run build
+      - name: Build
+        # On pull_request events the default checkout is a synthetic
+        # base⊕head merge commit, so `git rev-parse HEAD` (used by
+        # vite.config.js as a fallback) returns that merge SHA rather
+        # than the contributor's head SHA. Pass the PR head SHA via
+        # env so the banner matches what users see in the PR UI,
+        # without altering checkout semantics for fork PRs or losing
+        # CI coverage of base-branch incompatibilities.
+        env:
+          DAIDAI_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: npm run build
       - uses: actions/upload-artifact@v4
         with:
           name: dist

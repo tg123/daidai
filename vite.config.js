@@ -2,7 +2,16 @@ import { defineConfig } from 'vite';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import { execSync } from 'node:child_process';
 
+const SHA_RE = /^[0-9a-f]{40}$/i;
+
 function gitSha() {
+  // Prefer an explicit build SHA from CI (e.g. the PR head SHA passed by
+  // the workflow), so the banner matches what users see in the PR UI even
+  // when CI checks out a synthetic merge commit.
+  // Validate strictly: must be a 40-character hex string to avoid bundle
+  // breakage or code injection from an unexpected env-var value.
+  const fromEnv = (process.env.DAIDAI_BUILD_SHA || '').trim();
+  if (SHA_RE.test(fromEnv)) return fromEnv.slice(0, 12);
   try {
     return execSync('git rev-parse --short=12 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
       .toString().trim() || 'dev';
