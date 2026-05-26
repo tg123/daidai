@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/input/direction.js';
+import '../../src/input/direction.ts';
 
 const { keyToDirection, combineHeldDir, classifyDelta, isOppositeDir } = globalThis.DAIDAI;
 

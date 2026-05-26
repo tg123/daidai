@@ -1,9 +1,17 @@
 // Pure direction / input-vector helpers shared by keyboard, touch & gamepad.
 // No DOM, no globals beyond the DAIDAI namespace.
-(function (g) {
+
+export interface Dir2 {
+    x: number;
+    y: number;
+}
+
+type HeldKeys = Set<string> | { has?: (k: string) => boolean; [key: string]: unknown };
+
+(function (g: any) {
     'use strict';
 
-    const KEY_TO_DIR = {
+    const KEY_TO_DIR: Record<string, Dir2> = {
         'ArrowUp':    { x: 0, y: -1 },
         'w':          { x: 0, y: -1 },
         'W':          { x: 0, y: -1 },
@@ -19,7 +27,7 @@
     };
 
     /** Returns `{x,y}` for a movement key, or null. */
-    function keyToDirection(key) {
+    function keyToDirection(key: string): Dir2 | null {
         return KEY_TO_DIR[key] || null;
     }
 
@@ -28,8 +36,13 @@
      * direction vector, supporting 8-way diagonals.
      * Returns null when no movement key is held.
      */
-    function combineHeldDir(heldKeys) {
-        const has = (k) => heldKeys && (typeof heldKeys.has === 'function' ? heldKeys.has(k) : heldKeys[k]);
+    function combineHeldDir(heldKeys: HeldKeys | null | undefined): Dir2 | null {
+        const has = (k: string): boolean => {
+            if (!heldKeys) return false;
+            const set = heldKeys as Set<string>;
+            if (typeof set.has === 'function') return set.has(k);
+            return Boolean((heldKeys as Record<string, unknown>)[k]);
+        };
         let dx = 0, dy = 0;
         if (has('ArrowUp') || has('w') || has('W')) dy = -1;
         else if (has('ArrowDown') || has('s') || has('S')) dy = 1;
@@ -45,7 +58,7 @@
      * diagonal (both axes set). Otherwise the dominant axis wins.
      * Returns null for a zero delta.
      */
-    function classifyDelta(dx, dy) {
+    function classifyDelta(dx: number, dy: number): Dir2 | null {
         const ax = Math.abs(dx), ay = Math.abs(dy);
         if (!ax && !ay) return null;
         const max = Math.max(ax, ay), min = Math.min(ax, ay);
@@ -62,7 +75,7 @@
     }
 
     /** True when `next` would reverse `current` 180°. */
-    function isOpposite(current, next) {
+    function isOpposite(current: Dir2 | null, next: Dir2 | null): boolean {
         if (!current || !next) return false;
         return next.x === -current.x && next.y === -current.y;
     }
@@ -72,4 +85,4 @@
     g.DAIDAI.combineHeldDir = combineHeldDir;
     g.DAIDAI.classifyDelta = classifyDelta;
     g.DAIDAI.isOppositeDir = isOpposite;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));

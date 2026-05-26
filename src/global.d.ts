@@ -6,7 +6,7 @@ export {};
 
 declare global {
   interface DaidaiNamespace {
-    [key: string]: unknown;
+    [key: string]: any;
   }
 
   var DAIDAI: DaidaiNamespace;
