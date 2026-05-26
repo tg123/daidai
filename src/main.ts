@@ -111,7 +111,7 @@ let COLS: number, ROWS: number;
 (function pickGridForAspect() {
     const isMobile = window.matchMedia('(max-width: 720px), (pointer: coarse)').matches;
     const dims = DAIDAI.computeGridDims({
-        winW: window.innerWidth,
+        winW: window.innerWidth - getRightGutterPx(),
         winH: window.innerHeight,
         isMobile,
     });
@@ -282,10 +282,24 @@ renderer.toneMappingExposure = 1.2;
 document.body.appendChild(renderer.domElement);
 
 // Camera position - top-down, auto-fit to screen
+function getRightGutterPx(): number {
+    // Reserve a vertical strip on the right for the floating pause/mute/
+    // lang buttons on touch/mobile. Without this the play field extends
+    // underneath the buttons and the worm visually disappears at the
+    // right wall on iPhone in portrait mode. We shrink the renderer
+    // (rather than offset the camera) so the perspective stays centered
+    // — otherwise the worm appears tilted near the gutter side.
+    const isMobile = window.matchMedia('(max-width: 720px), (pointer: coarse)').matches;
+    return isMobile ? 56 : 0;
+}
 function getVisibleArea() {
     const infoEl = document.getElementById('info-bar');
     const top = infoEl ? infoEl.getBoundingClientRect().bottom : 0;
-    return { top, height: Math.max(150, window.innerHeight - top), width: window.innerWidth };
+    return {
+        top,
+        height: Math.max(150, window.innerHeight - top),
+        width: Math.max(1, window.innerWidth - getRightGutterPx()),
+    };
 }
 function applyCanvasSize() {
     const v = getVisibleArea();
@@ -297,13 +311,6 @@ function applyCanvasSize() {
 applyCanvasSize();
 const BASE_FOG_DENSITY = 0.016;
 function fitCameraToPond() {
-    // On touch/mobile, reserve a vertical strip on the right for the
-    // floating pause/mute/lang buttons (~56px). Without this the play
-    // field extends underneath the buttons and the worm visually
-    // disappears at the right wall on iPhone in portrait mode.
-    const isMobile = window.matchMedia('(max-width: 720px), (pointer: coarse)').matches;
-    const rightGutterPx = isMobile ? 56 : 0;
-    const rightGutterFrac = window.innerWidth > 0 ? rightGutterPx / window.innerWidth : 0;
     const fit = DAIDAI.computeCameraFit({
         aspect: camera.aspect,
         cols: COLS,
@@ -311,11 +318,10 @@ function fitCameraToPond() {
         cell: CELL,
         vFovDeg: camera.fov,
         margin: 1.02,
-        rightGutterFrac,
     });
     camera.up.set(0, 1, 0);
-    camera.position.set(fit.centerX + fit.offsetX, fit.distance, fit.centerZ + 0.5);
-    camera.lookAt(fit.centerX + fit.offsetX, 0, fit.centerZ);
+    camera.position.set(fit.centerX, fit.distance, fit.centerZ + 0.5);
+    camera.lookAt(fit.centerX, 0, fit.centerZ);
     camera.updateProjectionMatrix();
     // Keep fog visual constant regardless of camera distance (portrait vs landscape)
     if (scene.fog) (scene.fog as THREE.FogExp2).density = BASE_FOG_DENSITY * (25 / fit.distance);
@@ -1934,6 +1940,10 @@ window.__test = {
         goldenProjectiles: goldenProjectiles.length,
         speed,
         baseSpeed,
+        // Difference between the camera's horizontal position and the pond
+        // centre. Used by mobile-layout e2e specs to assert the right-side
+        // gutter (for floating pause/mute/lang buttons) is applied.
+        cameraOffsetX: camera.position.x - ((COLS - 1) * CELL) / 2,
     }),
     setSnake: (cells) => {
         snake = cells.map((c) => ({ x: c.x, y: c.y }));

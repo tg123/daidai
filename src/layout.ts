@@ -32,14 +32,6 @@ export interface CameraFitOptions {
     vFovDeg: number; // camera vertical FOV in degrees
     margin?: number; // 1.0 = exact fit, > 1 leaves a small border. Defaults to 1.02
     rim?: number; // extra world units padding outside the grid. Defaults to 0
-    /**
-     * Fraction (0..1) of the viewport width to reserve on the right
-     * for fixed-position UI (e.g. mobile pause/mute/lang buttons), so
-     * the pond does not extend underneath those buttons. The pond is
-     * fit into the remaining (1 - rightGutterFrac) of the width and
-     * the camera is shifted left by `offsetX` to match. Defaults to 0.
-     */
-    rightGutterFrac?: number;
 }
 
 export interface CameraFit {
@@ -49,12 +41,6 @@ export interface CameraFit {
     centerX: number;
     /** World-space center Z of the grid. */
     centerZ: number;
-    /**
-     * World-space horizontal offset that should be ADDED to both
-     * camera.position.x and lookAt.x to slide the pond left of any
-     * reserved right gutter. Zero when rightGutterFrac is 0.
-     */
-    offsetX: number;
 }
 
 (function (g: any) {
@@ -88,28 +74,17 @@ export interface CameraFit {
         const cell = opts.cell ?? 1.0;
         const margin = opts.margin ?? 1.02;
         const rim = opts.rim ?? 0;
-        const gutter = Math.min(0.9, Math.max(0, opts.rightGutterFrac ?? 0));
         const vFov = (opts.vFovDeg * Math.PI) / 180;
         const tanHalf = Math.tan(vFov / 2);
         const W = (opts.cols * cell + rim * 2) * margin;
         const H = (opts.rows * cell + rim * 2) * margin;
-        // Fit the pond into the *visible* aspect (full aspect minus the
-        // reserved gutter) so the pond's right edge stops before the UI.
-        const visibleAspect = opts.aspect * (1 - gutter);
         const distForH = H / 2 / tanHalf;
-        const distForW = W / 2 / (tanHalf * visibleAspect);
+        const distForW = W / 2 / (tanHalf * opts.aspect);
         const distance = Math.max(distForH, distForW);
-        // World-space horizontal extent of the FULL camera frustum at
-        // this distance — the gutter eats `gutter` of that, so shifting
-        // the camera left by half of the gutter slides the pond into the
-        // visible region (with the gutter wholly on the right).
-        const fullWorldWidth = 2 * distance * tanHalf * opts.aspect;
-        const offsetX = gutter === 0 ? 0 : -gutter * fullWorldWidth * 0.5;
         return {
             distance,
             centerX: ((opts.cols - 1) * cell) / 2,
             centerZ: ((opts.rows - 1) * cell) / 2,
-            offsetX,
         };
     }
 

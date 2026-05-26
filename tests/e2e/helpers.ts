@@ -106,6 +106,7 @@ export type GameState = {
     goldenProjectiles: number;
     speed: number;
     baseSpeed: number;
+    cameraOffsetX: number;
 };
 
 /** Read the current in-game state snapshot. */

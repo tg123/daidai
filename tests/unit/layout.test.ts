@@ -118,33 +118,42 @@ describe('computeCameraFit', () => {
         const narrow = computeCameraFit({ ...baseSquare, vFovDeg: 30 });
         expect(narrow.distance).toBeGreaterThan(wide.distance);
     });
+});
 
-    it('default rightGutterFrac is 0 → no offset, same distance as before', () => {
-        const f = computeCameraFit({ ...baseSquare, aspect: 2.0, cols: 44 });
-        expect(f.offsetX).toBe(0);
+describe('iPhone-portrait gutter (renderer-shrink approach)', () => {
+    // The mobile right-side gutter (for floating pause/mute/lang buttons)
+    // is implemented by SHRINKING the renderer width (and thus the grid's
+    // input width) by ~56px, not by offsetting the camera. Keeping the
+    // camera perfectly centered avoids the perspective tilt that showed up
+    // when the worm hugged the right wall on a real iPhone — a top-down
+    // perspective camera distorts objects off the optical axis.
+    it('shrinking winW by the gutter keeps cols = SHORT in portrait (just makes it taller)', () => {
+        const full = computeGridDims({ winW: 390, winH: 844, isMobile: true });
+        const shrunk = computeGridDims({ winW: 390 - 56, winH: 844, isMobile: true });
+        expect(full.cols).toBe(22);
+        expect(shrunk.cols).toBe(22);
+        // Shrinking the width makes the viewport more portrait → grid grows
+        // taller (more rows). Sanity-check that direction is preserved.
+        expect(shrunk.rows).toBeGreaterThanOrEqual(full.rows);
     });
 
-    it('rightGutterFrac > 0: increases distance (pond must fit in narrower band)', () => {
-        const flush = computeCameraFit({ ...baseSquare, aspect: 0.5, rows: 44 });
-        const gutter = computeCameraFit({ ...baseSquare, aspect: 0.5, rows: 44, rightGutterFrac: 0.15 });
-        // Width-dominated case: shrinking the usable aspect must push the camera back.
-        expect(gutter.distance).toBeGreaterThan(flush.distance);
-    });
-
-    it('rightGutterFrac > 0: offsetX shifts camera left by half the gutter in world units', () => {
-        const f = computeCameraFit({ ...baseSquare, aspect: 0.5, rows: 44, rightGutterFrac: 0.2 });
-        const tanHalf = Math.tan((50 * Math.PI) / 360);
-        const fullWorldWidth = 2 * f.distance * tanHalf * 0.5;
-        expect(f.offsetX).toBeCloseTo(-0.2 * fullWorldWidth * 0.5, 6);
-        expect(f.offsetX).toBeLessThan(0);
-    });
-
-    it('rightGutterFrac is clamped into [0, 0.9]', () => {
-        const neg = computeCameraFit({ ...baseSquare, rightGutterFrac: -1 });
-        expect(neg.offsetX).toBe(0);
-        const huge = computeCameraFit({ ...baseSquare, rightGutterFrac: 5 });
-        // visibleAspect = aspect * (1 - 0.9) = 0.1 → distance is finite, offsetX is negative
-        expect(Number.isFinite(huge.distance)).toBe(true);
-        expect(huge.offsetX).toBeLessThan(0);
+    it('camera fit on the gutter-shrunk aspect produces a finite, sensible distance and centered lookAt', () => {
+        const winW = 390 - 56;
+        const winH = 844;
+        const grid = computeGridDims({ winW, winH, isMobile: true });
+        const fit = computeCameraFit({
+            aspect: winW / winH,
+            cols: grid.cols,
+            rows: grid.rows,
+            vFovDeg: 50,
+            margin: 1.02,
+        });
+        expect(Number.isFinite(fit.distance)).toBe(true);
+        expect(fit.distance).toBeGreaterThan(10);
+        // Camera looks at grid center — no horizontal offset, so the
+        // perspective stays symmetric and the worm doesn't tilt at the
+        // right wall.
+        expect(fit.centerX).toBeCloseTo((grid.cols - 1) / 2, 6);
+        expect(fit.centerZ).toBeCloseTo((grid.rows - 1) / 2, 6);
     });
 });
