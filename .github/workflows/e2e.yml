@@ -14,6 +14,13 @@ jobs:
     if: github.event.action != 'closed'
     steps:
       - uses: actions/checkout@v4
+        with:
+          # On pull_request events, the default checkout is a synthetic
+          # base⊕head merge commit, so `git rev-parse HEAD` (used by
+          # vite.config.js to stamp the build banner) returns that merge
+          # SHA rather than the contributor's head SHA. Pin to the head
+          # SHA so the banner matches what users see in the PR UI.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
