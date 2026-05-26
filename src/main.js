@@ -291,10 +291,10 @@
     const BUILD_SHA = '__DAIDAI_BUILD_SHA__';
 
     function announceDebugHelp() {
-        const big = 'color:#ffd700;font-size:18px;font-weight:bold;text-shadow:1px 1px 0 #000';
-        const sub = 'color:#88aaff;font-size:13px';
-        const mono = 'color:#fff;font-family:Consolas,monospace;font-size:12px;line-height:1.6';
-        const tag  = 'color:#8fbcff;font-family:Consolas,monospace;font-size:11px';
+        const big = 'background:#222;color:#ffd700;font-size:18px;font-weight:bold;padding:4px 10px;border-radius:4px';
+        const sub = 'color:#4060c0;font-size:13px;font-weight:bold';
+        const mono = 'background:#222;color:#eee;font-family:Consolas,monospace;font-size:12px;line-height:1.6;padding:6px 10px;border-radius:4px';
+        const tag  = 'color:#666;font-family:Consolas,monospace;font-size:11px';
         console.log('%c🐛 DaiDai DEBUG mode active', big);
         console.log('%cbuild: ' + (BUILD_SHA.startsWith('__') ? 'dev' : BUILD_SHA), tag);
         console.log('%cPress 1-5 to trigger the matching magic (no 5-bean combo required):', sub);
