@@ -27,11 +27,7 @@ export interface BuildGrassOptions {
 (function (g: any) {
     'use strict';
 
-    function buildGrass(
-        scene: THREE_T.Scene,
-        THREE: typeof THREE_T,
-        opts: BuildGrassOptions,
-    ): GrassTuft[] {
+    function buildGrass(scene: THREE_T.Scene, THREE: typeof THREE_T, opts: BuildGrassOptions): GrassTuft[] {
         const { cols, rows, cell } = opts;
         const count = opts.count ?? 280;
         const spread = opts.spread ?? 1.3;
@@ -51,8 +47,8 @@ export interface BuildGrassOptions {
         for (let i = 0; i < count; i++) {
             const m = new THREE.Mesh(tuftGeom, tuftMat);
             m.rotation.x = -Math.PI / 2;
-            const px = (Math.random() - 0.5) * cols * cell * spread + cols * cell / 2;
-            const pz = (Math.random() - 0.5) * rows * cell * spread + rows * cell / 2;
+            const px = (Math.random() - 0.5) * cols * cell * spread + (cols * cell) / 2;
+            const pz = (Math.random() - 0.5) * rows * cell * spread + (rows * cell) / 2;
             m.position.set(px, -0.18, pz);
             const baseRot = Math.random() * Math.PI * 2;
             m.rotation.z = baseRot;
@@ -61,7 +57,8 @@ export interface BuildGrassOptions {
             scene.add(m);
             tufts.push({
                 mesh: m,
-                baseX: px, baseZ: pz,
+                baseX: px,
+                baseZ: pz,
                 baseRot,
                 baseScale: scl,
                 phase: Math.random() * Math.PI * 2,
@@ -73,4 +70,4 @@ export interface BuildGrassOptions {
 
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.buildGrass = buildGrass;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

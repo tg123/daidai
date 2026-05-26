@@ -7,9 +7,16 @@ const { createKonamiMatcher, KONAMI_SEQUENCE } = globalThis.DAIDAI;
 describe('createKonamiMatcher', () => {
     it('exposes the canonical Konami sequence', () => {
         expect(KONAMI_SEQUENCE).toEqual([
-            'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
-            'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight',
-            'b', 'a',
+            'ArrowUp',
+            'ArrowUp',
+            'ArrowDown',
+            'ArrowDown',
+            'ArrowLeft',
+            'ArrowRight',
+            'ArrowLeft',
+            'ArrowRight',
+            'b',
+            'a',
         ]);
     });
 

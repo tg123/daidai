@@ -18,8 +18,11 @@ export interface HiScoreStorage {
         // localStorage when available.
         function getStore(): Storage | null {
             if (storage !== undefined) return storage;
-            try { return typeof localStorage !== 'undefined' ? localStorage : null; }
-            catch { return null; }
+            try {
+                return typeof localStorage !== 'undefined' ? localStorage : null;
+            } catch {
+                return null;
+            }
         }
 
         function load(): number {
@@ -37,7 +40,7 @@ export interface HiScoreStorage {
 
         function save(score: number): number {
             const cur = load();
-            const next = (Number.isFinite(score) && score > cur) ? Math.floor(score) : cur;
+            const next = Number.isFinite(score) && score > cur ? Math.floor(score) : cur;
             if (next === cur) return cur;
             const s = getStore();
             if (!s) return cur;
@@ -55,4 +58,4 @@ export interface HiScoreStorage {
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.createHiScoreStorage = createHiScoreStorage;
     g.DAIDAI.HI_SCORE_KEY = KEY;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

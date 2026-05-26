@@ -43,7 +43,7 @@ describe('eatScore', () => {
         expect(eatScore({ isBoosted: true })).toBe(5);
     });
     it('large multiplier survives bitwise overflow (regression)', () => {
-        expect(eatScore({ isBoosted: true, boostMultiplier: 2 ** 31 })).toBe(5 * (2 ** 31));
+        expect(eatScore({ isBoosted: true, boostMultiplier: 2 ** 31 })).toBe(5 * 2 ** 31);
     });
     it('negative/NaN multiplier clamped to 1', () => {
         expect(eatScore({ isBoosted: true, boostMultiplier: -4 })).toBe(5);
@@ -56,7 +56,10 @@ describe('isCellOccupied', () => {
         expect(isCellOccupied(5, 5, [[{ x: 0, y: 0 }], [{ x: 1, y: 1 }]])).toBe(false);
     });
     it('returns true on a match in any list', () => {
-        const snake = [{ x: 3, y: 3 }, { x: 3, y: 4 }];
+        const snake = [
+            { x: 3, y: 3 },
+            { x: 3, y: 4 },
+        ];
         const beans = [{ x: 7, y: 7 }];
         expect(isCellOccupied(3, 4, [snake, beans])).toBe(true);
         expect(isCellOccupied(7, 7, [snake, beans])).toBe(true);
@@ -71,9 +74,10 @@ describe('findFreeCell', () => {
     it('returns a free cell when one exists', () => {
         // Block everything except (2,2) with a 3x3 board.
         const occupied = [];
-        for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) {
-            if (!(x === 2 && y === 2)) occupied.push({ x, y });
-        }
+        for (let y = 0; y < 3; y++)
+            for (let x = 0; x < 3; x++) {
+                if (!(x === 2 && y === 2)) occupied.push({ x, y });
+            }
         // Deterministic rng cycling through all cells
         const seq = [0, 0, 0.5, 0.5, 0.9, 0.9];
         let i = 0;

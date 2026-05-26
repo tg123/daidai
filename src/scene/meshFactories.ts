@@ -139,10 +139,7 @@ export interface MeshFactories {
                 smile.position.set(0, 0.42, 0.42);
                 group.add(smile);
 
-                const openMouth = new THREE.Mesh(
-                    new THREE.CircleGeometry(0.12, 20),
-                    mouthMat,
-                );
+                const openMouth = new THREE.Mesh(new THREE.CircleGeometry(0.12, 20), mouthMat);
                 openMouth.rotation.x = -Math.PI / 2;
                 openMouth.position.set(0, 0.5, 0.44);
                 openMouth.visible = false;
@@ -200,13 +197,13 @@ export interface MeshFactories {
                 group.userData.chewTimer = 0;
                 group.userData.chewTimerMax = 700;
                 const tossBeanMat = new THREE.MeshStandardMaterial({
-                    color: 0xffffff, roughness: 0.4, metalness: 0.1,
-                    emissive: 0x000000, emissiveIntensity: 0.4,
+                    color: 0xffffff,
+                    roughness: 0.4,
+                    metalness: 0.1,
+                    emissive: 0x000000,
+                    emissiveIntensity: 0.4,
                 });
-                const tossBean = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.16, 12, 10),
-                    tossBeanMat,
-                );
+                const tossBean = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), tossBeanMat);
                 tossBean.castShadow = true;
                 tossBean.visible = false;
                 group.add(tossBean);
@@ -256,14 +253,16 @@ export interface MeshFactories {
             hg.fillRect(0, 0, 64, 64);
             const haloTex = new THREE.CanvasTexture(haloCanvas);
             haloTex.colorSpace = THREE.SRGBColorSpace;
-            const halo = new THREE.Sprite(new THREE.SpriteMaterial({
-                map: haloTex,
-                color: colorsHex[colorIdx],
-                transparent: true,
-                opacity: 0.55,
-                depthWrite: false,
-                blending: THREE.AdditiveBlending,
-            }));
+            const halo = new THREE.Sprite(
+                new THREE.SpriteMaterial({
+                    map: haloTex,
+                    color: colorsHex[colorIdx],
+                    transparent: true,
+                    opacity: 0.55,
+                    depthWrite: false,
+                    blending: THREE.AdditiveBlending,
+                }),
+            );
             halo.scale.set(1.6, 1.6, 1);
             mesh.add(halo);
             mesh.userData.halo = halo;
@@ -288,7 +287,11 @@ export interface MeshFactories {
             warm.position.set(0, -10000, 0);
             scene.add(warm);
             requestAnimationFrame(() => {
-                try { renderer.compile(scene, camera); } catch (_) { /* shader compile failure isn't fatal */ }
+                try {
+                    renderer.compile(scene, camera);
+                } catch (_) {
+                    /* shader compile failure isn't fatal */
+                }
                 scene.remove(warm);
             });
         })();
@@ -350,4 +353,4 @@ export interface MeshFactories {
 
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.createMeshFactories = createMeshFactories;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

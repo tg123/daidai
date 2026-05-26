@@ -58,10 +58,16 @@ describe('detectConnectedGamepad', () => {
         expect(detectConnectedGamepad([{ connected: true, id: '   ' }])).toEqual({ connected: false, isPS: false });
     });
     it('detects an Xbox pad as connected non-PS', () => {
-        expect(detectConnectedGamepad([{ connected: true, id: 'Xbox Wireless' }])).toEqual({ connected: true, isPS: false });
+        expect(detectConnectedGamepad([{ connected: true, id: 'Xbox Wireless' }])).toEqual({
+            connected: true,
+            isPS: false,
+        });
     });
     it('detects a PS pad and reports isPS=true', () => {
-        expect(detectConnectedGamepad([{ connected: true, id: 'DualSense Wireless Controller' }])).toEqual({ connected: true, isPS: true });
+        expect(detectConnectedGamepad([{ connected: true, id: 'DualSense Wireless Controller' }])).toEqual({
+            connected: true,
+            isPS: true,
+        });
     });
     it('isPS=true if any connected pad in the list is a Sony pad', () => {
         const xb = { connected: true, id: 'Xbox 360 Controller' };
@@ -75,7 +81,9 @@ describe('pickStartPromptKey', () => {
         expect(pickStartPromptKey({})).toBe('start.keyboard');
     });
     it('gamepad wins regardless of other flags', () => {
-        expect(pickStartPromptKey({ hasGamepad: true, hasTouchEnv: true, hasFineKeyboardEnv: true })).toBe('start.gamepad');
+        expect(pickStartPromptKey({ hasGamepad: true, hasTouchEnv: true, hasFineKeyboardEnv: true })).toBe(
+            'start.gamepad',
+        );
     });
     it('touch-only when no fine keyboard', () => {
         expect(pickStartPromptKey({ hasTouchEnv: true, hasFineKeyboardEnv: false })).toBe('start.touch');

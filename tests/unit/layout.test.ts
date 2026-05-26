@@ -80,7 +80,7 @@ describe('computeCameraFit', () => {
     it('square grid + square viewport: distForW == distForH', () => {
         const f = computeCameraFit(baseSquare);
         // H = 22*1*1.02 = 22.44; distForH = 22.44/2 / tan(25°) ≈ 24.06
-        const expected = (22 * 1.02 / 2) / Math.tan(50 * Math.PI / 360);
+        const expected = (22 * 1.02) / 2 / Math.tan((50 * Math.PI) / 360);
         expect(f.distance).toBeCloseTo(expected, 4);
     });
 
@@ -90,17 +90,17 @@ describe('computeCameraFit', () => {
         // Vertical needs distForH ≈ same as 22-cell square ⇒ ~24
         // Horizontal needs distForW = (44/2 * 1.02) / (tan(25°) * 2) ≈ 24.06
         // Both should be roughly equal.
-        const tanHalf = Math.tan(50 * Math.PI / 360);
-        const distH = (22 * 1.02 / 2) / tanHalf;
-        const distW = (44 * 1.02 / 2) / (tanHalf * 2);
+        const tanHalf = Math.tan((50 * Math.PI) / 360);
+        const distH = (22 * 1.02) / 2 / tanHalf;
+        const distW = (44 * 1.02) / 2 / (tanHalf * 2);
         expect(f.distance).toBeCloseTo(Math.max(distH, distW), 4);
     });
 
     it('portrait viewport: distance dominated by grid width', () => {
         const f = computeCameraFit({ ...baseSquare, aspect: 0.5, rows: 44 });
-        const tanHalf = Math.tan(50 * Math.PI / 360);
-        const distH = (44 * 1.02 / 2) / tanHalf;
-        const distW = (22 * 1.02 / 2) / (tanHalf * 0.5);
+        const tanHalf = Math.tan((50 * Math.PI) / 360);
+        const distH = (44 * 1.02) / 2 / tanHalf;
+        const distW = (22 * 1.02) / 2 / (tanHalf * 0.5);
         expect(f.distance).toBeCloseTo(Math.max(distH, distW), 4);
     });
 
@@ -110,7 +110,7 @@ describe('computeCameraFit', () => {
         expect(loose.distance).toBeGreaterThan(tight.distance);
         const big = computeCameraFit({ ...baseSquare, cell: 2 });
         expect(big.distance).toBeCloseTo(tight.distance * 2 * 1.02, 4); // doubled cell ≈ doubled extent
-        expect(big.centerX).toBeCloseTo((22 - 1) * 2 / 2, 6);
+        expect(big.centerX).toBeCloseTo(((22 - 1) * 2) / 2, 6);
     });
 
     it('smaller FOV → larger distance (need to step back further)', () => {

@@ -4,7 +4,11 @@ import '../../src/game/projectiles.ts';
 const { stepProjectile, isProjectileDead, projectileHits } = globalThis.DAIDAI;
 
 const make = (over: Partial<{ x: number; z: number; dx: number; dz: number; life: number }> = {}) => ({
-    x: 0, z: 0, dx: 0, dz: 0, life: 120,
+    x: 0,
+    z: 0,
+    dx: 0,
+    dz: 0,
+    life: 120,
     ...over,
 });
 
@@ -34,7 +38,9 @@ describe('stepProjectile', () => {
 });
 
 describe('isProjectileDead', () => {
-    const COLS = 20, ROWS = 20, CELL = 1;
+    const COLS = 20,
+        ROWS = 20,
+        CELL = 1;
 
     it('returns false for fresh projectile inside bounds', () => {
         expect(isProjectileDead(make({ x: 10, z: 10 }), COLS, ROWS, CELL)).toBe(false);
@@ -65,7 +71,7 @@ describe('isProjectileDead', () => {
     });
 
     it('scales with cell size', () => {
-        expect(isProjectileDead(make({ x: 18, z: 5 }), 10, 10, 2)).toBe(false);  // 18 < 10*2+2=22
+        expect(isProjectileDead(make({ x: 18, z: 5 }), 10, 10, 2)).toBe(false); // 18 < 10*2+2=22
         expect(isProjectileDead(make({ x: 23, z: 5 }), 10, 10, 2)).toBe(true);
     });
 });
@@ -103,7 +109,7 @@ describe('projectileHits', () => {
 
     it('scales with cell size (target at cellX*cell, cellY*cell)', () => {
         const p = make({ x: 10, z: 10 });
-        expect(projectileHits(p, 5, 5, 2)).toBe(true);  // 5*2=10, dist=0
+        expect(projectileHits(p, 5, 5, 2)).toBe(true); // 5*2=10, dist=0
         expect(projectileHits(p, 5, 5, 1)).toBe(false); // 5*1=5, dist≈7.07
     });
 });

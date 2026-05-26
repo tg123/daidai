@@ -34,20 +34,36 @@ export interface HeartMatcher {
                 }
                 return false;
             },
-            reset() { buf = []; },
-            get bufferLength() { return buf.length; },
+            reset() {
+                buf = [];
+            },
+            get bufferLength() {
+                return buf.length;
+            },
         };
     }
 
     // The "heart" cheat: four CW circles drawn with the arrow keys.
     const HEART_SEQUENCE: readonly string[] = [
-        'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft',
-        'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft',
-        'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft',
-        'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft',
+        'ArrowDown',
+        'ArrowRight',
+        'ArrowUp',
+        'ArrowLeft',
+        'ArrowDown',
+        'ArrowRight',
+        'ArrowUp',
+        'ArrowLeft',
+        'ArrowDown',
+        'ArrowRight',
+        'ArrowUp',
+        'ArrowLeft',
+        'ArrowDown',
+        'ArrowRight',
+        'ArrowUp',
+        'ArrowLeft',
     ];
 
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.createHeartMatcher = createHeartMatcher;
     g.DAIDAI.HEART_SEQUENCE = HEART_SEQUENCE;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

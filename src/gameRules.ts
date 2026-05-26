@@ -1,7 +1,10 @@
 // Pure game-rules helpers: torus wrap, scoring, cell occupancy, random spawn.
 // No DOM, no Three.js — fully testable with deterministic RNG.
 
-export interface Cell { x: number; y: number; }
+export interface Cell {
+    x: number;
+    y: number;
+}
 
 export interface EatScoreOpts {
     isRaining?: boolean;
@@ -15,7 +18,8 @@ export interface EatScoreOpts {
 
     /** Wrap a head position around a COLS×ROWS torus. */
     function wrapPosition(x: number, y: number, cols: number, rows: number): Cell {
-        let nx = x, ny = y;
+        let nx = x,
+            ny = y;
         if (nx < 0) nx = cols - 1;
         else if (nx >= cols) nx = 0;
         if (ny < 0) ny = rows - 1;
@@ -73,9 +77,8 @@ export interface EatScoreOpts {
         maxAttempts?: number | null,
     ): Cell | null {
         const r = typeof rng === 'function' ? rng : Math.random;
-        const tries = (maxAttempts === undefined || maxAttempts === null)
-            ? 100
-            : Math.max(0, Math.floor(Number(maxAttempts) || 0));
+        const tries =
+            maxAttempts === undefined || maxAttempts === null ? 100 : Math.max(0, Math.floor(Number(maxAttempts) || 0));
         for (let i = 0; i < tries; i++) {
             const x = Math.floor(r() * cols);
             const y = Math.floor(r() * rows);
@@ -89,4 +92,4 @@ export interface EatScoreOpts {
     g.DAIDAI.eatScore = eatScore;
     g.DAIDAI.isCellOccupied = isCellOccupied;
     g.DAIDAI.findFreeCell = findFreeCell;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

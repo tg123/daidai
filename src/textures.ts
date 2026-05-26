@@ -23,7 +23,8 @@ export type CanvasTextureFactory = (size: number) => THREE.CanvasTexture;
         };
         // Large soft tonal patches — subtle, low contrast
         for (let i = 0; i < 35; i++) {
-            const x = Math.random() * size, y = Math.random() * size;
+            const x = Math.random() * size,
+                y = Math.random() * size;
             const r = size * (0.05 + Math.random() * 0.1);
             const hue = 95 + Math.random() * 20;
             const sat = 25 + Math.random() * 15;
@@ -35,7 +36,9 @@ export type CanvasTextureFactory = (size: number) => THREE.CanvasTexture;
                 rg.addColorStop(0, `hsla(${hue},${sat}%,${light}%,${alpha})`);
                 rg.addColorStop(1, `hsla(${hue},${sat}%,${light}%,0)`);
                 ctx.fillStyle = rg;
-                ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath();
+                ctx.arc(px, py, r, 0, Math.PI * 2);
+                ctx.fill();
             });
         }
         // Crisp vector-style grass blades — fewer and dimmer
@@ -56,18 +59,15 @@ export type CanvasTextureFactory = (size: number) => THREE.CanvasTexture;
             const curveOff = (Math.random() - 0.5) * 4;
             wrapDraw(x, y, (px, py) => {
                 if (px < -30 || px > size + 30 || py < -30 || py > size + 30) return;
-                const tipX = px + dxT, tipY = py + dyT;
+                const tipX = px + dxT,
+                    tipY = py + dyT;
                 const lg = ctx.createLinearGradient(px, py, tipX, tipY);
                 lg.addColorStop(0, `hsla(${hue},40%,${light * 0.6}%,0.5)`);
                 lg.addColorStop(1, `hsla(${hue + 5},45%,${light}%,0.65)`);
                 ctx.fillStyle = lg;
                 ctx.beginPath();
                 ctx.moveTo(px + bxOff, py + byOff);
-                ctx.quadraticCurveTo(
-                    px + dxT * 0.5 + curveOff,
-                    py + dyT * 0.5,
-                    tipX, tipY
-                );
+                ctx.quadraticCurveTo(px + dxT * 0.5 + curveOff, py + dyT * 0.5, tipX, tipY);
                 ctx.lineTo(px - bxOff, py - byOff);
                 ctx.closePath();
                 ctx.fill();
@@ -84,7 +84,8 @@ export type CanvasTextureFactory = (size: number) => THREE.CanvasTexture;
         c.width = c.height = size;
         const ctx = c.getContext('2d')!;
         ctx.clearRect(0, 0, size, size);
-        const cx = size / 2, cy = size / 2;
+        const cx = size / 2,
+            cy = size / 2;
         // Radial blades from center
         const blades = 14;
         for (let i = 0; i < blades; i++) {
@@ -118,4 +119,4 @@ export type CanvasTextureFactory = (size: number) => THREE.CanvasTexture;
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.makeGrassTexture = makeGrassTexture;
     g.DAIDAI.makeTuftTexture = makeTuftTexture;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

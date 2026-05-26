@@ -6,23 +6,48 @@ const { createHiScoreStorage, HI_SCORE_KEY } = globalThis.DAIDAI;
 function memStorage(initial: Record<string, string> = {}): Storage {
     const data = { ...initial };
     return {
-        get length() { return Object.keys(data).length; },
-        clear() { for (const k of Object.keys(data)) delete data[k]; },
-        getItem(k: string) { return k in data ? data[k] : null; },
-        key(i: number) { return Object.keys(data)[i] ?? null; },
-        removeItem(k: string) { delete data[k]; },
-        setItem(k: string, v: string) { data[k] = String(v); },
+        get length() {
+            return Object.keys(data).length;
+        },
+        clear() {
+            for (const k of Object.keys(data)) delete data[k];
+        },
+        getItem(k: string) {
+            return k in data ? data[k] : null;
+        },
+        key(i: number) {
+            return Object.keys(data)[i] ?? null;
+        },
+        removeItem(k: string) {
+            delete data[k];
+        },
+        setItem(k: string, v: string) {
+            data[k] = String(v);
+        },
     } as Storage;
 }
 
 function throwingStorage(mode: 'read' | 'write' | 'both'): Storage {
     return {
-        get length() { return 0; },
-        clear() { /* noop */ },
-        getItem() { if (mode !== 'write') throw new Error('boom-read'); return null; },
-        key() { return null; },
-        removeItem() { /* noop */ },
-        setItem() { if (mode !== 'read') throw new Error('boom-write'); },
+        get length() {
+            return 0;
+        },
+        clear() {
+            /* noop */
+        },
+        getItem() {
+            if (mode !== 'write') throw new Error('boom-read');
+            return null;
+        },
+        key() {
+            return null;
+        },
+        removeItem() {
+            /* noop */
+        },
+        setItem() {
+            if (mode !== 'read') throw new Error('boom-write');
+        },
     } as Storage;
 }
 

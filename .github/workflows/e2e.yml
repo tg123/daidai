@@ -8,7 +8,7 @@ on:
 
 jobs:
   quality:
-    name: typecheck + lint + unit
+    name: typecheck + lint + format + unit
     timeout-minutes: 5
     runs-on: ubuntu-latest
     if: github.event.action != 'closed'
@@ -21,6 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      - run: npm run format:check
       - run: npm run test:unit
 
   build:

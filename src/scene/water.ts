@@ -38,15 +38,11 @@ export interface WaterRefs {
 (function (g: any) {
     'use strict';
 
-    function buildWater(
-        scene: THREE_T.Scene,
-        THREE: typeof THREE_T,
-        opts: BuildWaterOptions,
-    ): WaterRefs {
+    function buildWater(scene: THREE_T.Scene, THREE: typeof THREE_T, opts: BuildWaterOptions): WaterRefs {
         const { cols, rows, cell } = opts;
         const bubbleCount = opts.bubbleCount ?? 80;
-        const pondCX = cols * cell / 2;
-        const pondCZ = rows * cell / 2;
+        const pondCX = (cols * cell) / 2;
+        const pondCZ = (rows * cell) / 2;
 
         function makeCausticsTexture(size: number) {
             const c = document.createElement('canvas');
@@ -61,7 +57,8 @@ export interface WaterRefs {
             const cells = 30;
             const radius = size * 0.12;
             for (let i = 0; i < cells; i++) {
-                const cx = Math.random() * size, cy = Math.random() * size;
+                const cx = Math.random() * size,
+                    cy = Math.random() * size;
                 wrapDraw(cx, cy, (px, py) => {
                     if (px < -radius || px > size + radius || py < -radius || py > size + radius) return;
                     const rg = gc.createRadialGradient(px, py, 0, px, py, radius);
@@ -69,15 +66,19 @@ export interface WaterRefs {
                     rg.addColorStop(0.5, 'rgba(140,210,255,0.18)');
                     rg.addColorStop(1, 'rgba(140,210,255,0)');
                     gc.fillStyle = rg;
-                    gc.beginPath(); gc.arc(px, py, radius, 0, Math.PI * 2); gc.fill();
+                    gc.beginPath();
+                    gc.arc(px, py, radius, 0, Math.PI * 2);
+                    gc.fill();
                 });
             }
             // Thin bright refraction lines (wrapped)
             for (let i = 0; i < 50; i++) {
-                const x = Math.random() * size, y = Math.random() * size;
+                const x = Math.random() * size,
+                    y = Math.random() * size;
                 const len = 30 + Math.random() * 80;
                 const a = Math.random() * Math.PI * 2;
-                const dx = Math.cos(a) * len, dy = Math.sin(a) * len;
+                const dx = Math.cos(a) * len,
+                    dy = Math.sin(a) * len;
                 wrapDraw(x, y, (px, py) => {
                     if (px < -len || px > size + len || py < -len || py > size + len) return;
                     const grd = gc.createLinearGradient(px, py, px + dx, py + dy);
@@ -151,12 +152,12 @@ export interface WaterRefs {
             c.width = c.height = 128;
             const gc = c.getContext('2d')!;
             const grad = gc.createRadialGradient(64, 64, 0, 64, 64, 64);
-            grad.addColorStop(0.00, 'rgba(180,225,255,0)');
+            grad.addColorStop(0.0, 'rgba(180,225,255,0)');
             grad.addColorStop(0.55, 'rgba(180,225,255,0)');
             grad.addColorStop(0.72, 'rgba(200,235,255,0.55)');
             grad.addColorStop(0.82, 'rgba(230,245,255,0.85)');
             grad.addColorStop(0.92, 'rgba(200,235,255,0.35)');
-            grad.addColorStop(1.00, 'rgba(180,225,255,0)');
+            grad.addColorStop(1.0, 'rgba(180,225,255,0)');
             gc.fillStyle = grad;
             gc.fillRect(0, 0, 128, 128);
             const t = new THREE.CanvasTexture(c);
@@ -182,7 +183,9 @@ export interface WaterRefs {
             mesh.scale.set(initScale, initScale, 1);
             scene.add(mesh);
             rippleRings.push({
-                mesh, life: 55, maxLife: 55,
+                mesh,
+                life: 55,
+                maxLife: 55,
                 startScale: initScale,
                 endScale: 3.2,
                 delay: 0,
@@ -196,9 +199,9 @@ export interface WaterRefs {
         for (let i = 0; i < bubbleCount; i++) {
             const bubble = new THREE.Mesh(bubbleGeom, bubbleMat.clone());
             bubble.position.set(
-                (Math.random() - 0.5) * cols * cell * 1.4 + cols * cell / 2,
+                (Math.random() - 0.5) * cols * cell * 1.4 + (cols * cell) / 2,
                 Math.random() * 5,
-                (Math.random() - 0.5) * rows * cell * 1.4 + rows * cell / 2,
+                (Math.random() - 0.5) * rows * cell * 1.4 + (rows * cell) / 2,
             );
             bubble.userData = { speed: 0.004 + Math.random() * 0.01, phase: Math.random() * Math.PI * 2 };
             scene.add(bubble);
@@ -206,14 +209,20 @@ export interface WaterRefs {
         }
 
         return {
-            causticsTex, causticsTex2,
-            causticsMesh, causticsMesh2,
-            waterGeom, waterMat, waterSurface, waterBasePositions,
-            rippleRings, spawnRipple,
+            causticsTex,
+            causticsTex2,
+            causticsMesh,
+            causticsMesh2,
+            waterGeom,
+            waterMat,
+            waterSurface,
+            waterBasePositions,
+            rippleRings,
+            spawnRipple,
             bubbles,
         };
     }
 
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.buildWater = buildWater;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

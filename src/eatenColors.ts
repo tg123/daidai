@@ -33,21 +33,39 @@ export interface EatenColorsQueue {
     function createEatenColorsQueue(initial?: number[] | null): EatenColorsQueue {
         let q: number[] = Array.isArray(initial) ? initial.slice() : [];
         return {
-            recordEaten(colorIdx: number) { q.unshift(colorIdx); },
-            colorAt(i: number) { return q[i]; },
-            trimToLength(n: number) { q = q.slice(0, Math.max(0, n | 0)); },
+            recordEaten(colorIdx: number) {
+                q.unshift(colorIdx);
+            },
+            colorAt(i: number) {
+                return q[i];
+            },
+            trimToLength(n: number) {
+                q = q.slice(0, Math.max(0, n | 0));
+            },
             // After shed: snake length resets to initLen, so we keep initLen-1
             // colors (the head itself has no entry in the queue).
-            trimAfterShed(initLen: number) { q = q.slice(0, Math.max(0, (initLen | 0) - 1)); },
+            trimAfterShed(initLen: number) {
+                q = q.slice(0, Math.max(0, (initLen | 0) - 1));
+            },
             // After halve: snake length is halfLen — same head-less indexing.
-            trimAfterHalve(halfLen: number) { q = q.slice(0, Math.max(0, (halfLen | 0) - 1)); },
-            snapshot() { return q.slice(); },
-            restore(arr) { q = Array.isArray(arr) ? arr.slice() : []; },
-            reset() { q = []; },
-            get length() { return q.length; },
+            trimAfterHalve(halfLen: number) {
+                q = q.slice(0, Math.max(0, (halfLen | 0) - 1));
+            },
+            snapshot() {
+                return q.slice();
+            },
+            restore(arr) {
+                q = Array.isArray(arr) ? arr.slice() : [];
+            },
+            reset() {
+                q = [];
+            },
+            get length() {
+                return q.length;
+            },
         };
     }
 
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.createEatenColorsQueue = createEatenColorsQueue;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

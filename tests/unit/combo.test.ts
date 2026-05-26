@@ -11,13 +11,16 @@ describe('createComboCounter', () => {
     });
     it('increments on same color', () => {
         const c = createComboCounter();
-        c.recordEat(2); c.recordEat(2); c.recordEat(2);
+        c.recordEat(2);
+        c.recordEat(2);
+        c.recordEat(2);
         expect(c.color).toBe(2);
         expect(c.count).toBe(3);
     });
     it('resets count on color change', () => {
         const c = createComboCounter();
-        c.recordEat(2); c.recordEat(2);
+        c.recordEat(2);
+        c.recordEat(2);
         c.recordEat(3);
         expect(c.color).toBe(3);
         expect(c.count).toBe(1);
@@ -40,14 +43,17 @@ describe('createComboCounter', () => {
     });
     it('reset() clears state', () => {
         const c = createComboCounter();
-        c.recordEat(2); c.recordEat(2);
+        c.recordEat(2);
+        c.recordEat(2);
         c.reset();
         expect(c.color).toBe(-1);
         expect(c.count).toBe(0);
     });
     it('snapshot()/restore() round-trip', () => {
         const c = createComboCounter();
-        c.recordEat(4); c.recordEat(4); c.recordEat(4);
+        c.recordEat(4);
+        c.recordEat(4);
+        c.recordEat(4);
         const snap = c.snapshot();
         c.reset();
         c.restore(snap);

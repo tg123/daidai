@@ -71,4 +71,4 @@ export interface StartPromptOpts {
     g.DAIDAI.glyphForButton = glyphForButton;
     g.DAIDAI.detectConnectedGamepad = detectConnectedGamepad;
     g.DAIDAI.pickStartPromptKey = pickStartPromptKey;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

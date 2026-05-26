@@ -47,12 +47,25 @@ export interface ComboCounter {
                 }
                 return false;
             },
-            reset() { color = -1; count = 0; },
-            get color() { return color; },
-            get count() { return count; },
-            set color(v: number) { color = v; },
-            set count(v: number) { count = v; },
-            snapshot(): ComboSnapshot { return { color, count }; },
+            reset() {
+                color = -1;
+                count = 0;
+            },
+            get color() {
+                return color;
+            },
+            get count() {
+                return count;
+            },
+            set color(v: number) {
+                color = v;
+            },
+            set count(v: number) {
+                count = v;
+            },
+            snapshot(): ComboSnapshot {
+                return { color, count };
+            },
             restore(s) {
                 color = s && s.color != null ? s.color : -1;
                 count = s && s.count != null ? s.count : 0;
@@ -63,4 +76,4 @@ export interface ComboCounter {
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.createComboCounter = createComboCounter;
     g.DAIDAI.COMBO_THRESHOLD = COMBO_THRESHOLD;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

@@ -43,4 +43,4 @@ export interface RestartLabelDeps {
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.getStartPrompt = getStartPrompt;
     g.DAIDAI.getRestartLabel = getRestartLabel;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

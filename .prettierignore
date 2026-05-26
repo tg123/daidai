@@ -1,0 +1,7 @@
+dist/
+node_modules/
+gh-pages/
+public/
+src/audio/
+*.min.js
+package-lock.json

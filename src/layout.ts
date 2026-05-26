@@ -28,10 +28,10 @@ export interface CameraFitOptions {
     aspect: number;
     cols: number;
     rows: number;
-    cell?: number;     // world units per grid cell. Defaults to 1.0
-    vFovDeg: number;   // camera vertical FOV in degrees
-    margin?: number;   // 1.0 = exact fit, > 1 leaves a small border. Defaults to 1.02
-    rim?: number;      // extra world units padding outside the grid. Defaults to 0
+    cell?: number; // world units per grid cell. Defaults to 1.0
+    vFovDeg: number; // camera vertical FOV in degrees
+    margin?: number; // 1.0 = exact fit, > 1 leaves a small border. Defaults to 1.02
+    rim?: number; // extra world units padding outside the grid. Defaults to 0
 }
 
 export interface CameraFit {
@@ -74,20 +74,20 @@ export interface CameraFit {
         const cell = opts.cell ?? 1.0;
         const margin = opts.margin ?? 1.02;
         const rim = opts.rim ?? 0;
-        const vFov = opts.vFovDeg * Math.PI / 180;
+        const vFov = (opts.vFovDeg * Math.PI) / 180;
         const tanHalf = Math.tan(vFov / 2);
         const W = (opts.cols * cell + rim * 2) * margin;
         const H = (opts.rows * cell + rim * 2) * margin;
-        const distForH = (H / 2) / tanHalf;
-        const distForW = (W / 2) / (tanHalf * opts.aspect);
+        const distForH = H / 2 / tanHalf;
+        const distForW = W / 2 / (tanHalf * opts.aspect);
         return {
             distance: Math.max(distForH, distForW),
-            centerX: (opts.cols - 1) * cell / 2,
-            centerZ: (opts.rows - 1) * cell / 2,
+            centerX: ((opts.cols - 1) * cell) / 2,
+            centerZ: ((opts.rows - 1) * cell) / 2,
         };
     }
 
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.computeGridDims = computeGridDims;
     g.DAIDAI.computeCameraFit = computeCameraFit;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

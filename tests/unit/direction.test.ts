@@ -52,10 +52,10 @@ describe('classifyDelta', () => {
         expect(classifyDelta(0, 0)).toBeNull();
     });
     it('clear cardinal swipes', () => {
-        expect(classifyDelta(100, 5)).toEqual({ x: 1, y: 0 });   // right
-        expect(classifyDelta(-50, 0)).toEqual({ x: -1, y: 0 });  // left
+        expect(classifyDelta(100, 5)).toEqual({ x: 1, y: 0 }); // right
+        expect(classifyDelta(-50, 0)).toEqual({ x: -1, y: 0 }); // left
         expect(classifyDelta(0, -200)).toEqual({ x: 0, y: -1 }); // up
-        expect(classifyDelta(2, 80)).toEqual({ x: 0, y: 1 });    // down
+        expect(classifyDelta(2, 80)).toEqual({ x: 0, y: 1 }); // down
     });
     it('diagonal when minor ≥ 50% of major', () => {
         expect(classifyDelta(100, 50)).toEqual({ x: 1, y: 1 });

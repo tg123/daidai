@@ -43,4 +43,4 @@
         'fx.lenPlus': '➕ Longitud +1',
         subtitle: '❤️  Para Fan Yipeng — gracias por nuestra infancia  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

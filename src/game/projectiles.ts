@@ -53,4 +53,4 @@ export interface ProjectileState {
     g.DAIDAI.stepProjectile = stepProjectile;
     g.DAIDAI.isProjectileDead = isProjectileDead;
     g.DAIDAI.projectileHits = projectileHits;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

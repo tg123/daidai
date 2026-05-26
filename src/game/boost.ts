@@ -27,9 +27,15 @@ export interface BoostTimer {
         let deadline = 0;
 
         return {
-            get active() { return active; },
-            get multiplier() { return multiplier; },
-            get deadline() { return deadline; },
+            get active() {
+                return active;
+            },
+            get multiplier() {
+                return multiplier;
+            },
+            get deadline() {
+                return deadline;
+            },
             trigger(now: number, durationMs: number) {
                 active = true;
                 multiplier *= 2;
@@ -52,4 +58,4 @@ export interface BoostTimer {
 
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.createBoostTimer = createBoostTimer;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

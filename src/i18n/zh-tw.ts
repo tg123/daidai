@@ -43,4 +43,4 @@
         'fx.lenPlus': '➕ 長度 +1',
         subtitle: '❤️  致樊一鵬 —— 謝謝你寫出我們的童年  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

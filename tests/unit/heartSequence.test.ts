@@ -29,7 +29,9 @@ describe('createHeartMatcher', () => {
 
     it('slides the window when wrong keys are pushed', () => {
         const m = createHeartMatcher(['a', 'b', 'c']);
-        m.push('x'); m.push('y'); m.push('z'); // junk
+        m.push('x');
+        m.push('y');
+        m.push('z'); // junk
         expect(m.push('a')).toBe(false);
         expect(m.push('b')).toBe(false);
         expect(m.push('c')).toBe(true);
@@ -38,7 +40,9 @@ describe('createHeartMatcher', () => {
     it('rejects partial matches at the wrong offset', () => {
         const m = createHeartMatcher(['a', 'b', 'c']);
         // 'a','b' is a prefix, but a 'd' breaks it.
-        m.push('a'); m.push('b'); m.push('d');
+        m.push('a');
+        m.push('b');
+        m.push('d');
         expect(m.push('a')).toBe(false);
         expect(m.push('b')).toBe(false);
         expect(m.push('c')).toBe(true);

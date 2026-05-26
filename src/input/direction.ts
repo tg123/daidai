@@ -12,18 +12,18 @@ type HeldKeys = Set<string> | { has?: (k: string) => boolean; [key: string]: unk
     'use strict';
 
     const KEY_TO_DIR: Record<string, Dir2> = {
-        'ArrowUp':    { x: 0, y: -1 },
-        'w':          { x: 0, y: -1 },
-        'W':          { x: 0, y: -1 },
-        'ArrowDown':  { x: 0, y:  1 },
-        's':          { x: 0, y:  1 },
-        'S':          { x: 0, y:  1 },
-        'ArrowLeft':  { x: -1, y: 0 },
-        'a':          { x: -1, y: 0 },
-        'A':          { x: -1, y: 0 },
-        'ArrowRight': { x: 1, y:  0 },
-        'd':          { x: 1, y:  0 },
-        'D':          { x: 1, y:  0 },
+        ArrowUp: { x: 0, y: -1 },
+        w: { x: 0, y: -1 },
+        W: { x: 0, y: -1 },
+        ArrowDown: { x: 0, y: 1 },
+        s: { x: 0, y: 1 },
+        S: { x: 0, y: 1 },
+        ArrowLeft: { x: -1, y: 0 },
+        a: { x: -1, y: 0 },
+        A: { x: -1, y: 0 },
+        ArrowRight: { x: 1, y: 0 },
+        d: { x: 1, y: 0 },
+        D: { x: 1, y: 0 },
     };
 
     /** Returns `{x,y}` for a movement key, or null. */
@@ -43,7 +43,8 @@ type HeldKeys = Set<string> | { has?: (k: string) => boolean; [key: string]: unk
             if (typeof set.has === 'function') return set.has(k);
             return Boolean((heldKeys as Record<string, unknown>)[k]);
         };
-        let dx = 0, dy = 0;
+        let dx = 0,
+            dy = 0;
         if (has('ArrowUp') || has('w') || has('W')) dy = -1;
         else if (has('ArrowDown') || has('s') || has('S')) dy = 1;
         if (has('ArrowLeft') || has('a') || has('A')) dx = -1;
@@ -59,10 +60,13 @@ type HeldKeys = Set<string> | { has?: (k: string) => boolean; [key: string]: unk
      * Returns null for a zero delta.
      */
     function classifyDelta(dx: number, dy: number): Dir2 | null {
-        const ax = Math.abs(dx), ay = Math.abs(dy);
+        const ax = Math.abs(dx),
+            ay = Math.abs(dy);
         if (!ax && !ay) return null;
-        const max = Math.max(ax, ay), min = Math.min(ax, ay);
-        let ndx = 0, ndy = 0;
+        const max = Math.max(ax, ay),
+            min = Math.min(ax, ay);
+        let ndx = 0,
+            ndy = 0;
         if (max > 0 && min / max >= 0.5) {
             ndx = dx > 0 ? 1 : -1;
             ndy = dy > 0 ? 1 : -1;
@@ -85,4 +89,4 @@ type HeldKeys = Set<string> | { has?: (k: string) => boolean; [key: string]: unk
     g.DAIDAI.combineHeldDir = combineHeldDir;
     g.DAIDAI.classifyDelta = classifyDelta;
     g.DAIDAI.isOppositeDir = isOpposite;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

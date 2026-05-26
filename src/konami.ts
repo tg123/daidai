@@ -13,9 +13,16 @@ export interface KonamiMatcher {
     'use strict';
 
     const KONAMI_SEQUENCE: readonly string[] = [
-        'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
-        'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight',
-        'b', 'a',
+        'ArrowUp',
+        'ArrowUp',
+        'ArrowDown',
+        'ArrowDown',
+        'ArrowLeft',
+        'ArrowRight',
+        'ArrowLeft',
+        'ArrowRight',
+        'b',
+        'a',
     ];
 
     function createKonamiMatcher(): KonamiMatcher {
@@ -26,12 +33,16 @@ export interface KonamiMatcher {
                 if (typeof key !== 'string' || key.length === 0) return false;
                 return inner.push(key.toLowerCase());
             },
-            reset() { inner.reset(); },
-            get bufferLength() { return inner.bufferLength; },
+            reset() {
+                inner.reset();
+            },
+            get bufferLength() {
+                return inner.bufferLength;
+            },
         };
     }
 
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.createKonamiMatcher = createKonamiMatcher;
     g.DAIDAI.KONAMI_SEQUENCE = KONAMI_SEQUENCE;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

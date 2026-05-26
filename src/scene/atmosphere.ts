@@ -70,7 +70,8 @@ export interface AtmosphereRefs {
         // 2) God-ray / volumetric light shafts — angled translucent planes drifting overhead
         const shaftTex = (() => {
             const c = document.createElement('canvas');
-            c.width = 128; c.height = 512;
+            c.width = 128;
+            c.height = 512;
             const gc = c.getContext('2d');
             const grad = gc.createLinearGradient(0, 0, 128, 0);
             grad.addColorStop(0.0, 'rgba(180,220,255,0)');
@@ -106,9 +107,9 @@ export interface AtmosphereRefs {
             mesh.rotation.x = -Math.PI / 2 + 0.6 + Math.random() * 0.3;
             mesh.rotation.z = Math.random() * Math.PI * 2;
             mesh.position.set(
-                cols * cell / 2 + (Math.random() - 0.5) * cols * cell * 1.4,
+                (cols * cell) / 2 + (Math.random() - 0.5) * cols * cell * 1.4,
                 6 + Math.random() * 2,
-                rows * cell / 2 + (Math.random() - 0.5) * rows * cell * 1.4,
+                (rows * cell) / 2 + (Math.random() - 0.5) * rows * cell * 1.4,
             );
             mesh.userData = {
                 driftPhase: Math.random() * Math.PI * 2,
@@ -126,4 +127,4 @@ export interface AtmosphereRefs {
 
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.buildAtmosphere = buildAtmosphere;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

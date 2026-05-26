@@ -43,4 +43,4 @@
         'fx.lenPlus': '➕ 길이 +1',
         subtitle: '❤️  판이펑 님께 — 어린 시절을 감사합니다  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

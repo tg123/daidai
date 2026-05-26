@@ -43,4 +43,4 @@
         'fx.lenPlus': '➕ 長さ +1',
         subtitle: '❤️  樊一鵬様へ — 子供時代をありがとう  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
+})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));
