@@ -925,10 +925,12 @@
             });
             const pupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
             const highlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const deadXMat = new THREE.MeshBasicMaterial({ color: 0xd11414 });
 
             const eyeRadius = 0.33;
             const pupilRefs = [];
             const eyeRefs = [];
+            const deadRefs = [];
             const makeEye = (xOffset) => {
                 const eyeGroup = new THREE.Group();
                 const white = new THREE.Mesh(new THREE.SphereGeometry(eyeRadius, 20, 20), eyeWhiteMat);
@@ -942,9 +944,24 @@
                 const hl = new THREE.Mesh(new THREE.SphereGeometry(eyeRadius * 0.1, 10, 10), highlightMat);
                 hl.position.set(0, eyeRadius * 0.7, eyeRadius * 0.7);
                 eyeGroup.add(hl);
+                // Dead "X" eyes: two thin red bars forming an X laid flat on
+                // top of the eyeball so they're visible from the top-down camera.
+                const deadX = new THREE.Group();
+                const barGeom = new THREE.BoxGeometry(eyeRadius * 1.6, eyeRadius * 0.18, eyeRadius * 0.18);
+                const bar1 = new THREE.Mesh(barGeom, deadXMat);
+                const bar2 = new THREE.Mesh(barGeom, deadXMat);
+                bar1.rotation.y = Math.PI / 4;
+                bar2.rotation.y = -Math.PI / 4;
+                deadX.add(bar1);
+                deadX.add(bar2);
+                // Sit on top of the eyeball (camera looks down -Y).
+                deadX.position.set(0, eyeRadius * 0.95, 0);
+                deadX.visible = false;
+                eyeGroup.add(deadX);
                 eyeGroup.position.set(xOffset, 0.5, 0.12);
                 pupilRefs.push({ pupil, hl });
                 eyeRefs.push(eyeGroup);
+                deadRefs.push({ deadX, pupil, hl, white });
                 return eyeGroup;
             };
             group.add(makeEye(-0.32));
@@ -979,15 +996,78 @@
             tongue.visible = false;
             group.add(tongue);
 
+            // ===== Hands =====
+            // Two little arms with palms attached to head sides. Because the
+            // camera is nearly top-down, hands need to sit ABOVE the head's
+            // equator (around the eye height) so they're visible from above.
+            // Animated during eatTimer to do a "toss bean into mouth" gesture.
+            const skinMat = new THREE.MeshStandardMaterial({
+                color: 0x111111,
+                roughness: 0.7,
+                metalness: 0.1,
+            });
+            const armLength = 0.5;
+            const armGeom = new THREE.CapsuleGeometry(0.035, armLength - 0.1, 4, 8);
+            const palmGeom = new THREE.SphereGeometry(0.09, 12, 10);
+            const handRefs = [];
+            const makeHand = (side) => {
+                // side: -1 left, +1 right
+                // Shoulder pivot: attached to head side, raised to eye level so
+                // the whole arm sits in the top-down camera's line of sight.
+                const root = new THREE.Group();
+                root.position.set(side * 0.5, 0.45, 0.1);
+                // Thin stick arm + small ball "mitten" at the end.
+                const arm = new THREE.Mesh(armGeom, skinMat);
+                arm.castShadow = true;
+                arm.position.set(0, -armLength * 0.5, 0);
+                root.add(arm);
+                const palm = new THREE.Mesh(palmGeom, skinMat);
+                palm.castShadow = true;
+                palm.position.set(0, -armLength, 0);
+                root.add(palm);
+                // Default pose: arms splayed outward and slightly forward.
+                const baseRotZ = side * 1.15;
+                const baseRotX = -0.2;
+                root.rotation.set(baseRotX, 0, baseRotZ);
+                group.add(root);
+                handRefs.push({ root, side, baseRotX, baseRotZ });
+                return root;
+            };
+            makeHand(-1);
+            makeHand(1);
+
             group.userData.smile = smile;
             group.userData.openMouth = openMouth;
             group.userData.tongue = tongue;
             group.userData.eatTimer = 0;
+            group.userData.handTimer = 0;
+            group.userData.handTimerMax = 800;
+            group.userData.chewTimer = 0;
+            group.userData.chewTimerMax = 700;
+            // Tossed bean: a small sphere that arcs from the throwing hand to
+            // the mouth during the eat animation.
+            const tossBeanMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff, roughness: 0.4, metalness: 0.1,
+                emissive: 0x000000, emissiveIntensity: 0.4,
+            });
+            const tossBean = new THREE.Mesh(
+                new THREE.SphereGeometry(0.16, 12, 10),
+                tossBeanMat
+            );
+            tossBean.castShadow = true;
+            tossBean.visible = false;
+            group.add(tossBean);
+            group.userData.tossBean = tossBean;
+            group.userData.tossFrom = new THREE.Vector3();
+            group.userData.tossTo = new THREE.Vector3(0, 0.4, 0.55); // mouth-ish
             group.userData.pupilRefs = pupilRefs;
             group.userData.eyeRefs = eyeRefs;
+            group.userData.deadRefs = deadRefs;
             group.userData.eyeRadius = eyeRadius;
             group.userData.blinkTimer = 2000 + Math.random() * 2000;
             group.userData.blinkPhase = 0;
+            group.userData.handRefs = handRefs;
+            group.userData.handThrowSide = 1;  // which hand throws next
         } else {
             const seg = new THREE.Mesh(snakeBodyGeom, mat);
             seg.castShadow = true;
@@ -1271,6 +1351,14 @@
         if (!godMode && (snake.some(s => s.x === head.x && s.y === head.y) ||
             shedSkin.some(s => s.x === head.x && s.y === head.y))) {
             gameOver = true;
+            // Show dead "X" eyes on the head
+            if (snakeMeshes[0] && snakeMeshes[0].userData && snakeMeshes[0].userData.deadRefs) {
+                for (const r of snakeMeshes[0].userData.deadRefs) {
+                    r.deadX.visible = true;
+                    r.pupil.visible = false;
+                    r.hl.visible = false;
+                }
+            }
             const isNew = score > hiScore;
             saveHiScore();
             updateUI();
@@ -1332,9 +1420,22 @@
         growthPending++;
         audio.play('eat');
         spawnParticles3D(bean.x * CELL, bean.y * CELL, COLORS_HEX[bean.color], 8);
-        // Trigger eat animation (chomp)
+        // Trigger eat animation (chomp + alternate which hand "tosses")
         if (snakeMeshes[0] && snakeMeshes[0].userData) {
-            snakeMeshes[0].userData.eatTimer = 220;
+            const ud = snakeMeshes[0].userData;
+            ud.eatTimer = 220;
+            ud.handTimer = ud.handTimerMax;
+            ud.handThrowSide = -ud.handThrowSide;
+            // Spawn the visible tossed bean at the active hand's palm.
+            if (ud.tossBean) {
+                ud.tossBean.material.color.setHex(COLORS_HEX[bean.color]);
+                ud.tossBean.material.emissive.setHex(COLORS_HEX[bean.color]);
+                // Approximate hand palm local position (matches makeHand layout).
+                const side = ud.handThrowSide;
+                ud.tossFrom.set(side * 0.5, 0.45 - 0.5, 0.1); // shoulder + arm hang
+                ud.tossBean.position.copy(ud.tossFrom);
+                ud.tossBean.visible = true;
+            }
         }
 
         if (combo.recordEat(bean.color)) {
@@ -1718,25 +1819,106 @@
                         if (ud.blinkPhase < 0) ud.blinkPhase = 0;
                         const sq = 1 - Math.sin(Math.max(0, ud.blinkPhase) * Math.PI) * 0.92;
                         ud.eyeRefs.forEach(e => { e.scale.y = sq; });
-                        ud.pupilRefs.forEach(r => { r.pupil.visible = sq > 0.4; r.hl.visible = sq > 0.4; });
+                        const dead = ud.deadRefs && ud.deadRefs[0] && ud.deadRefs[0].deadX.visible;
+                        if (!dead) {
+                            ud.pupilRefs.forEach(r => { r.pupil.visible = sq > 0.4; r.hl.visible = sq > 0.4; });
+                        }
                     } else {
                         ud.eyeRefs.forEach(e => { e.scale.y = 1; });
                     }
 
-                    // Eat animation: open mouth for short window
-                    if (ud.eatTimer > 0) {
-                        ud.eatTimer -= 16;
-                        const t = ud.eatTimer;
+                    // Eat animation: mouth stays open during the toss arc
+                    // (handTimer), then "chews" with rapid open/close pulses.
+                    const tossingNow = ud.handTimer > 0;
+                    const chewingNow = ud.chewTimer > 0;
+                    if (tossingNow || chewingNow) {
                         ud.smile.visible = false;
                         ud.openMouth.visible = true;
                         ud.tongue.visible = true;
-                        const s = 0.6 + Math.sin((1 - t / 220) * Math.PI) * 0.6;
-                        ud.openMouth.scale.set(s, s, 1);
-                        ud.tongue.scale.set(s, s, 1);
+                        let mouthScale;
+                        if (tossingNow) {
+                            // Open wide in anticipation; peak as bean arrives
+                            const p = 1 - ud.handTimer / ud.handTimerMax;
+                            mouthScale = 0.7 + p * 0.6;
+                        } else {
+                            // Chew pulses: 4 quick open/close cycles
+                            const cp = 1 - ud.chewTimer / ud.chewTimerMax;
+                            mouthScale = 0.5 + Math.abs(Math.sin(cp * Math.PI * 4)) * 0.7;
+                        }
+                        ud.openMouth.scale.set(mouthScale, mouthScale, 1);
+                        ud.tongue.scale.set(mouthScale, mouthScale, 1);
+                        // Decay chew timer (handTimer decays in the hand block below)
+                        if (chewingNow) ud.chewTimer -= 16;
+                        // Keep legacy eatTimer in sync so other systems still see it
+                        ud.eatTimer = (tossingNow ? ud.handTimer : ud.chewTimer);
                     } else {
                         ud.smile.visible = true;
                         ud.openMouth.visible = false;
                         ud.tongue.visible = false;
+                        ud.eatTimer = 0;
+                    }
+                    // Head bob during chew for an obvious "munching" motion
+                    if (chewingNow) {
+                        const cp = 1 - ud.chewTimer / ud.chewTimerMax;
+                        const bob = Math.abs(Math.sin(cp * Math.PI * 4)) * 0.12;
+                        mesh.position.y = bob;          // head pops down with each chomp
+                        mesh.scale.set(1 + bob * 0.4, 1 - bob * 0.5, 1 + bob * 0.4);
+                    } else if (!tossingNow) {
+                        mesh.position.y = 0;
+                        mesh.scale.set(1, 1, 1);
+                    }
+                    // Hand animation: alternating "swim/paddle" stroke while
+                    // moving, with one hand performing a bigger toss arc
+                    // during the eat window.
+                    if (ud.handRefs) {
+                        const swimPhase = time * 0.005;
+                        const tossing = ud.handTimer > 0;
+                        let p = 0, swing = 0;
+                        if (tossing) {
+                            ud.handTimer -= 16;
+                            p = 1 - ud.handTimer / ud.handTimerMax;
+                            swing = Math.sin(p * Math.PI);
+                        }
+                        const throwSide = ud.handThrowSide;
+                        for (const h of ud.handRefs) {
+                            // Base alternating paddle: each hand 180° out of phase
+                            const phase = swimPhase + (h.side > 0 ? 0 : Math.PI);
+                            const paddle = Math.sin(phase) * 0.45;
+                            let rx = h.baseRotX - paddle;
+                            let rz = h.baseRotZ + Math.cos(phase) * 0.12;
+                            if (tossing && h.side === throwSide) {
+                                // Override with bigger toss arc on the throwing hand
+                                rx = h.baseRotX - swing * 1.9;
+                                rz = h.baseRotZ - h.side * swing * 0.95;
+                            } else if (tossing) {
+                                // Other hand: small celebratory bob on top of paddle
+                                rx -= swing * 0.25;
+                            }
+                            h.root.rotation.x = rx;
+                            h.root.rotation.z = rz;
+                        }
+                        // Animate the tossed bean: arc from hand to mouth, then hide
+                        // and start the chew phase.
+                        if (ud.tossBean && ud.tossBean.visible) {
+                            if (ud.handTimer > 0) {
+                                const tp = p; // 0 -> 1
+                                const from = ud.tossFrom, to = ud.tossTo;
+                                ud.tossBean.position.x = from.x + (to.x - from.x) * tp;
+                                ud.tossBean.position.z = from.z + (to.z - from.z) * tp;
+                                // Higher parabolic arc up then down into the mouth
+                                const baseY = from.y + (to.y - from.y) * tp;
+                                ud.tossBean.position.y = baseY + Math.sin(tp * Math.PI) * 1.3;
+                                ud.tossBean.rotation.x += 0.22;
+                                ud.tossBean.rotation.y += 0.28;
+                                const s = 1 - tp * 0.4;
+                                ud.tossBean.scale.setScalar(s);
+                            } else {
+                                ud.tossBean.visible = false;
+                                ud.tossBean.scale.setScalar(1);
+                                // Bean has entered the mouth: start chewing
+                                ud.chewTimer = ud.chewTimerMax;
+                            }
+                        }
                     }
                 }
             }
