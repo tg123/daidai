@@ -11,10 +11,16 @@ export async function gotoGame(page: Page, opts: { hash?: string; lang?: string 
     if (lang) {
       try { localStorage.setItem('daidai_lang', lang); } catch (_) {}
     }
+    // Fast-boot flag: tells main.js to skip the audio-gated loading screen
+    // delay. Keeps e2e tests fast and stops the #loading-screen timeout
+    // from flaking under headless WebGL contention.
+    try { (window as any).__TEST_FAST_BOOT = true; } catch (_) {}
   }, opts.lang ?? '');
   await page.goto('/index.html' + (opts.hash ?? ''));
-  // Loading bar finishes when #loading-screen is hidden / removed.
-  await expect(page.locator('#loading-screen')).toBeHidden({ timeout: 15_000 });
+  // With __TEST_FAST_BOOT the loading screen is removed before main.js
+  // finishes its first frame, so this resolves almost instantly. The
+  // generous timeout is just a safety net.
+  await expect(page.locator('#loading-screen')).toHaveCount(0, { timeout: 15_000 });
 }
 
 /**

@@ -13,20 +13,14 @@ test.describe('heart easter egg', () => {
     // Directly invoke the activator twice via __test hook. Skipping the real
     // keyboard sequence here avoids the 5.7s overlay-cleanup chain that flakes
     // under heavy CI load. The 16-key path is exercised by the test above.
-    await page.evaluate(() => {
-      const t = (window as any).__test;
-      t.callActivateTribute();
-    });
+    await page.evaluate(() => { (window as any).__test.callActivateTribute(); });
     await expect(page.locator('#tribute-overlay')).toHaveCount(1);
-    // Remove overlay via the in-page test hook so app state (tributeActive)
-    // is cleaned up too. Directly removing the DOM node would leave the flag
-    // set and the second-invocation assertion would pass for the wrong reason.
-    await page.evaluate(() => {
-      const t = (window as any).__test;
-      t.dismissTribute();
-      t.callActivateTribute();
-    });
-    await expect(page.locator('#tribute-overlay')).toHaveCount(0);
+    // Dismiss + re-activate in separate evaluates so Playwright gets a
+    // chance to drain between them under WebGL contention.
+    await page.evaluate(() => { (window as any).__test.dismissTribute(); });
+    await page.evaluate(() => { (window as any).__test.callActivateTribute(); });
+    // Poll: the second activation should be a no-op (once-per-page-load).
+    await expect(page.locator('#tribute-overlay')).toHaveCount(0, { timeout: 2000 });
   });
 
   test('half-length arrow sequence does not trigger', async ({ page }) => {
