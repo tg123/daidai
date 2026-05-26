@@ -1,3 +1,4 @@
+    import * as THREE from 'three';
     // ============ AUDIO ENGINE (extracted to src/audio/AudioEngine.js) ============
     const AudioEngine = DAIDAI.AudioEngine;
     const audio = new AudioEngine();
