@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import './styles/main.css';
 
 import { AudioEngine } from './audio/AudioEngine';
+import { installAudioBootstrap } from './bootstrap/audio';
 import { createComboCounter } from './combo';
 import { createEatenColorsQueue } from './eatenColors';
 import { createBoostTimer } from './game/boost';
@@ -33,32 +34,7 @@ import { createHiScoreStorage } from './storage';
 
 // ============ AUDIO ENGINE (extracted to src/audio/AudioEngine.ts) ============
 const audio = new AudioEngine();
-// iOS WKWebView reliability: prime audio on the very first user interaction
-// anywhere on the page (touchend > touchstart for Safari/Chrome on iOS).
-(function primeAudioOnFirstGesture() {
-    const events = ['touchend', 'touchstart', 'mousedown', 'click', 'keydown'];
-    const handler = () => {
-        audio.init();
-        events.forEach((ev) => window.removeEventListener(ev, handler, true));
-    };
-    events.forEach((ev) => window.addEventListener(ev, handler, true));
-})();
-// Keep the iOS silent-switch bypass alive: every subsequent gesture also
-// re-kicks the silent video in case iOS paused it (interruption, app
-// backgrounded, audio route change, etc).
-(function keepSilentVideoAlive() {
-    const refresh = () => {
-        if (audio.initialized && !audio.muted) audio._ensureSilentVideo();
-    };
-    ['touchend', 'click', 'keydown'].forEach((ev) => window.addEventListener(ev, refresh, true));
-    document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && audio.initialized) {
-            if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume().catch(() => {});
-            if (!audio.muted) audio._ensureSilentVideo();
-        }
-    });
-    window.addEventListener('focus', refresh);
-})();
+installAudioBootstrap(audio);
 // ============ LOADING SCREEN ============
 // Test fast-boot: when running under e2e tests we don't need to wait for
 // audio preload / decode (which can take seconds and stall under headless
