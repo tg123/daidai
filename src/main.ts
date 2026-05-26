@@ -7,6 +7,7 @@ import './styles/main.css';
 
 import { AudioEngine } from './audio/AudioEngine';
 import { installAudioBootstrap } from './bootstrap/audio';
+import { detectFastBoot, installLoadingScreen } from './bootstrap/loadingScreen';
 import { createComboCounter } from './combo';
 import { createEatenColorsQueue } from './eatenColors';
 import { createBoostTimer } from './game/boost';
@@ -41,68 +42,7 @@ installAudioBootstrap(audio);
 // WebGL contention). Detected via either ?test=1 in the URL or a flag set
 // by Playwright's addInitScript. The loading screen is hidden immediately
 // and audio preload runs in the background (best-effort).
-const __FAST_BOOT = (() => {
-    try {
-        if (typeof window !== 'undefined' && window.__TEST_FAST_BOOT) return true;
-        if (typeof location !== 'undefined' && location.search && /(?:^|[?&])test=1(?:&|$)/.test(location.search))
-            return true;
-    } catch (_) {}
-    return false;
-})();
-(function setupLoadingScreen() {
-    const screen = document.getElementById('loading-screen');
-    const barInner = document.getElementById('loading-bar-inner');
-    const pctEl = document.getElementById('loading-pct');
-    const subEl = document.getElementById('loading-sub');
-    if (!screen) return;
-    if (__FAST_BOOT) {
-        // Hide immediately — don't gate test boot on audio fetch/decode.
-        // Still kick off preload in the background for any tests that may
-        // poke at the audio engine, but never block on it.
-        try {
-            audio.preload().catch(() => {});
-        } catch (_) {}
-        screen.classList.add('hidden');
-        screen.remove();
-        return;
-    }
-    audio.onProgress = (loaded, total, lastName) => {
-        const pct = Math.round((loaded / total) * 100);
-        if (barInner) barInner.style.width = pct + '%';
-        if (pctEl) pctEl.textContent = pct + '%  (' + loaded + '/' + total + ')';
-        if (subEl && lastName) subEl.textContent = t('loading.fetching', { name: lastName });
-    };
-    // After 10s, surface which files are still pending in the UI
-    const pendingTimer = setInterval(() => {
-        if (audio.loaded >= audio.total) {
-            clearInterval(pendingTimer);
-            return;
-        }
-        const pending = Object.keys(audio.files).filter((n) => !audio.rawBuffers[n]);
-        if (pending.length && subEl) {
-            subEl.textContent = t('loading.waiting', {
-                names: pending.slice(0, 3).join(', ') + (pending.length > 3 ? '…' : ''),
-            });
-        }
-    }, 5000);
-    audio
-        .preload()
-        .then(() => {
-            if (subEl) subEl.textContent = t('loading.ready');
-            if (barInner) barInner.style.width = '100%';
-            if (pctEl) pctEl.textContent = '100%';
-            // Hide shortly after — keep the screen long enough to be readable
-            setTimeout(() => {
-                screen.classList.add('hidden');
-                setTimeout(() => screen.remove(), 800);
-            }, 250);
-        })
-        .catch((err) => {
-            console.warn('Preload error:', err);
-            if (subEl) subEl.textContent = t('loading.failed');
-            setTimeout(() => screen.classList.add('hidden'), 500);
-        });
-})();
+const __FAST_BOOT = detectFastBoot();
 
 // ============ TEXTURE GENERATION (extracted to src/textures.ts) ============
 
@@ -139,6 +79,7 @@ let LANG = pickLang({
         navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'zh-cn'],
 });
 const t = createT(() => LANG);
+installLoadingScreen({ audio, fastBoot: __FAST_BOOT, t });
 try {
     document.documentElement.lang = LANG;
     document.title = t('title');
