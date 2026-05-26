@@ -178,12 +178,10 @@
         return t('start.keyboard');
     }
     let hiScore = 0;
-    try { hiScore = parseInt(localStorage.getItem('daidai_hiscore') || '0', 10) || 0; } catch (_e) { /* hi-score is best-effort */ }
+    const hiScoreStore = DAIDAI.createHiScoreStorage();
+    hiScore = hiScoreStore.load();
     function saveHiScore() {
-        if (score > hiScore) {
-            hiScore = score;
-            try { localStorage.setItem('daidai_hiscore', String(hiScore)); } catch (_e) { /* hi-score is best-effort */ }
-        }
+        hiScore = hiScoreStore.save(score);
     }
 
     // ============ EASTER EGG STATE ============
@@ -1213,8 +1211,8 @@
         shedSkin = [];
         goldBeans = [];
         score = 0;
-        // Load hi-score from localStorage on each init (in case another tab updated)
-        try { hiScore = parseInt(localStorage.getItem('daidai_hiscore') || '0', 10) || 0; } catch (_e) { hiScore = 0; }
+        // Reload hi-score on each init (in case another tab updated it).
+        hiScore = hiScoreStore.load();
         beansEaten = 0;
         gameOver = false;
         window.__gameOverInfo = null;
