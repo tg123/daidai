@@ -7,10 +7,35 @@ import '../../src/i18n/zh-tw.ts';
 import '../../src/i18n/ja-jp.ts';
 import '../../src/i18n/ko-kr.ts';
 import '../../src/i18n/es-es.ts';
+import '../../src/i18n/es-419.ts';
+import '../../src/i18n/fr-fr.ts';
+import '../../src/i18n/it-it.ts';
+import '../../src/i18n/de-de.ts';
+import '../../src/i18n/pt-br.ts';
+import '../../src/i18n/pl-pl.ts';
+import '../../src/i18n/ru-ru.ts';
+import '../../src/i18n/ar-sa.ts';
+import '../../src/i18n/th-th.ts';
 
 const { getStartPrompt, getRestartLabel, createT } = globalThis.DAIDAI;
 
-const LANGS = ['en-us', 'zh-cn', 'zh-tw', 'ja-jp', 'ko-kr', 'es-es'] as const;
+const LANGS = [
+    'en-us',
+    'zh-cn',
+    'zh-tw',
+    'ja-jp',
+    'ko-kr',
+    'es-es',
+    'es-419',
+    'fr-fr',
+    'it-it',
+    'de-de',
+    'pt-br',
+    'pl-pl',
+    'ru-ru',
+    'ar-sa',
+    'th-th',
+] as const;
 
 function makeT(lang: string) {
     return createT(() => lang);

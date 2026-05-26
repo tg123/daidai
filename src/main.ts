@@ -137,8 +137,11 @@ let LANG = DAIDAI.pickLang({
         navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'zh-cn'],
 });
 const t = DAIDAI.createT(() => LANG);
+// Right-to-left scripts: keep the list small and explicit.
+const RTL_LANGS = new Set(['ar-sa']);
 try {
     document.documentElement.lang = LANG;
+    document.documentElement.dir = RTL_LANGS.has(LANG) ? 'rtl' : 'ltr';
     document.title = t('title');
 } catch (_e) {
     /* document may be missing in headless edge cases */
@@ -163,6 +166,7 @@ function setLang(lang) {
     } catch (_) {}
     try {
         document.documentElement.lang = lang;
+        document.documentElement.dir = RTL_LANGS.has(lang) ? 'rtl' : 'ltr';
         document.title = t('title');
     } catch (_) {}
     applyI18nDOM();
@@ -1894,7 +1898,23 @@ window.addEventListener('blur', () => heldDirKeys.clear());
                         }
                         // Y/Triangle (3): cycle language — only while paused / waiting to start (not game over)
                         if (i === 3 && paused && !gameOver) {
-                            const langs = ['zh-cn', 'zh-tw', 'en-us', 'ja-jp', 'ko-kr', 'es-es'];
+                            const langs = [
+                                'zh-cn',
+                                'zh-tw',
+                                'en-us',
+                                'ja-jp',
+                                'ko-kr',
+                                'es-es',
+                                'es-419',
+                                'fr-fr',
+                                'it-it',
+                                'de-de',
+                                'pt-br',
+                                'pl-pl',
+                                'ru-ru',
+                                'ar-sa',
+                                'th-th',
+                            ];
                             const idx = langs.indexOf(LANG);
                             const next = langs[(idx + 1) % langs.length];
                             setLang(next);

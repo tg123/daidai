@@ -1,7 +1,22 @@
 // i18n core: dictionary registry, locale picker, and string formatter.
 // Pure data + functions, no DOM.
 
-export type LocaleCode = 'zh-cn' | 'zh-tw' | 'en-us' | 'ja-jp' | 'ko-kr' | 'es-es';
+export type LocaleCode =
+    | 'zh-cn'
+    | 'zh-tw'
+    | 'en-us'
+    | 'ja-jp'
+    | 'ko-kr'
+    | 'es-es'
+    | 'es-419'
+    | 'fr-fr'
+    | 'it-it'
+    | 'de-de'
+    | 'pt-br'
+    | 'pl-pl'
+    | 'ru-ru'
+    | 'ar-sa'
+    | 'th-th';
 export type LocaleDict = Record<string, string>;
 
 export interface PickLangOpts {
@@ -24,11 +39,37 @@ export type TFunction = (key: string, params?: Record<string, unknown>) => strin
     /**
      * Resolves a UI locale code from a prioritised list of candidates.
      * All supported codes are BCP-47 language-region tags (lower-cased).
-     * Recognises Traditional Chinese region/script tags (Hant/TW/HK/MO).
+     * Recognises Traditional Chinese region/script tags (Hant/TW/HK/MO)
+     * and splits Spanish into European (es-es) vs. Latin American (es-419).
      */
     function pickLang(opts?: PickLangOpts): LocaleCode {
         const o = opts || {};
         const candidates: Array<string | null | undefined> = [o.url, o.stored, ...(o.navigator || [])];
+        // Latin-American Spanish: any es-* region that isn't Spain itself.
+        // Includes the UN M.49 region code "419" used by CLDR/BCP-47.
+        const ES_LATAM = new Set([
+            '419',
+            'ar',
+            'bo',
+            'cl',
+            'co',
+            'cr',
+            'cu',
+            'do',
+            'ec',
+            'gt',
+            'hn',
+            'mx',
+            'ni',
+            'pa',
+            'pe',
+            'pr',
+            'py',
+            'sv',
+            'us',
+            'uy',
+            've',
+        ]);
         for (const raw of candidates) {
             if (!raw) continue;
             const lc = String(raw).toLowerCase();
@@ -46,7 +87,20 @@ export type TFunction = (key: string, params?: Record<string, unknown>) => strin
             if (lc.startsWith('en')) return 'en-us';
             if (lc.startsWith('ja')) return 'ja-jp';
             if (lc.startsWith('ko')) return 'ko-kr';
-            if (lc.startsWith('es')) return 'es-es';
+            if (lc.startsWith('es')) {
+                // es / es-es → European Spanish; es-MX, es-419 etc. → Latin-American.
+                const region = lc.split(/[-_]/)[1];
+                if (region && ES_LATAM.has(region)) return 'es-419';
+                return 'es-es';
+            }
+            if (lc.startsWith('fr')) return 'fr-fr';
+            if (lc.startsWith('it')) return 'it-it';
+            if (lc.startsWith('de')) return 'de-de';
+            if (lc.startsWith('pt')) return 'pt-br';
+            if (lc.startsWith('pl')) return 'pl-pl';
+            if (lc.startsWith('ru')) return 'ru-ru';
+            if (lc.startsWith('ar')) return 'ar-sa';
+            if (lc.startsWith('th')) return 'th-th';
         }
         return 'zh-cn';
     }
