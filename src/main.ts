@@ -223,14 +223,13 @@
     })();
     // ============ I18N ============
     // ============ I18N (dictionaries + helpers extracted to src/i18n/) ============
-    const I18N_DICT = DAIDAI.I18N_DICT;
     let LANG = DAIDAI.pickLang({
         url: new URLSearchParams(location.search).get('lang'),
-        stored: (() => { try { return localStorage.getItem('daidai_lang'); } catch(e) { return null; } })(),
+        stored: (() => { try { return localStorage.getItem('daidai_lang'); } catch (_e) { return null; } })(),
         navigator: (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'zh-cn']),
     });
     const t = DAIDAI.createT(() => LANG);
-    try { document.documentElement.lang = LANG; document.title = t('title'); } catch(e) {}
+    try { document.documentElement.lang = LANG; document.title = t('title'); } catch (_e) { /* document may be missing in headless edge cases */ }
     function applyI18nDOM() {
         document.querySelectorAll('[data-i18n]').forEach(el => {
             el.textContent = t(el.getAttribute('data-i18n'));
@@ -253,7 +252,6 @@
     applyI18nDOM();
     const COLORS_HEX = [0xff3333, 0x2266ff, 0x22ee22, 0xffaa00, 0xdd55ff];
     const COLORS_STR = ['#ff3333', '#2266ff', '#22ee22', '#ffaa00', '#dd55ff'];
-    const COLOR_NAMES = ['红', '蓝', '绿', '橙', '紫'];
 
     let snake, direction, nextDirection, beans, shedSkin, score, beansEaten;
     let gameOver, paused, speed, baseSpeed;
@@ -271,7 +269,7 @@
             const r = DAIDAI.detectConnectedGamepad(pads);
             if (r.isPS) isPSGamepad = true;
             return r.connected;
-        } catch(e) { return false; }
+        } catch (_e) { return false; }
     }
     function gpBtn(btn) { return DAIDAI.glyphForButton(btn, isPSGamepad); }
     function getStartPrompt() {
@@ -283,20 +281,12 @@
         if (hasTouchEnv && hasFineKeyboardEnv) return t('start.both');
         return t('start.keyboard');
     }
-    function getRestartHint() {
-        if (hasGamepad || detectGamepadNow()) { hasGamepad = true; return t('hint.restartGamepad', { btn: gpBtn('B') }); }
-        if (hasTouchEnv) return t('hint.restartTouch');
-        return t('hint.restartKey');
-    }
-    function getPausePrompt() {
-        return t('paused');
-    }
     let hiScore = 0;
-    try { hiScore = parseInt(localStorage.getItem('daidai_hiscore') || '0', 10) || 0; } catch(e) {}
+    try { hiScore = parseInt(localStorage.getItem('daidai_hiscore') || '0', 10) || 0; } catch (_e) { /* hi-score is best-effort */ }
     function saveHiScore() {
         if (score > hiScore) {
             hiScore = score;
-            try { localStorage.setItem('daidai_hiscore', String(hiScore)); } catch(e) {}
+            try { localStorage.setItem('daidai_hiscore', String(hiScore)); } catch (_e) { /* hi-score is best-effort */ }
         }
     }
 
@@ -417,8 +407,6 @@
     scene.background = new THREE.Color(0x0a2540);
 
     // ============ POND (ORIGINAL STYLE - grass texture background) ============
-    const pondW = COLS * CELL + 4;
-    const pondH = ROWS * CELL + 4;
     const pondCX = COLS * CELL / 2;
     const pondCZ = ROWS * CELL / 2;
 
@@ -900,10 +888,7 @@
     let beanMeshes = [];
     let skinMeshes = [];
     let goldMeshes = [];
-    let particleMeshes = [];
-    let rainMeshes = [];
 
-    const snakeHeadGeom = new THREE.SphereGeometry(0.55, 16, 16);
     const snakeBodyGeom = new THREE.SphereGeometry(0.42, 12, 12);
     const beanGeom = new THREE.SphereGeometry(0.35, 12, 12);
     const goldGeom = new THREE.DodecahedronGeometry(0.4);
@@ -920,7 +905,6 @@
         clearcoat: 1.0,
         clearcoatRoughness: 0.05,
     });
-    const skinGeom = new THREE.TorusGeometry(0.3, 0.1, 8, 12);
     const particleGeom = new THREE.SphereGeometry(0.12, 6, 6);
 
     function createSnakeSegment(isHead) {
@@ -1251,7 +1235,7 @@
         goldBeans = [];
         score = 0;
         // Load hi-score from localStorage on each init (in case another tab updated)
-        try { hiScore = parseInt(localStorage.getItem('daidai_hiscore') || '0', 10) || 0; } catch(e) { hiScore = 0; }
+        try { hiScore = parseInt(localStorage.getItem('daidai_hiscore') || '0', 10) || 0; } catch (_e) { hiScore = 0; }
         beansEaten = 0;
         gameOver = false;
         window.__gameOverInfo = null;
@@ -2279,7 +2263,7 @@
         })();
         // ============ GAMEPAD CONTROLLER SUPPORT ============
         (function setupGamepad() {
-            let prevButtons = [];
+            const prevButtons = [];
             const DEAD = 0.4;
             function applyGamepadGlyphs() {
                 // Defense-in-depth: this function paints the UI as if a gamepad

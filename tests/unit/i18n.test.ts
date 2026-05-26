@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // Side-effect imports register each locale into DAIDAI.I18N_DICT.
 import '../../src/i18n/index.ts';
@@ -71,7 +71,6 @@ describe('i18n', () => {
             expect(t('btn.restart')).toBe('リスタート');
         });
         it('falls back through current → en-us → zh-cn → key', () => {
-            const t = createT(() => 'es-es');
             // All locales currently have every key — verify with a missing locale.
             const tx = createT(() => 'xx');
             expect(tx('btn.restart')).toBe('Restart'); // en-us fallback
