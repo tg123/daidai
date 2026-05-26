@@ -313,292 +313,20 @@
     const { overlayMesh, shafts } = DAIDAI.buildAtmosphere(scene, camera, THREE, { cols: COLS, rows: ROWS, cell: CELL });
 
     // ============ 3D OBJECT POOLS ============
+    const meshFactories = DAIDAI.createMeshFactories(scene, renderer, camera, THREE, {
+        colorsHex: COLORS_HEX,
+        cell: CELL,
+    });
+    const {
+        createSnakeSegment, createBeanMesh, createGoldMesh,
+        createSkinMesh, createParticleMesh, createFallingBean,
+        rainGeom, rainMat,
+    } = meshFactories;
+
     let snakeMeshes = [];
     let beanMeshes = [];
     let skinMeshes = [];
     let goldMeshes = [];
-
-    const snakeBodyGeom = new THREE.SphereGeometry(0.42, 12, 12);
-    const beanGeom = new THREE.SphereGeometry(0.35, 12, 12);
-    const goldGeom = new THREE.DodecahedronGeometry(0.4);
-    // Shared material — MeshPhysicalMaterial with clearcoat is the heaviest
-    // shader in three.js; creating a new one per bean would re-link the
-    // program for the first instance of each color/uniform combo and stall
-    // the GPU. One shared material avoids the hitch and is also cheaper.
-    const goldMat = new THREE.MeshPhysicalMaterial({
-        color: 0xffd700,
-        roughness: 0.1,
-        metalness: 0.9,
-        emissive: 0xffaa00,
-        emissiveIntensity: 0.5,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.05,
-    });
-    const particleGeom = new THREE.SphereGeometry(0.12, 6, 6);
-
-    function createSnakeSegment(isHead) {
-        const group = new THREE.Group();
-        const mat = new THREE.MeshPhysicalMaterial({
-            color: isHead ? 0xf0f0e8 : 0xd8d8c8,
-            roughness: 0.3,
-            metalness: 0.05,
-            transparent: true,
-            opacity: isHead ? 0.92 : 0.75,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.1,
-        });
-        if (isHead) {
-            // Bulbous head - slightly squashed sphere for cute worm look
-            const headGeom = new THREE.SphereGeometry(0.6, 24, 20);
-            const body = new THREE.Mesh(headGeom, mat);
-            body.scale.set(1.05, 0.95, 1.05);
-            body.castShadow = true;
-            group.add(body);
-            // BIG bulging 3D eyeballs sticking out on top - cute cartoon worm style
-            const eyeWhiteMat = new THREE.MeshPhongMaterial({
-                color: 0xffffff,
-                shininess: 80,
-                specular: 0x666666,
-            });
-            const pupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-            const highlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const deadXMat = new THREE.MeshBasicMaterial({ color: 0xd11414 });
-
-            const eyeRadius = 0.33;
-            const pupilRefs = [];
-            const eyeRefs = [];
-            const deadRefs = [];
-            const makeEye = (xOffset) => {
-                const eyeGroup = new THREE.Group();
-                const white = new THREE.Mesh(new THREE.SphereGeometry(eyeRadius, 20, 20), eyeWhiteMat);
-                white.castShadow = true;
-                eyeGroup.add(white);
-                // Smaller pupil that can be moved on eyeball surface to track beans
-                const pupil = new THREE.Mesh(new THREE.SphereGeometry(eyeRadius * 0.38, 16, 16), pupilMat);
-                pupil.position.set(0, eyeRadius * 0.55, eyeRadius * 0.55);
-                eyeGroup.add(pupil);
-                // Highlight on pupil
-                const hl = new THREE.Mesh(new THREE.SphereGeometry(eyeRadius * 0.1, 10, 10), highlightMat);
-                hl.position.set(0, eyeRadius * 0.7, eyeRadius * 0.7);
-                eyeGroup.add(hl);
-                // Dead "X" eyes: two thin red bars forming an X laid flat on
-                // top of the eyeball so they're visible from the top-down camera.
-                const deadX = new THREE.Group();
-                const barGeom = new THREE.BoxGeometry(eyeRadius * 1.6, eyeRadius * 0.18, eyeRadius * 0.18);
-                const bar1 = new THREE.Mesh(barGeom, deadXMat);
-                const bar2 = new THREE.Mesh(barGeom, deadXMat);
-                bar1.rotation.y = Math.PI / 4;
-                bar2.rotation.y = -Math.PI / 4;
-                deadX.add(bar1);
-                deadX.add(bar2);
-                // Sit on top of the eyeball (camera looks down -Y).
-                deadX.position.set(0, eyeRadius * 0.95, 0);
-                deadX.visible = false;
-                eyeGroup.add(deadX);
-                eyeGroup.position.set(xOffset, 0.5, 0.12);
-                pupilRefs.push({ pupil, hl });
-                eyeRefs.push(eyeGroup);
-                deadRefs.push({ deadX, pupil, hl, white });
-                return eyeGroup;
-            };
-            group.add(makeEye(-0.32));
-            group.add(makeEye(0.32));
-
-            // Mouth: smile (default) and open "O" (when eating). Swap visibility.
-            const mouthMat = new THREE.MeshBasicMaterial({ color: 0x3a1a10 });
-            const smileGeom = new THREE.TorusGeometry(0.11, 0.022, 8, 18, Math.PI);
-            const smile = new THREE.Mesh(smileGeom, mouthMat);
-            smile.rotation.x = -Math.PI / 2;
-            smile.rotation.z = Math.PI;
-            smile.position.set(0, 0.42, 0.42);
-            group.add(smile);
-
-            // Open mouth — a small dark disc that becomes visible when chomping
-            const openMouth = new THREE.Mesh(
-                new THREE.CircleGeometry(0.12, 20),
-                mouthMat
-            );
-            openMouth.rotation.x = -Math.PI / 2;
-            openMouth.position.set(0, 0.5, 0.44);
-            openMouth.visible = false;
-            group.add(openMouth);
-
-            // Tongue (red disc inside open mouth)
-            const tongue = new THREE.Mesh(
-                new THREE.CircleGeometry(0.07, 16),
-                new THREE.MeshBasicMaterial({ color: 0xcc3344 })
-            );
-            tongue.rotation.x = -Math.PI / 2;
-            tongue.position.set(0, 0.51, 0.42);
-            tongue.visible = false;
-            group.add(tongue);
-
-            // ===== Hands =====
-            // Two little arms with palms attached to head sides. Because the
-            // camera is nearly top-down, hands need to sit ABOVE the head's
-            // equator (around the eye height) so they're visible from above.
-            // Animated during eatTimer to do a "toss bean into mouth" gesture.
-            const skinMat = new THREE.MeshStandardMaterial({
-                color: 0x111111,
-                roughness: 0.7,
-                metalness: 0.1,
-            });
-            const armLength = 0.5;
-            const armGeom = new THREE.CapsuleGeometry(0.035, armLength - 0.1, 4, 8);
-            const palmGeom = new THREE.SphereGeometry(0.09, 12, 10);
-            const handRefs = [];
-            const makeHand = (side) => {
-                // side: -1 left, +1 right
-                // Shoulder pivot: attached to head side, raised to eye level so
-                // the whole arm sits in the top-down camera's line of sight.
-                const root = new THREE.Group();
-                root.position.set(side * 0.5, 0.45, 0.1);
-                // Thin stick arm + small ball "mitten" at the end.
-                const arm = new THREE.Mesh(armGeom, skinMat);
-                arm.castShadow = true;
-                arm.position.set(0, -armLength * 0.5, 0);
-                root.add(arm);
-                const palm = new THREE.Mesh(palmGeom, skinMat);
-                palm.castShadow = true;
-                palm.position.set(0, -armLength, 0);
-                root.add(palm);
-                // Default pose: arms splayed outward and slightly forward.
-                const baseRotZ = side * 1.15;
-                const baseRotX = -0.2;
-                root.rotation.set(baseRotX, 0, baseRotZ);
-                group.add(root);
-                handRefs.push({ root, side, baseRotX, baseRotZ });
-                return root;
-            };
-            makeHand(-1);
-            makeHand(1);
-
-            group.userData.smile = smile;
-            group.userData.openMouth = openMouth;
-            group.userData.tongue = tongue;
-            group.userData.eatTimer = 0;
-            group.userData.handTimer = 0;
-            group.userData.handTimerMax = 800;
-            group.userData.chewTimer = 0;
-            group.userData.chewTimerMax = 700;
-            // Tossed bean: a small sphere that arcs from the throwing hand to
-            // the mouth during the eat animation.
-            const tossBeanMat = new THREE.MeshStandardMaterial({
-                color: 0xffffff, roughness: 0.4, metalness: 0.1,
-                emissive: 0x000000, emissiveIntensity: 0.4,
-            });
-            const tossBean = new THREE.Mesh(
-                new THREE.SphereGeometry(0.16, 12, 10),
-                tossBeanMat
-            );
-            tossBean.castShadow = true;
-            tossBean.visible = false;
-            group.add(tossBean);
-            group.userData.tossBean = tossBean;
-            group.userData.tossFrom = new THREE.Vector3();
-            group.userData.tossTo = new THREE.Vector3(0, 0.4, 0.55); // mouth-ish
-            group.userData.pupilRefs = pupilRefs;
-            group.userData.eyeRefs = eyeRefs;
-            group.userData.deadRefs = deadRefs;
-            group.userData.eyeRadius = eyeRadius;
-            group.userData.blinkTimer = 2000 + Math.random() * 2000;
-            group.userData.blinkPhase = 0;
-            group.userData.handRefs = handRefs;
-            group.userData.handThrowSide = 1;  // which hand throws next
-        } else {
-            const seg = new THREE.Mesh(snakeBodyGeom, mat);
-            seg.castShadow = true;
-            group.add(seg);
-        }
-        (group as any).material = mat;
-        scene.add(group);
-        return group;
-    }
-
-    function createBeanMesh(colorIdx) {
-        const mat = new THREE.MeshPhysicalMaterial({
-            color: COLORS_HEX[colorIdx],
-            roughness: 0.15,
-            metalness: 0.05,
-            transparent: true,
-            opacity: 0.95,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.05,
-            emissive: COLORS_HEX[colorIdx],
-            emissiveIntensity: 0.55,
-        });
-        const mesh = new THREE.Mesh(beanGeom, mat);
-        mesh.castShadow = false;
-        // Glow halo sprite around the bean
-        const haloCanvas = document.createElement('canvas');
-        haloCanvas.width = haloCanvas.height = 64;
-        const hg = haloCanvas.getContext('2d');
-        const rg = hg.createRadialGradient(32, 32, 4, 32, 32, 32);
-        rg.addColorStop(0, 'rgba(255,255,255,0.9)');
-        rg.addColorStop(0.4, 'rgba(255,255,255,0.3)');
-        rg.addColorStop(1, 'rgba(255,255,255,0)');
-        hg.fillStyle = rg;
-        hg.fillRect(0, 0, 64, 64);
-        const haloTex = new THREE.CanvasTexture(haloCanvas);
-        haloTex.colorSpace = THREE.SRGBColorSpace;
-        const halo = new THREE.Sprite(new THREE.SpriteMaterial({
-            map: haloTex,
-            color: COLORS_HEX[colorIdx],
-            transparent: true,
-            opacity: 0.55,
-            depthWrite: false,
-            blending: THREE.AdditiveBlending,
-        }));
-        halo.scale.set(1.6, 1.6, 1);
-        mesh.add(halo);
-        mesh.userData.halo = halo;
-        mesh.userData.dropPhase = 1.0; // 1 = high in sky, 0 = resting; eased per-frame
-        mesh.userData.dropBounce = 0;  // squash on landing
-        scene.add(mesh);
-        return mesh;
-    }
-
-    function createGoldMesh() {
-        const mesh = new THREE.Mesh(goldGeom, goldMat);
-        mesh.castShadow = false;
-        mesh.userData.dropPhase = 1.0;
-        mesh.userData.dropBounce = 0;
-        scene.add(mesh);
-        return mesh;
-    }
-    // Pre-compile the heavy gold/physical shader at startup so the first
-    // gold bean does not stall the GPU during gameplay.
-    (function warmupGoldShader() {
-        const warm = new THREE.Mesh(goldGeom, goldMat);
-        warm.position.set(0, -10000, 0); // off-screen but still in scene
-        scene.add(warm);
-        // Render once on next frame to force shader link
-        requestAnimationFrame(() => {
-            try { renderer.compile(scene, camera); } catch(_) {}
-            scene.remove(warm);
-        });
-    })();
-
-    function createSkinMesh() {
-        const mat = new THREE.MeshStandardMaterial({
-            color: 0x888888,
-            roughness: 0.5,
-            metalness: 0.2,
-            transparent: true,
-            opacity: 0.8,
-        });
-        const mesh = new THREE.Mesh(beanGeom, mat);
-        mesh.castShadow = false;
-        scene.add(mesh);
-        return mesh;
-    }
-
-    function createParticleMesh(color) {
-        const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1 });
-        const mesh = new THREE.Mesh(particleGeom, mat);
-        scene.add(mesh);
-        return mesh;
-    }
 
     // Golden projectile system
     let goldenProjectiles = [];
@@ -606,25 +334,7 @@
     // Falling bean system - beans that drop from sky
     let fallingBeans = [];
     function spawnFallingBean(targetX, targetY, colorIdx) {
-        const mat = new THREE.MeshStandardMaterial({
-            color: COLORS_HEX[colorIdx],
-            roughness: 0.3,
-            metalness: 0.4,
-            emissive: COLORS_HEX[colorIdx],
-            emissiveIntensity: 0.3,
-        });
-        const mesh = new THREE.Mesh(beanGeom, mat);
-        mesh.position.set(targetX * CELL, 12 + Math.random() * 5, targetY * CELL);
-        mesh.castShadow = false;
-        scene.add(mesh);
-        fallingBeans.push({
-            mesh,
-            targetX,
-            targetY,
-            color: colorIdx,
-            vy: 0,
-            gravity: 0.008 + Math.random() * 0.004
-        });
+        fallingBeans.push(createFallingBean(targetX, targetY, colorIdx));
     }
 
     // 3D particle system
@@ -645,8 +355,6 @@
 
     // Rain 3D
     let rain3D = [];
-    const rainGeom = new THREE.CylinderGeometry(0.03, 0.01, 1.2, 4);
-    const rainMat = new THREE.MeshBasicMaterial({ color: 0xaaccff, transparent: true, opacity: 0.7 });
 
     // Heavy rain with blur and bonus beans
     let isRaining = false;
