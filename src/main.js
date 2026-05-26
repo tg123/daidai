@@ -346,10 +346,14 @@
     // ============ THREE.JS SETUP ============
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    const renderer = new THREE.WebGLRenderer({ antialias: !__FAST_BOOT, alpha: false });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
+    // Under fast-boot (e2e) drop pixel ratio + shadows so two parallel WebGL
+    // pages don't starve each other's rAF loop on headless CI. Tests don't
+    // inspect pixels (only DOM HUD elements + the canvas's existence), so
+    // rendering quality here is irrelevant.
+    renderer.setPixelRatio(__FAST_BOOT ? 0.25 : Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = !__FAST_BOOT;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;

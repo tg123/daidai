@@ -21,6 +21,16 @@ export async function gotoGame(page: Page, opts: { hash?: string; lang?: string 
   // finishes its first frame, so this resolves almost instantly. The
   // generous timeout is just a safety net.
   await expect(page.locator('#loading-screen')).toHaveCount(0, { timeout: 15_000 });
+  // The loading screen is removed at the very top of main.js, but the
+  // keyboard listeners (notably the start handler that unpauses the game)
+  // and the window.__test hook are registered later in the same synchronous
+  // init pass — after the Three.js scene/material setup. Under heavier
+  // renderers (e.g. three r184) that init can take long enough on CI that a
+  // keyboard.press fired immediately after gotoGame would be delivered
+  // before the listener exists, leaving the game stuck on the title prompt.
+  // Waiting for window.__test to exist (set just before the listeners are
+  // attached, with no async break in between) closes that race window.
+  await page.waitForFunction(() => !!(window as any).__test, null, { timeout: 15_000 });
 }
 
 /**
