@@ -12,7 +12,6 @@ import { createComboCounter } from './combo';
 import { createEatenColorsQueue } from './eatenColors';
 import { createEasterEggs, showEffect, showMessage } from './effects/easterEggs';
 import { createBoostTimer } from './game/boost';
-import { isProjectileDead, projectileHits, stepProjectile } from './game/projectiles';
 import { eatScore, findFreeCell, isCellOccupied, wrapPosition } from './gameRules';
 import { createHeartMatcher, HEART_SEQUENCE } from './heartSequence';
 import { installTestApi } from './testApi';
@@ -34,6 +33,7 @@ import { buildGrass } from './scene/grass';
 import { createMeshFactories } from './scene/meshFactories';
 import { buildPond } from './scene/pond';
 import { buildWater } from './scene/water';
+import { createSceneSync } from './scene/sync';
 import { createHiScoreStorage } from './storage';
 
 // ============ AUDIO ENGINE (extracted to src/audio/AudioEngine.ts) ============
@@ -792,567 +792,75 @@ function updateUI() {
     }
 }
 
-// ============ 3D SCENE SYNC ============
-function updateGoldenProjectiles() {
-    for (let i = goldenProjectiles.length - 1; i >= 0; i--) {
-        const p = goldenProjectiles[i];
-        stepProjectile(p);
-        if (p.mesh) {
-            p.mesh.position.set(p.x, 0.5, p.z);
-            p.mesh.rotation.y += 0.2;
-        }
-        if (p.light) p.light.position.set(p.x, 0.5, p.z);
-        for (let j = beans.length - 1; j >= 0; j--) {
-            const b = beans[j];
-            if (projectileHits(p, b.x, b.y, CELL)) {
-                goldBeans.push({ x: b.x, y: b.y, life: 300 });
-                beans.splice(j, 1);
-                if (beanMeshes[j]) {
-                    scene.remove(beanMeshes[j]);
-                    beanMeshes.splice(j, 1);
-                }
-                spawnBean();
-                spawnParticles3D(b.x * CELL, b.y * CELL, 0xffd700, 8);
-                audio.play('gold');
-            }
-        }
-        for (let j = shedSkin.length - 1; j >= 0; j--) {
-            const s = shedSkin[j];
-            if (projectileHits(p, s.x, s.y, CELL)) {
-                goldBeans.push({ x: s.x, y: s.y, life: 300 });
-                shedSkin.splice(j, 1);
-                spawnParticles3D(s.x * CELL, s.y * CELL, 0xffd700, 10);
-                audio.play('gold');
-            }
-        }
-        if (isProjectileDead(p, COLS, ROWS, CELL)) {
-            if (p.mesh) scene.remove(p.mesh);
-            releaseGoldenProjLight(p.light);
-            goldenProjectiles.splice(i, 1);
-        }
-    }
-}
-
-function syncScene(time) {
-    // Instructions show whenever paused/game-over; the big restart
-    // button only shows after a real game-over (not on the initial
-    // idle screen or a mid-run pause).
-    const showHints = paused || gameOver;
-    const instrEl = document.getElementById('instructions');
-    const btnRestartEl = document.getElementById('btn-restart');
-    if (instrEl) instrEl.classList.toggle('show', showHints);
-    if (btnRestartEl) {
-        btnRestartEl.classList.toggle('show', gameOver);
-        btnRestartEl.classList.toggle('gameover', gameOver);
-        // Anchor the button just below the game-over message so it
-        // visually replaces the old "↵ 重新开始" hint line.
-        if (gameOver) {
-            const msgEl = document.getElementById('message');
-            if (msgEl) {
-                const r = msgEl.getBoundingClientRect();
-                if (r.height > 0) {
-                    btnRestartEl.style.top = r.bottom + 16 + 'px';
-                    btnRestartEl.style.transform = 'translate(-50%, 0)';
-                }
-            }
-        }
-    }
-    // Tick boost countdown every frame for smooth display
-    if (boost.active) {
-        const boostEl = document.getElementById('boost-timer');
-        const remain = boost.remaining(performance.now()) / 1000;
-        boostEl.style.display = '';
-        boostEl.textContent = `🔥 ×${boost.multiplier}  ${remain.toFixed(1)}s`;
-    }
-    // Sync snake meshes
-    while (snakeMeshes.length < snake.length) {
-        snakeMeshes.push(createSnakeSegment(snakeMeshes.length === 0));
-    }
-    while (snakeMeshes.length > snake.length) {
-        const m = snakeMeshes.pop();
-        scene.remove(m);
-    }
-    // Smooth interpolation factor based on game tick progress
-    const lerpFactor = Math.min(1, gameAccumulator / speed);
-    snake.forEach((seg, i) => {
-        const mesh = snakeMeshes[i];
-        // Interpolate between previous and current positions
-        let fromX, fromZ;
-        if (prevSnake.length > i) {
-            fromX = prevSnake[i].x * CELL;
-            fromZ = prevSnake[i].y * CELL;
-        } else {
-            fromX = seg.x * CELL;
-            fromZ = seg.y * CELL;
-        }
-        const toX = seg.x * CELL;
-        const toZ = seg.y * CELL;
-        // Handle wrapping (don't lerp across the whole map)
-        let dx = toX - fromX;
-        let dz = toZ - fromZ;
-        if (Math.abs(dx) > (COLS * CELL) / 2) dx = 0;
-        if (Math.abs(dz) > (ROWS * CELL) / 2) dz = 0;
-        mesh.position.x = fromX + dx * lerpFactor;
-        mesh.position.z = fromZ + dz * lerpFactor;
-        mesh.position.y = 0.4 + Math.sin(time * 0.003 + i * 0.5) * 0.05;
-        if (i === 0) {
-            // Rotate head to face direction
-            const angle = Math.atan2(direction.x, direction.y);
-            mesh.rotation.y = angle;
-
-            // Eye tracking: find nearest bean and aim pupils
-            const ud = mesh.userData;
-            if (ud.pupilRefs) {
-                let nx = 0,
-                    nz = 1,
-                    found = false;
-                let bestD = Infinity;
-                const hx = mesh.position.x,
-                    hz = mesh.position.z;
-                for (const b of beans) {
-                    const ddx = b.x * CELL - hx,
-                        ddz = b.y * CELL - hz;
-                    const d = ddx * ddx + ddz * ddz;
-                    if (d < bestD) {
-                        bestD = d;
-                        nx = ddx;
-                        nz = ddz;
-                        found = true;
-                    }
-                }
-                const eyeR = ud.eyeRadius;
-                let lx = 0,
-                    lz = 1;
-                if (found) {
-                    // transform world dir to head-local (inverse rotation.y)
-                    const ca = Math.cos(-angle),
-                        sa = Math.sin(-angle);
-                    const tlx = nx * ca - nz * sa;
-                    const tlz = nx * sa + nz * ca;
-                    const len = Math.hypot(tlx, tlz) || 1;
-                    lx = tlx / len;
-                    lz = tlz / len;
-                }
-                // Smooth pupil direction to avoid snapping when target bean changes
-                if (ud.gazeX === undefined) {
-                    ud.gazeX = lx;
-                    ud.gazeZ = lz;
-                }
-                const smooth = 0.12;
-                ud.gazeX += (lx - ud.gazeX) * smooth;
-                ud.gazeZ += (lz - ud.gazeZ) * smooth;
-                // Renormalize so pupil stays on a circle (no shrinking during lerp)
-                const gLen = Math.hypot(ud.gazeX, ud.gazeZ) || 1;
-                const gx = ud.gazeX / gLen,
-                    gz = ud.gazeZ / gLen;
-                // Place pupil on upper hemisphere toward bean
-                const off = eyeR * 0.5;
-                const py = eyeR * 0.62;
-                ud.pupilRefs.forEach((r) => {
-                    r.pupil.position.set(gx * off, py, gz * off);
-                    r.hl.position.set(gx * off - 0.03, py + 0.04, gz * off + 0.05);
-                });
-
-                // Blink: squash eye whites on Y for ~120ms periodically
-                ud.blinkTimer -= 16;
-                if (ud.blinkTimer <= 0) {
-                    ud.blinkPhase = 1;
-                    ud.blinkTimer = 2500 + Math.random() * 2500;
-                }
-                if (ud.blinkPhase > 0) {
-                    ud.blinkPhase -= 0.12;
-                    if (ud.blinkPhase < 0) ud.blinkPhase = 0;
-                    const sq = 1 - Math.sin(Math.max(0, ud.blinkPhase) * Math.PI) * 0.92;
-                    ud.eyeRefs.forEach((e) => {
-                        e.scale.y = sq;
-                    });
-                    const dead = ud.deadRefs && ud.deadRefs[0] && ud.deadRefs[0].deadX.visible;
-                    if (!dead) {
-                        ud.pupilRefs.forEach((r) => {
-                            r.pupil.visible = sq > 0.4;
-                            r.hl.visible = sq > 0.4;
-                        });
-                    }
-                } else {
-                    ud.eyeRefs.forEach((e) => {
-                        e.scale.y = 1;
-                    });
-                }
-
-                // Eat animation: mouth stays open during the toss arc
-                // (handTimer), then "chews" with rapid open/close pulses.
-                const tossingNow = ud.handTimer > 0;
-                const chewingNow = ud.chewTimer > 0;
-                if (tossingNow || chewingNow) {
-                    ud.smile.visible = false;
-                    ud.openMouth.visible = true;
-                    ud.tongue.visible = true;
-                    let mouthScale;
-                    if (tossingNow) {
-                        // Open wide in anticipation; peak as bean arrives
-                        const p = 1 - ud.handTimer / ud.handTimerMax;
-                        mouthScale = 0.7 + p * 0.6;
-                    } else {
-                        // Chew pulses: 4 quick open/close cycles
-                        const cp = 1 - ud.chewTimer / ud.chewTimerMax;
-                        mouthScale = 0.5 + Math.abs(Math.sin(cp * Math.PI * 4)) * 0.7;
-                    }
-                    ud.openMouth.scale.set(mouthScale, mouthScale, 1);
-                    ud.tongue.scale.set(mouthScale, mouthScale, 1);
-                    // Decay chew timer (handTimer decays in the hand block below)
-                    if (chewingNow) ud.chewTimer -= 16;
-                    // Keep legacy eatTimer in sync so other systems still see it
-                    ud.eatTimer = tossingNow ? ud.handTimer : ud.chewTimer;
-                } else {
-                    ud.smile.visible = true;
-                    ud.openMouth.visible = false;
-                    ud.tongue.visible = false;
-                    ud.eatTimer = 0;
-                }
-                // Head bob during chew for an obvious "munching" motion
-                if (chewingNow) {
-                    const cp = 1 - ud.chewTimer / ud.chewTimerMax;
-                    const bob = Math.abs(Math.sin(cp * Math.PI * 4)) * 0.12;
-                    mesh.position.y = bob; // head pops down with each chomp
-                    mesh.scale.set(1 + bob * 0.4, 1 - bob * 0.5, 1 + bob * 0.4);
-                } else if (!tossingNow) {
-                    mesh.position.y = 0;
-                    mesh.scale.set(1, 1, 1);
-                }
-                // Hand animation: alternating "swim/paddle" stroke while
-                // moving, with one hand performing a bigger toss arc
-                // during the eat window.
-                if (ud.handRefs) {
-                    const swimPhase = time * 0.005;
-                    const tossing = ud.handTimer > 0;
-                    let p = 0,
-                        swing = 0;
-                    if (tossing) {
-                        ud.handTimer -= 16;
-                        p = 1 - ud.handTimer / ud.handTimerMax;
-                        swing = Math.sin(p * Math.PI);
-                    }
-                    const throwSide = ud.handThrowSide;
-                    for (const h of ud.handRefs) {
-                        // Base alternating paddle: each hand 180° out of phase
-                        const phase = swimPhase + (h.side > 0 ? 0 : Math.PI);
-                        const paddle = Math.sin(phase) * 0.45;
-                        let rx = h.baseRotX - paddle;
-                        let rz = h.baseRotZ + Math.cos(phase) * 0.12;
-                        if (tossing && h.side === throwSide) {
-                            // Override with bigger toss arc on the throwing hand
-                            rx = h.baseRotX - swing * 1.9;
-                            rz = h.baseRotZ - h.side * swing * 0.95;
-                        } else if (tossing) {
-                            // Other hand: small celebratory bob on top of paddle
-                            rx -= swing * 0.25;
-                        }
-                        h.root.rotation.x = rx;
-                        h.root.rotation.z = rz;
-                    }
-                    // Animate the tossed bean: arc from hand to mouth, then hide
-                    // and start the chew phase.
-                    if (ud.tossBean && ud.tossBean.visible) {
-                        if (ud.handTimer > 0) {
-                            const tp = p; // 0 -> 1
-                            const from = ud.tossFrom,
-                                to = ud.tossTo;
-                            ud.tossBean.position.x = from.x + (to.x - from.x) * tp;
-                            ud.tossBean.position.z = from.z + (to.z - from.z) * tp;
-                            // Higher parabolic arc up then down into the mouth
-                            const baseY = from.y + (to.y - from.y) * tp;
-                            ud.tossBean.position.y = baseY + Math.sin(tp * Math.PI) * 1.3;
-                            ud.tossBean.rotation.x += 0.22;
-                            ud.tossBean.rotation.y += 0.28;
-                            const s = 1 - tp * 0.4;
-                            ud.tossBean.scale.setScalar(s);
-                        } else {
-                            ud.tossBean.visible = false;
-                            ud.tossBean.scale.setScalar(1);
-                            // Bean has entered the mouth: start chewing
-                            ud.chewTimer = ud.chewTimerMax;
-                        }
-                    }
-                }
-            }
-        }
-        // Body segments - color = eaten bean colors (newest at body[1])
-        if (i > 0) {
-            if (godMode) {
-                const hue = (time * 0.0008 + i * 0.08) % 1;
-                const col = new THREE.Color().setHSL(hue, 1, 0.55);
-                mesh.material.color.copy(col);
-                mesh.material.opacity = 0.92;
-                mesh.material.transmission = 0.08;
-            } else if (boost.active) {
-                const flicker = 0.7 + Math.sin(time * 0.02 + i) * 0.3;
-                mesh.material.color.setRGB(1.0 * flicker, 0.3, 0.1);
-                mesh.material.opacity = 0.8;
-                mesh.material.transmission = 0.1;
-            } else {
-                const cIdx = eatenColors.colorAt(i - 1);
-                if (cIdx != null) {
-                    mesh.material.color.setHex(COLORS_HEX[cIdx]);
-                    mesh.material.opacity = 0.88;
-                    mesh.material.transmission = 0.15;
-                } else {
-                    mesh.material.color.setRGB(0.85, 0.85, 0.78);
-                    mesh.material.opacity = 0.75;
-                    mesh.material.transmission = 0.2;
-                }
-            }
-            mesh.scale.setScalar(1.0);
-        } else if (i === 0 && boost.active) {
-            mesh.material.color.setRGB(1.0, 0.4, 0.1);
-            mesh.material.opacity = 0.9;
-        } else if (i === 0) {
-            mesh.material.color.setRGB(0.93, 0.93, 0.88);
-            mesh.material.opacity = 0.9;
-        }
-    });
-
-    // Sync bean meshes
-    while (beanMeshes.length < beans.length) {
-        beanMeshes.push(createBeanMesh(0));
-    }
-    while (beanMeshes.length > beans.length) {
-        const m = beanMeshes.pop();
-        scene.remove(m);
-    }
-    beans.forEach((bean, i) => {
-        const mesh = beanMeshes[i];
-        // Drop-from-sky easing
-        if (mesh.userData.dropPhase > 0) {
-            mesh.userData.dropPhase = Math.max(0, mesh.userData.dropPhase - 0.035);
-            if (mesh.userData.dropPhase === 0) {
-                mesh.userData.dropBounce = 1.0;
-                audio.play('plop');
-                spawnRipple(bean.x * CELL, bean.y * CELL);
-            }
-        } else if (mesh.userData.dropBounce > 0) {
-            mesh.userData.dropBounce = Math.max(0, mesh.userData.dropBounce - 0.06);
-        }
-        const dp = mesh.userData.dropPhase;
-        const dropY = dp * dp * 22; // ease-in fall
-        const restY = 0.4 + Math.sin(time * 0.004 + bean.x + bean.y) * 0.15;
-        mesh.position.set(bean.x * CELL, restY + dropY, bean.y * CELL);
-        // Squash on landing
-        const b = mesh.userData.dropBounce;
-        mesh.scale.set(1 + b * 0.4, 1 - b * 0.5, 1 + b * 0.4);
-        mesh.rotation.y = time * 0.002;
-        mesh.material.color.setHex(COLORS_HEX[bean.color]);
-        mesh.material.emissive.setHex(COLORS_HEX[bean.color]);
-        mesh.material.emissiveIntensity = 0.55 + Math.sin(time * 0.005 + i) * 0.2;
-        if (mesh.userData.halo) {
-            mesh.userData.halo.material.color.setHex(COLORS_HEX[bean.color]);
-            const haloFade = dp > 0 ? 1 - dp : 1;
-            mesh.userData.halo.material.opacity = (0.5 + Math.sin(time * 0.004 + i) * 0.15) * haloFade;
-        }
-    });
-
-    // Sync gold beans
-    while (goldMeshes.length < goldBeans.length) {
-        goldMeshes.push(createGoldMesh());
-    }
-    while (goldMeshes.length > goldBeans.length) {
-        const m = goldMeshes.pop();
-        scene.remove(m);
-    }
-    goldBeans.forEach((bean, i) => {
-        const mesh = goldMeshes[i];
-        if (mesh.userData.dropPhase > 0) {
-            mesh.userData.dropPhase = Math.max(0, mesh.userData.dropPhase - 0.035);
-            if (mesh.userData.dropPhase === 0) {
-                mesh.userData.dropBounce = 1.0;
-                audio.play('plop');
-                spawnRipple(bean.x * CELL, bean.y * CELL);
-            }
-        } else if (mesh.userData.dropBounce > 0) {
-            mesh.userData.dropBounce = Math.max(0, mesh.userData.dropBounce - 0.06);
-        }
-        const dp = mesh.userData.dropPhase;
-        const dropY = dp * dp * 22;
-        const restY = 0.6 + Math.sin(time * 0.006 + i) * 0.2;
-        mesh.position.set(bean.x * CELL, restY + dropY, bean.y * CELL);
-        const b = mesh.userData.dropBounce;
-        mesh.scale.set(1 + b * 0.4, 1 - b * 0.5, 1 + b * 0.4);
-        mesh.rotation.x = time * 0.003;
-        mesh.rotation.y = time * 0.005;
-    });
-
-    // Sync shed skin
-    while (skinMeshes.length < shedSkin.length) {
-        skinMeshes.push(createSkinMesh());
-    }
-    while (skinMeshes.length > shedSkin.length) {
-        const m = skinMeshes.pop();
-        scene.remove(m);
-    }
-    shedSkin.forEach((skin, i) => {
-        const mesh = skinMeshes[i];
-        mesh.position.set(skin.x * CELL, 0.1, skin.y * CELL);
-        mesh.material.opacity = Math.min(0.7, skin.life / 100);
-    });
-
-    // Update particles
-    particles3D.forEach((p) => {
-        p.mesh.position.x += p.vx;
-        p.mesh.position.y += p.vy;
-        p.mesh.position.z += p.vz;
-        p.vy -= 0.003;
-        p.life--;
-        p.mesh.material.opacity = p.life / 60;
-        p.mesh.scale.setScalar(p.life / 60);
-    });
-    particles3D = particles3D.filter((p) => {
-        if (p.life <= 0) {
-            scene.remove(p.mesh);
-            return false;
-        }
-        return true;
-    });
-
-    // Update rain
-    rain3D.forEach((r) => {
-        r.mesh.position.y -= r.speed;
-        r.life--;
-        r.mesh.material.opacity = Math.min(0.7, r.life / 60);
-    });
-    rain3D = rain3D.filter((r) => {
-        if (r.life <= 0 || r.mesh.position.y < -1) {
-            scene.remove(r.mesh);
-            return false;
-        }
-        return true;
-    });
-
-    // Update golden projectiles
-    updateGoldenProjectiles();
-
-    // Update falling beans
-    for (let i = fallingBeans.length - 1; i >= 0; i--) {
-        const fb = fallingBeans[i];
-        fb.vy += fb.gravity;
-        fb.mesh.position.y -= fb.vy;
-        fb.mesh.rotation.y += 0.05;
-        // Landed
-        if (fb.mesh.position.y <= 0.4) {
-            fb.mesh.position.y = 0.4;
-            scene.remove(fb.mesh);
-            // Add the bean to the game
-            if (!isOccupied(fb.targetX, fb.targetY)) {
-                beans.push({ x: fb.targetX, y: fb.targetY, color: fb.color });
-            } else {
-                // Find nearby spot
-                spawnBean();
-            }
-            spawnParticles3D(fb.targetX * CELL, fb.targetY * CELL, COLORS_HEX[fb.color], 6);
-            spawnRipple(fb.targetX * CELL, fb.targetY * CELL);
-            fallingBeans.splice(i, 1);
-        }
-    }
-
-    // Animate bubbles/particles
-    bubbles.forEach((b) => {
-        b.position.y += b.userData.speed;
-        b.position.x += Math.sin(time * 0.001 + b.userData.phase) * 0.004;
-        if (b.position.y > 5.5) {
-            b.position.y = -0.2;
-            b.position.x = (Math.random() - 0.5) * COLS * CELL * 1.4 + (COLS * CELL) / 2;
-            b.position.z = (Math.random() - 0.5) * ROWS * CELL * 1.4 + (ROWS * CELL) / 2;
-        }
-    });
-
-    // Animate god-ray shafts — slow drift + opacity shimmer
-    shafts.forEach((s) => {
-        s.userData.driftPhase += s.userData.driftSpeed;
-        s.position.x = s.userData.baseX + Math.sin(s.userData.driftPhase) * 1.5;
-        s.position.z = s.userData.baseZ + Math.cos(s.userData.driftPhase * 0.7) * 1.5;
-        (s.material as THREE.Material & { opacity: number }).opacity =
-            s.userData.baseOpacity * (0.7 + Math.sin(time * 0.0008 + s.userData.driftPhase) * 0.3);
-    });
-
-    // Animate caustics — scroll opposite directions
-    causticsTex.offset.x = (time * 0.00003) % 1;
-    causticsTex.offset.y = (time * 0.00002) % 1;
-    causticsTex2.offset.x = (-time * 0.00004) % 1;
-    causticsTex2.offset.y = (time * 0.000035) % 1;
-    (causticsMesh.material as THREE.Material & { opacity: number }).opacity = 0.4 + Math.sin(time * 0.0012) * 0.08;
-
-    // Animate water surface waves
-    const wpos = waterGeom.attributes.position;
-    for (let i = 0; i < wpos.count; i++) {
-        const bx = waterBasePositions[i * 3],
-            by = waterBasePositions[i * 3 + 1];
-        const z = Math.sin(bx * 0.4 + time * 0.002) * 0.15 + Math.cos(by * 0.3 + time * 0.0017) * 0.12;
-        wpos.array[i * 3 + 2] = z;
-    }
-    wpos.needsUpdate = true;
-
-    // Animate grass tufts — ambient sway + react to snake head proximity
-    const headMesh = snakeMeshes[0];
-    const hx = headMesh ? headMesh.position.x : -999;
-    const hz = headMesh ? headMesh.position.z : -999;
-    grassTufts.forEach((t) => {
-        const swayBase = Math.sin(time * t.freq + t.phase) * 0.08;
-        const dx = t.baseX - hx;
-        const dz = t.baseZ - hz;
-        const dist = Math.hypot(dx, dz);
-        // Within ~2.5 cells, push grass outward from snake (radial bend)
-        let reactX = 0,
-            reactZ = 0,
-            pulse = 0;
-        if (dist < 3.5) {
-            const k = 1 - dist / 3.5;
-            pulse = k * 0.18;
-            const len = dist || 1;
-            reactX = (dx / len) * k * 0.25;
-            reactZ = (dz / len) * k * 0.25;
-        }
-        // Sway by adjusting position slightly (shake) and rotating tuft
-        t.mesh.position.x = t.baseX + Math.sin(time * 0.002 + t.phase) * 0.04 + reactX;
-        t.mesh.position.z = t.baseZ + Math.cos(time * 0.0017 + t.phase) * 0.04 + reactZ;
-        t.mesh.rotation.z = t.baseRot + swayBase + pulse * Math.sign(Math.sin(t.phase));
-        const s = t.baseScale * (1 + Math.sin(time * 0.003 + t.phase) * 0.05 + pulse * 0.5);
-        t.mesh.scale.set(s, s, 1);
-    });
-
-    // Update water ripples — ease-out expansion, soft fade
-    for (let i = rippleRings.length - 1; i >= 0; i--) {
-        const r = rippleRings[i];
-        if (r.delay > 0) {
-            r.delay--;
-            continue;
-        }
-        r.life--;
-        const t = 1 - r.life / r.maxLife; // 0..1
-        const eased = 1 - Math.pow(1 - t, 2); // ease-out quad
-        const scale = r.startScale + (r.endScale - r.startScale) * eased;
-        r.mesh.scale.set(scale, scale, 1);
-        // Fade in fast at start, fade out slow at end
-        const fadeIn = Math.min(1, t * 4);
-        const fadeOut = Math.max(0, 1 - t);
-        (r.mesh.material as THREE.Material & { opacity: number }).opacity = 0.28 * fadeIn * fadeOut;
-        if (r.life <= 0) {
-            scene.remove(r.mesh);
-            (r.mesh.material as THREE.Material).dispose();
-            rippleRings.splice(i, 1);
-        }
-    }
-
-    // Camera fixed top-down (auto-fit to viewport / aspect)
-    fitCameraToPond();
-}
-
-// ============ GAME LOOP ============
+// ============ 3D SCENE SYNC (extracted to src/scene/sync.ts) ============
+// Per-frame interpolation timer state — declared up here so the deps bag
+// passed to createSceneSync can read them via getters before mainLoop has
+// run for the first time.
 let lastGameTime = performance.now();
 let gameAccumulator = 0;
-// Store previous snake positions for smooth interpolation
-let prevSnake = [];
-// Timer — tracks accumulated unpaused playtime so pausing/idle don't bleed
-// into the displayed elapsed time.
+let prevSnake: typeof snake = [];
 let accumulatedPlayMs = 0;
 let elapsedSeconds = 0;
+
+const sceneSync = createSceneSync({
+    scene,
+    camera,
+    audio,
+    getSnakeMeshes: () => snakeMeshes,
+    getBeanMeshes: () => beanMeshes,
+    getGoldMeshes: () => goldMeshes,
+    getSkinMeshes: () => skinMeshes,
+    getParticles3D: () => particles3D,
+    setParticles3D: (p) => {
+        particles3D = p;
+    },
+    getRain3D: () => rain3D,
+    setRain3D: (r) => {
+        rain3D = r;
+    },
+    getFallingBeans: () => fallingBeans,
+    causticsTex,
+    causticsTex2,
+    causticsMesh,
+    waterGeom,
+    waterBasePositions,
+    rippleRings,
+    bubbles,
+    shafts,
+    grassTufts,
+    getSnake: () => snake,
+    getBeans: () => beans,
+    getGoldBeans: () => goldBeans,
+    getShedSkin: () => shedSkin,
+    getGoldenProjectiles: () => goldenProjectiles,
+    getPrevSnake: () => prevSnake,
+    getDirection: () => direction,
+    getGodMode: () => godMode,
+    getPaused: () => paused,
+    getGameOver: () => gameOver,
+    getSpeed: () => speed,
+    getGameAccumulator: () => gameAccumulator,
+    boost,
+    eatenColors,
+    spawnBean,
+    spawnParticles3D,
+    spawnRipple,
+    isOccupied,
+    releaseGoldenProjLight,
+    fitCameraToPond,
+    createSnakeSegment,
+    createBeanMesh,
+    createGoldMesh,
+    createSkinMesh,
+    COLORS_HEX,
+    COLS,
+    ROWS,
+    CELL,
+});
+const updateGoldenProjectiles = sceneSync.updateGoldenProjectiles;
+const syncScene = sceneSync.syncFrame;
+
+// ============ GAME LOOP ============
 
 function mainLoop(timestamp) {
     const delta = timestamp - lastGameTime;
