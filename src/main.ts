@@ -10,6 +10,7 @@ import { installAudioBootstrap } from './bootstrap/audio';
 import { detectFastBoot, installLoadingScreen } from './bootstrap/loadingScreen';
 import { createComboCounter } from './combo';
 import { createEatenColorsQueue } from './eatenColors';
+import { createEasterEggs, showEffect, showMessage } from './effects/easterEggs';
 import { createBoostTimer } from './game/boost';
 import { isProjectileDead, projectileHits, stepProjectile } from './game/projectiles';
 import { eatScore, findFreeCell, isCellOccupied, wrapPosition } from './gameRules';
@@ -166,8 +167,7 @@ function saveHiScore() {
 const isLocalhost = ['localhost', '127.0.0.1', '::1', ''].includes(location.hostname);
 let devtoolsOpen = isLocalhost; // on localhost: backdoor enabled by default
 let godMode = false; // Konami: rainbow + invincible + 10x score
-let tributeActive = false; // Heart pattern: tribute screen + TV static
-let tributeTriggeredThisLoad = false; // Once per page load only
+const tributeState = { tributeActive: false, tributeTriggeredThisLoad: false };
 const konamiMatcher = createKonamiMatcher();
 let typedBuf = '';
 const heartMatcher = createHeartMatcher(HEART_SEQUENCE);
@@ -755,94 +755,25 @@ function triggerMagic(colorIdx) {
     }
 }
 
-function showEffect(text) {
-    const el = document.getElementById('effect-text')!;
-    el.textContent = text;
-    el.style.opacity = '1';
-    setTimeout(() => {
-        el.style.opacity = '0';
-    }, 2000);
-}
-
-// ============ EASTER EGG EFFECTS ============
+// ============ EASTER EGG EFFECTS (extracted to src/effects/easterEggs.ts) ============
+const easterEggs = createEasterEggs({
+    audio,
+    t,
+    THREE,
+    getSnake: () => snake,
+    cell: CELL,
+    cols: COLS,
+    rows: ROWS,
+    colorsHexCount: COLORS_HEX.length,
+    spawnParticles3D,
+    spawnFallingBean,
+});
 function activateGodMode() {
-    if (godMode) return;
-    godMode = true;
-    showEffect(t('fx.godmode'));
-    audio.play('magic_orange');
-    // sparkle
-    if (snake && snake[0]) {
-        for (let k = 0; k < 5; k++) {
-            const hue = (k * 72) % 360;
-            const col = new THREE.Color().setHSL(hue / 360, 1, 0.5).getHex();
-            spawnParticles3D(snake[0].x * CELL, snake[0].y * CELL, col, 20);
-        }
-    }
+    godMode = easterEggs.activateGodMode(godMode);
 }
-function spawnMeteorShower() {
-    showEffect(t('fx.meteor'));
-    audio.play('magic_blue');
-    for (let i = 0; i < 30; i++) {
-        const x = Math.floor(Math.random() * COLS);
-        const y = Math.floor(Math.random() * ROWS);
-        const c = Math.floor(Math.random() * COLORS_HEX.length);
-        // stagger drops for waterfall feel
-        setTimeout(() => spawnFallingBean(x, y, c), i * 60);
-    }
-}
+const spawnMeteorShower = easterEggs.spawnMeteorShower;
 function activateTribute() {
-    if (tributeActive || tributeTriggeredThisLoad) return;
-    tributeTriggeredThisLoad = true;
-    tributeActive = true;
-    audio.play('magic_orange');
-    // Create overlay: TV static + scrolling subtitle
-    const wrap = document.createElement('div');
-    wrap.id = 'tribute-overlay';
-    wrap.style.cssText =
-        'position:fixed;inset:0;z-index:9999;pointer-events:none;overflow:hidden;background:radial-gradient(ellipse at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.85) 100%);';
-    // TV static canvas
-    const canvas = document.createElement('canvas');
-    canvas.width = 320;
-    canvas.height = 180;
-    canvas.style.cssText =
-        'position:absolute;inset:0;width:100%;height:100%;opacity:0.35;mix-blend-mode:screen;image-rendering:pixelated;';
-    wrap.appendChild(canvas);
-    const ctx = canvas.getContext('2d');
-    const staticTimer = setInterval(() => {
-        const img = ctx.createImageData(canvas.width, canvas.height);
-        for (let i = 0; i < img.data.length; i += 4) {
-            const v = (Math.random() * 255) | 0;
-            img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
-            img.data[i + 3] = 255;
-        }
-        ctx.putImageData(img, 0, 0);
-    }, 60);
-    wrap.dataset.staticTimer = String(staticTimer);
-    // Scrolling subtitle
-    const subtitle = document.createElement('div');
-    subtitle.style.cssText =
-        'position:absolute;left:100%;top:50%;transform:translateY(-50%);white-space:nowrap;font-size:56px;font-weight:bold;color:#fff;text-shadow:0 0 18px #ff66aa, 0 0 4px #000;font-family:inherit;letter-spacing:6px;transition:left 5s linear;';
-    subtitle.textContent = t('subtitle');
-    wrap.appendChild(subtitle);
-    document.body.appendChild(wrap);
-    requestAnimationFrame(() => {
-        subtitle.style.left = '-100%';
-    });
-    setTimeout(() => {
-        clearInterval(staticTimer);
-        wrap.style.transition = 'opacity 0.6s';
-        wrap.style.opacity = '0';
-        setTimeout(() => {
-            wrap.remove();
-            tributeActive = false;
-        }, 700);
-    }, 5000);
-}
-
-function showMessage(text) {
-    const el = document.getElementById('message');
-    el.textContent = text;
-    el.style.display = text ? 'block' : 'none';
+    easterEggs.activateTribute(tributeState);
 }
 
 function updateUI() {
@@ -1999,9 +1930,9 @@ window.__test = {
             if (t) clearInterval(t);
             el.remove();
         }
-        tributeActive = false;
+        tributeState.tributeActive = false;
     },
-    tributeTriggered: () => tributeTriggeredThisLoad,
+    tributeTriggered: () => tributeState.tributeTriggeredThisLoad,
     callActivateTribute: () => {
         activateTribute();
     },
