@@ -726,30 +726,27 @@
     })();
     const rippleQuadGeom = new THREE.PlaneGeometry(1, 1);
     function spawnRipple(x, z) {
-        // Single ripple quad per drop — kept as a loop in case we want layered waves later.
-        for (let k = 0; k < 1; k++) {
-            const mat = new THREE.MeshBasicMaterial({
-                map: rippleTex,
-                color: 0xbfe6ff,
-                transparent: true,
-                opacity: 0,
-                depthWrite: false,
-                blending: THREE.AdditiveBlending,
-                side: THREE.DoubleSide,
-            });
-            const mesh = new THREE.Mesh(rippleQuadGeom, mat);
-            mesh.rotation.x = -Math.PI / 2;
-            mesh.position.set(x, 0.04 + k * 0.01, z);
-            const initScale = 0.4 + k * 0.15;
-            mesh.scale.set(initScale, initScale, 1);
-            scene.add(mesh);
-            rippleRings.push({
-                mesh, life: 55, maxLife: 55,
-                startScale: initScale,
-                endScale: 3.2 + k * 0.8,
-                delay: k * 4,
-            });
-        }
+        const mat = new THREE.MeshBasicMaterial({
+            map: rippleTex,
+            color: 0xbfe6ff,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+        });
+        const mesh = new THREE.Mesh(rippleQuadGeom, mat);
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.set(x, 0.04, z);
+        const initScale = 0.4;
+        mesh.scale.set(initScale, initScale, 1);
+        scene.add(mesh);
+        rippleRings.push({
+            mesh, life: 55, maxLife: 55,
+            startScale: initScale,
+            endScale: 3.2,
+            delay: 0,
+        });
     }
 
     // Subtle floating particles (spores/debris) — more density for underwater feel
@@ -2441,7 +2438,10 @@
             try { gameUpdate(); } finally { paused = wasPaused; }
         },
         triggerMagic: (c) => { triggerMagic(c); },
-        stepProjectiles: (n) => { for (let i = 0; i < (n || 1); i++) updateGoldenProjectiles(); },
+        stepProjectiles: (n) => {
+            const steps = Math.max(0, Math.floor(Number(n)) || 0);
+            for (let i = 0; i < steps; i++) updateGoldenProjectiles();
+        },
         dismissTribute: () => {
             const el = document.getElementById('tribute-overlay');
             if (el) {

@@ -12,7 +12,16 @@
             this.rawBuffers = {};
             this.loopSources = {};
             this.masterGain = null;
-            this.muted = (typeof localStorage !== 'undefined' && localStorage.getItem('daidai_muted') === '1');
+            let mutedFromStorage = false;
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    mutedFromStorage = localStorage.getItem('daidai_muted') === '1';
+                }
+            } catch (_) {
+                // localStorage can throw SecurityError in sandboxed iframes / privacy modes.
+                // Default to unmuted when storage is unavailable.
+            }
+            this.muted = mutedFromStorage;
             this.files = {
                 eat: 'audio/eat.ogg',
                 die: 'audio/die.ogg',
@@ -80,8 +89,10 @@
             this._ensureCtx();
             this._preloading = (async () => {
                 const entries = Object.entries(this.files);
+                const failures = [];
                 await Promise.all(entries.map(async ([name, url]) => {
-                    await this._fetchOne(name, url);
+                    const ok = await this._fetchOne(name, url);
+                    if (!ok) failures.push(name);
                     this.loaded++;
                     if (this.onProgress) this.onProgress(this.loaded, this.total, name);
                 }));
@@ -92,6 +103,8 @@
                         }
                     });
                 }
+                this.failedAssets = failures;
+                return { loaded: this.loaded - failures.length, total: this.total, failed: failures };
             })();
             return this._preloading;
         }

@@ -7,7 +7,8 @@
     const COMBO_THRESHOLD = 5;
 
     function createComboCounter(threshold) {
-        const T = (threshold | 0) || COMBO_THRESHOLD;
+        const n = Number(threshold);
+        const T = Number.isFinite(n) && n >= 1 ? Math.floor(n) : COMBO_THRESHOLD;
         let color = -1;
         let count = 0;
         return {

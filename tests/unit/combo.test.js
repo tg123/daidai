@@ -57,4 +57,16 @@ describe('createComboCounter', () => {
     it('exposes COMBO_THRESHOLD = 5', () => {
         expect(COMBO_THRESHOLD).toBe(5);
     });
+    it('rejects non-positive / non-finite thresholds and falls back to default', () => {
+        for (const bad of [0, -1, -100, NaN, undefined, null, 'foo', Infinity, -Infinity]) {
+            const c = createComboCounter(bad);
+            // With a 5-eat fallback threshold, the first eat must NOT trigger.
+            expect(c.recordEat(1)).toBe(false);
+        }
+    });
+    it('floors fractional thresholds and never undershoots 1', () => {
+        const c = createComboCounter(2.9);
+        expect(c.recordEat(1)).toBe(false);
+        expect(c.recordEat(1)).toBe(true); // floor(2.9) = 2
+    });
 });

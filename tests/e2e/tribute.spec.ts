@@ -18,15 +18,13 @@ test.describe('heart easter egg', () => {
       t.callActivateTribute();
     });
     await expect(page.locator('#tribute-overlay')).toHaveCount(1);
-    // Remove overlay so the second invocation has nothing to coexist with.
+    // Remove overlay via the in-page test hook so app state (tributeActive)
+    // is cleaned up too. Directly removing the DOM node would leave the flag
+    // set and the second-invocation assertion would pass for the wrong reason.
     await page.evaluate(() => {
-      const el = document.getElementById('tribute-overlay');
-      if (el) {
-        const tid = Number((el as HTMLElement).dataset.staticTimer);
-        if (tid) clearInterval(tid);
-        el.remove();
-      }
-      (window as any).__test.callActivateTribute();
+      const t = (window as any).__test;
+      t.dismissTribute();
+      t.callActivateTribute();
     });
     await expect(page.locator('#tribute-overlay')).toHaveCount(0);
   });
