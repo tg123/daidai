@@ -186,8 +186,7 @@
     let godMode = false;          // Konami: rainbow + invincible + 10x score
     let tributeActive = false;    // Heart pattern: tribute screen + TV static
     let tributeTriggeredThisLoad = false; // Once per page load only
-    const konamiSeq = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
-    let konamiBuf = [];
+    const konamiMatcher = DAIDAI.createKonamiMatcher();
     let typedBuf = '';
     const heartMatcher = DAIDAI.createHeartMatcher(DAIDAI.HEART_SEQUENCE);
 
@@ -1195,7 +1194,7 @@
         isBoosted = false;
         boostMultiplier = 1;
         boostEndAt = 0;
-        konamiBuf = [];
+        konamiMatcher.reset();
         heartMatcher.reset();
         typedBuf = '';
         direction = { x: 1, y: 0 };
@@ -2113,11 +2112,7 @@
 
         // ----- Easter eggs (always-on capture) -----
         // 1) Konami code → 樊一鹏模式
-        konamiBuf.push(e.key);
-        if (konamiBuf.length > konamiSeq.length) konamiBuf.shift();
-        if (konamiBuf.length === konamiSeq.length &&
-            konamiBuf.every((k, i) => k.toLowerCase() === konamiSeq[i].toLowerCase())) {
-            konamiBuf = [];
+        if (konamiMatcher.push(e.key)) {
             activateGodMode();
         }
         // 2) Type "daidai" → meteor shower
