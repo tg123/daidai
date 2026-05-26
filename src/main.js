@@ -347,6 +347,7 @@
         camera.updateProjectionMatrix();
     }
     applyCanvasSize();
+    const BASE_FOG_DENSITY = 0.016;
     function fitCameraToPond() {
         const aspect = camera.aspect;
         const vFov = camera.fov * Math.PI / 180;
@@ -364,7 +365,7 @@
         camera.lookAt(cx, 0, cz);
         camera.updateProjectionMatrix();
         // Keep fog visual constant regardless of camera distance (portrait vs landscape)
-        if (scene.fog) scene.fog.density = 0.018 * (25 / dist);
+        if (scene.fog) scene.fog.density = BASE_FOG_DENSITY * (25 / dist);
     }
     fitCameraToPond();
 
@@ -390,7 +391,7 @@
     scene.add(fillLight);
 
     // Subtle aquatic tint and stronger underwater fog
-    scene.fog = new THREE.FogExp2(0x3d5520, 0.016);
+    scene.fog = new THREE.FogExp2(0x3d5520, BASE_FOG_DENSITY);
     scene.background = new THREE.Color(0x2a3818);
 
     // ============ POND (ORIGINAL STYLE - grass texture background) ============
