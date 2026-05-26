@@ -1191,9 +1191,7 @@
         ];
         eatenColors.reset();
         godMode = false;
-        isBoosted = false;
-        boostMultiplier = 1;
-        boostEndAt = 0;
+        boost.reset();
         konamiMatcher.reset();
         heartMatcher.reset();
         typedBuf = '';
@@ -1235,7 +1233,7 @@
         if (gameOver || paused) return;
 
         // Expire red boost
-        if (isBoosted && performance.now() >= boostEndAt) {
+        if (boost.isExpired(performance.now())) {
             endBoost();
         }
 
@@ -1313,7 +1311,7 @@
 
     function eatBean(bean) {
         beansEaten++;
-        const basePoints = DAIDAI.eatScore({ isRaining, isBoosted, boostMultiplier, godMode });
+        const basePoints = DAIDAI.eatScore({ isRaining, isBoosted: boost.active, boostMultiplier: boost.multiplier, godMode });
         score += basePoints;
         growthPending++;
         audio.play('eat');
@@ -1370,15 +1368,11 @@
         updateUI();
     }
 
-    let isBoosted = false; // Track speed boost state for visual
-    let boostMultiplier = 1;   // score multiplier from red combos (doubles each trigger)
-    let boostEndAt = 0;        // ms timestamp when boost should end
+    const boost = DAIDAI.createBoostTimer();
 
     function endBoost() {
-        if (!isBoosted) return;
-        isBoosted = false;
-        boostMultiplier = 1;
-        boostEndAt = 0;
+        if (!boost.active) return;
+        boost.reset();
         speed = baseSpeed;
         audio.play('speed_end');
         showEffect(t('fx.boostEnd'));
@@ -1390,13 +1384,11 @@
             case 0:
                 audio.play('magic_red');
                 speed = Math.max(50, baseSpeed - 50);
-                isBoosted = true;
-                boostMultiplier *= 2;          // stack: 2x, 4x, 8x ...
-                boostEndAt = performance.now() + 15000; // refresh 15s window
+                boost.trigger(performance.now(), 15000); // refresh 15s window, doubles multiplier
                 if (snake.length > 0) {
                     spawnParticles3D(snake[0].x * CELL, snake[0].y * CELL, 0xff4444, 15);
                 }
-                showEffect(t('fx.boost', { mult: boostMultiplier }));
+                showEffect(t('fx.boost', { mult: boost.multiplier }));
                 break;
             case 1:
                 audio.play('magic_blue');
@@ -1550,10 +1542,10 @@
             comboEl.innerHTML = '';
         }
         const boostEl = document.getElementById('boost-timer');
-        if (isBoosted) {
-            const remain = Math.max(0, (boostEndAt - performance.now()) / 1000);
+        if (boost.active) {
+            const remain = boost.remaining(performance.now()) / 1000;
             boostEl.style.display = '';
-            boostEl.textContent = `🔥 ×${boostMultiplier}  ${remain.toFixed(1)}s`;
+            boostEl.textContent = `🔥 ×${boost.multiplier}  ${remain.toFixed(1)}s`;
         } else {
             boostEl.style.display = 'none';
         }
@@ -1628,11 +1620,11 @@
             }
         }
         // Tick boost countdown every frame for smooth display
-        if (isBoosted) {
+        if (boost.active) {
             const boostEl = document.getElementById('boost-timer');
-            const remain = Math.max(0, (boostEndAt - performance.now()) / 1000);
+            const remain = boost.remaining(performance.now()) / 1000;
             boostEl.style.display = '';
-            boostEl.textContent = `🔥 ×${boostMultiplier}  ${remain.toFixed(1)}s`;
+            boostEl.textContent = `🔥 ×${boost.multiplier}  ${remain.toFixed(1)}s`;
         }
         // Sync snake meshes
         while (snakeMeshes.length < snake.length) {
@@ -1829,7 +1821,7 @@
                     mesh.material.color.copy(col);
                     mesh.material.opacity = 0.92;
                     mesh.material.transmission = 0.08;
-                } else if (isBoosted) {
+                } else if (boost.active) {
                     const flicker = 0.7 + Math.sin(time * 0.02 + i) * 0.3;
                     mesh.material.color.setRGB(1.0 * flicker, 0.3, 0.1);
                     mesh.material.opacity = 0.8;
@@ -1847,7 +1839,7 @@
                     }
                 }
                 mesh.scale.setScalar(1.0);
-            } else if (i === 0 && isBoosted) {
+            } else if (i === 0 && boost.active) {
                 mesh.material.color.setRGB(1.0, 0.4, 0.1);
                 mesh.material.opacity = 0.9;
             } else if (i === 0) {
@@ -2487,7 +2479,7 @@
             shedSkin: shedSkin.map(s => ({ x: s.x, y: s.y, life: s.life })),
             eatenColors: eatenColors.snapshot(),
             comboColor: combo.color, comboCount: combo.count,
-            isBoosted, boostMultiplier, isRaining,
+            isBoosted: boost.active, boostMultiplier: boost.multiplier, isRaining,
             growthPending, beansEaten,
             goldenProjectiles: goldenProjectiles.length,
             speed, baseSpeed,
