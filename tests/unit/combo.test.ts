@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/combo.js';
+import '../../src/combo.ts';
 
 const { createComboCounter, COMBO_THRESHOLD } = globalThis.DAIDAI;
 
