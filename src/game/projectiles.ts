@@ -11,46 +11,37 @@ export interface ProjectileState {
     life: number;
 }
 
-(function (g: any) {
-    'use strict';
+export function stepProjectile(p: ProjectileState): void {
+    p.x += p.dx;
+    p.z += p.dz;
+    p.life -= 1;
+}
 
-    function stepProjectile(p: ProjectileState): void {
-        p.x += p.dx;
-        p.z += p.dz;
-        p.life -= 1;
-    }
+export function isProjectileDead(
+    p: ProjectileState,
+    cols: number,
+    rows: number,
+    cell: number,
+    margin: number = 2,
+): boolean {
+    if (p.life <= 0) return true;
+    if (p.x < -margin) return true;
+    if (p.x > cols * cell + margin) return true;
+    if (p.z < -margin) return true;
+    if (p.z > rows * cell + margin) return true;
+    return false;
+}
 
-    function isProjectileDead(
-        p: ProjectileState,
-        cols: number,
-        rows: number,
-        cell: number,
-        margin: number = 2,
-    ): boolean {
-        if (p.life <= 0) return true;
-        if (p.x < -margin) return true;
-        if (p.x > cols * cell + margin) return true;
-        if (p.z < -margin) return true;
-        if (p.z > rows * cell + margin) return true;
-        return false;
-    }
-
-    function projectileHits(
-        p: ProjectileState,
-        targetCellX: number,
-        targetCellY: number,
-        cell: number,
-        radius: number = 0.8,
-    ): boolean {
-        const tx = targetCellX * cell;
-        const tz = targetCellY * cell;
-        const dx = p.x - tx;
-        const dz = p.z - tz;
-        return Math.sqrt(dx * dx + dz * dz) < radius;
-    }
-
-    g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.stepProjectile = stepProjectile;
-    g.DAIDAI.isProjectileDead = isProjectileDead;
-    g.DAIDAI.projectileHits = projectileHits;
-})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));
+export function projectileHits(
+    p: ProjectileState,
+    targetCellX: number,
+    targetCellY: number,
+    cell: number,
+    radius: number = 0.8,
+): boolean {
+    const tx = targetCellX * cell;
+    const tz = targetCellY * cell;
+    const dx = p.x - tx;
+    const dz = p.z - tz;
+    return Math.sqrt(dx * dx + dz * dz) < radius;
+}

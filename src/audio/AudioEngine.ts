@@ -1,10 +1,7 @@
 // AudioEngine: tiny Web Audio + decoded buffer cache, with iOS unlock helpers.
-// Exposed as DAIDAI.AudioEngine. Browser-only — Web Audio APIs are not stubbed
-// for Vitest, so no unit tests; the class is exercised by E2E.
-(function (g: any) {
-    'use strict';
-
-    class AudioEngine {
+// Browser-only — Web Audio APIs are not stubbed for Vitest, so no unit tests;
+// the class is exercised by E2E.
+export class AudioEngine {
         ctx: any;
         initialized: boolean;
         buffers: Record<string, AudioBuffer>;
@@ -262,6 +259,3 @@
         }
     }
 
-    g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.AudioEngine = AudioEngine;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));

@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/input/gamepad.ts';
-
-const { isPlayStationGamepadId, glyphForButton, detectConnectedGamepad, pickStartPromptKey } = globalThis.DAIDAI;
+import {
+    isPlayStationGamepadId,
+    glyphForButton,
+    detectConnectedGamepad,
+    pickStartPromptKey,
+} from '../../src/input/gamepad';
 
 describe('isPlayStationGamepadId', () => {
     it('returns false for nullish / non-string input', () => {

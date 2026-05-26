@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/input/direction.ts';
-
-const { keyToDirection, combineHeldDir, classifyDelta, isOppositeDir } = globalThis.DAIDAI;
+import { keyToDirection, combineHeldDir, classifyDelta, isOppositeDir } from '../../src/input/direction';
 
 describe('keyToDirection', () => {
     it('maps arrow keys', () => {

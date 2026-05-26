@@ -1,18 +1,9 @@
-// Global ambient declarations for the DAIDAI namespace and test hooks.
-// Modules attach helpers to `globalThis.DAIDAI`; the unit tests + main.js
-// read them off that object.
+// Ambient declarations for non-standard / test-only browser globals.
 
 export {};
 
 declare global {
-    interface DaidaiNamespace {
-        [key: string]: any;
-    }
-
-    var DAIDAI: DaidaiNamespace;
-
     interface Window {
-        DAIDAI: DaidaiNamespace;
         /** Set by Playwright via addInitScript to skip the loading screen. */
         __TEST_FAST_BOOT?: boolean;
         /** Webkit-prefixed AudioContext on older Safari. */

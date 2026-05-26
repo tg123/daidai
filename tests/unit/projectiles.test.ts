@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/game/projectiles.ts';
-
-const { stepProjectile, isProjectileDead, projectileHits } = globalThis.DAIDAI;
+import { stepProjectile, isProjectileDead, projectileHits } from '../../src/game/projectiles';
 
 const make = (over: Partial<{ x: number; z: number; dx: number; dz: number; life: number }> = {}) => ({
     x: 0,

@@ -9,40 +9,34 @@ export interface KonamiMatcher {
     readonly bufferLength: number;
 }
 
-(function (g: any) {
-    'use strict';
+import { createHeartMatcher } from './heartSequence';
 
-    const KONAMI_SEQUENCE: readonly string[] = [
-        'ArrowUp',
-        'ArrowUp',
-        'ArrowDown',
-        'ArrowDown',
-        'ArrowLeft',
-        'ArrowRight',
-        'ArrowLeft',
-        'ArrowRight',
-        'b',
-        'a',
-    ];
+export const KONAMI_SEQUENCE: readonly string[] = [
+    'ArrowUp',
+    'ArrowUp',
+    'ArrowDown',
+    'ArrowDown',
+    'ArrowLeft',
+    'ArrowRight',
+    'ArrowLeft',
+    'ArrowRight',
+    'b',
+    'a',
+];
 
-    function createKonamiMatcher(): KonamiMatcher {
-        const lowerSeq = KONAMI_SEQUENCE.map((k) => k.toLowerCase());
-        const inner = g.DAIDAI.createHeartMatcher(lowerSeq);
-        return {
-            push(key: string): boolean {
-                if (typeof key !== 'string' || key.length === 0) return false;
-                return inner.push(key.toLowerCase());
-            },
-            reset() {
-                inner.reset();
-            },
-            get bufferLength() {
-                return inner.bufferLength;
-            },
-        };
-    }
-
-    g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.createKonamiMatcher = createKonamiMatcher;
-    g.DAIDAI.KONAMI_SEQUENCE = KONAMI_SEQUENCE;
-})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));
+export function createKonamiMatcher(): KonamiMatcher {
+    const lowerSeq = KONAMI_SEQUENCE.map((k) => k.toLowerCase());
+    const inner = createHeartMatcher(lowerSeq);
+    return {
+        push(key: string): boolean {
+            if (typeof key !== 'string' || key.length === 0) return false;
+            return inner.push(key.toLowerCase());
+        },
+        reset() {
+            inner.reset();
+        },
+        get bufferLength() {
+            return inner.bufferLength;
+        },
+    };
+}

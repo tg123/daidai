@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/combo.ts';
-
-const { createComboCounter, COMBO_THRESHOLD } = globalThis.DAIDAI;
+import { createComboCounter, COMBO_THRESHOLD } from '../../src/combo';
 
 describe('createComboCounter', () => {
     it('starts with color=-1 / count=0', () => {

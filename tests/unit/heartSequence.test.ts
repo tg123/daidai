@@ -1,13 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/heartSequence.ts';
-
-const { createHeartMatcher, HEART_SEQUENCE } = globalThis.DAIDAI;
+import { createHeartMatcher, HEART_SEQUENCE } from '../../src/heartSequence';
 
 describe('createHeartMatcher', () => {
     it('throws on empty/invalid sequences', () => {
         expect(() => createHeartMatcher()).toThrow();
         expect(() => createHeartMatcher([])).toThrow();
-        expect(() => createHeartMatcher('abc')).toThrow();
+        expect(() => createHeartMatcher('abc' as unknown as readonly string[])).toThrow();
     });
 
     it('returns false until the full sequence is buffered', () => {

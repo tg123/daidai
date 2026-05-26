@@ -1,15 +1,13 @@
 import { describe, it, expect } from 'vitest';
 
-// Side-effect imports register each locale into DAIDAI.I18N_DICT.
-import '../../src/i18n/index.ts';
-import '../../src/i18n/zh-cn.ts';
-import '../../src/i18n/zh-tw.ts';
-import '../../src/i18n/en-us.ts';
-import '../../src/i18n/ja-jp.ts';
-import '../../src/i18n/ko-kr.ts';
-import '../../src/i18n/es-es.ts';
-
-const { I18N_DICT, pickLang, createT, locales } = globalThis.DAIDAI;
+// Side-effect imports register each locale into I18N_DICT.
+import '../../src/i18n/zh-cn';
+import '../../src/i18n/zh-tw';
+import '../../src/i18n/en-us';
+import '../../src/i18n/ja-jp';
+import '../../src/i18n/ko-kr';
+import '../../src/i18n/es-es';
+import { I18N_DICT, pickLang, createT, locales } from '../../src/i18n/index';
 
 describe('i18n', () => {
     it('registers all 6 locales', () => {

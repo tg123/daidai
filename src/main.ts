@@ -4,8 +4,34 @@ import * as THREE from 'three';
 // JS module pipeline (HMR-friendly). The <link> in index.html alone can
 // race / fall out of sync in iframed DevTools device mode.
 import './styles/main.css';
+
+import { AudioEngine } from './audio/AudioEngine';
+import { createComboCounter } from './combo';
+import { createEatenColorsQueue } from './eatenColors';
+import { createBoostTimer } from './game/boost';
+import { isProjectileDead, projectileHits, stepProjectile } from './game/projectiles';
+import { eatScore, findFreeCell, isCellOccupied, wrapPosition } from './gameRules';
+import { createHeartMatcher, HEART_SEQUENCE } from './heartSequence';
+import { createT, hasLocale, pickLang } from './i18n/index';
+import './i18n/zh-cn';
+import './i18n/zh-tw';
+import './i18n/en-us';
+import './i18n/ja-jp';
+import './i18n/ko-kr';
+import './i18n/es-es';
+import { classifyDelta, combineHeldDir as combineHeldDirImpl, isOppositeDir, keyToDirection } from './input/direction';
+import { detectConnectedGamepad, glyphForButton } from './input/gamepad';
+import { getRestartLabel, getStartPrompt as getStartPromptImpl } from './input/promptStrings';
+import { createKonamiMatcher } from './konami';
+import { computeCameraFit, computeGridDims } from './layout';
+import { buildAtmosphere } from './scene/atmosphere';
+import { buildGrass } from './scene/grass';
+import { createMeshFactories } from './scene/meshFactories';
+import { buildPond } from './scene/pond';
+import { buildWater } from './scene/water';
+import { createHiScoreStorage } from './storage';
+
 // ============ AUDIO ENGINE (extracted to src/audio/AudioEngine.ts) ============
-const AudioEngine = DAIDAI.AudioEngine;
 const audio = new AudioEngine();
 // iOS WKWebView reliability: prime audio on the very first user interaction
 // anywhere on the page (touchend > touchstart for Safari/Chrome on iOS).
@@ -114,7 +140,7 @@ const CELL = 1.0;
 let COLS: number, ROWS: number;
 (function pickGridForAspect() {
     const isMobile = window.matchMedia('(max-width: 720px), (pointer: coarse)').matches;
-    const dims = DAIDAI.computeGridDims({
+    const dims = computeGridDims({
         winW: window.innerWidth,
         winH: window.innerHeight,
         isMobile,
@@ -124,7 +150,7 @@ let COLS: number, ROWS: number;
 })();
 // ============ I18N ============
 // ============ I18N (dictionaries + helpers extracted to src/i18n/) ============
-let LANG = DAIDAI.pickLang({
+let LANG = pickLang({
     url: new URLSearchParams(location.search).get('lang'),
     stored: (() => {
         try {
@@ -136,7 +162,7 @@ let LANG = DAIDAI.pickLang({
     navigator:
         navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'zh-cn'],
 });
-const t = DAIDAI.createT(() => LANG);
+const t = createT(() => LANG);
 try {
     document.documentElement.lang = LANG;
     document.title = t('title');
@@ -156,7 +182,7 @@ function applyI18nDOM() {
     document.body.classList.add('i18n-ready');
 }
 function setLang(lang) {
-    if (!DAIDAI.hasLocale(lang) || lang === LANG) return;
+    if (!hasLocale(lang) || lang === LANG) return;
     LANG = lang;
     try {
         localStorage.setItem('daidai_lang', lang);
@@ -179,9 +205,9 @@ const COLORS_STR = ['#ff3333', '#2266ff', '#22ee22', '#ffaa00', '#dd55ff'];
 
 let snake, direction, nextDirection, beans, shedSkin, score, beansEaten;
 let gameOver, paused, speed, baseSpeed;
-const combo = DAIDAI.createComboCounter();
+const combo = createComboCounter();
 let goldBeans, growthPending;
-const eatenColors = DAIDAI.createEatenColorsQueue(); // queue of bean colors behind the head
+const eatenColors = createEatenColorsQueue(); // queue of bean colors behind the head
 let hasGamepad = false;
 const hasTouchEnv = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 const hasFineKeyboardEnv = window.matchMedia('(pointer: fine)').matches;
@@ -190,7 +216,7 @@ if (location.hash === '#ps') isPSGamepad = true;
 function detectGamepadNow() {
     try {
         const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-        const r = DAIDAI.detectConnectedGamepad(pads);
+        const r = detectConnectedGamepad(pads);
         if (r.isPS) isPSGamepad = true;
         return r.connected;
     } catch (_e) {
@@ -198,7 +224,7 @@ function detectGamepadNow() {
     }
 }
 function gpBtn(btn) {
-    return DAIDAI.glyphForButton(btn, isPSGamepad);
+    return glyphForButton(btn, isPSGamepad);
 }
 function currentModality() {
     return {
@@ -210,10 +236,10 @@ function currentModality() {
 function getStartPrompt() {
     const m = currentModality();
     if (m.hasGamepad) hasGamepad = true;
-    return DAIDAI.getStartPrompt(t, m);
+    return getStartPromptImpl(t, m);
 }
 let hiScore = 0;
-const hiScoreStore = DAIDAI.createHiScoreStorage();
+const hiScoreStore = createHiScoreStorage();
 hiScore = hiScoreStore.load();
 function saveHiScore() {
     hiScore = hiScoreStore.save(score);
@@ -225,9 +251,9 @@ let devtoolsOpen = isLocalhost; // on localhost: backdoor enabled by default
 let godMode = false; // Konami: rainbow + invincible + 10x score
 let tributeActive = false; // Heart pattern: tribute screen + TV static
 let tributeTriggeredThisLoad = false; // Once per page load only
-const konamiMatcher = DAIDAI.createKonamiMatcher();
+const konamiMatcher = createKonamiMatcher();
 let typedBuf = '';
-const heartMatcher = DAIDAI.createHeartMatcher(DAIDAI.HEART_SEQUENCE);
+const heartMatcher = createHeartMatcher(HEART_SEQUENCE);
 
 // Replaced at build time with the git short SHA. Stays as the literal
 // placeholder for unbundled / locally-served runs; the banner then
@@ -309,7 +335,7 @@ function applyCanvasSize() {
 applyCanvasSize();
 const BASE_FOG_DENSITY = 0.016;
 function fitCameraToPond() {
-    const fit = DAIDAI.computeCameraFit({
+    const fit = computeCameraFit({
         aspect: camera.aspect,
         cols: COLS,
         rows: ROWS,
@@ -352,20 +378,20 @@ scene.fog = new THREE.FogExp2(0x3d5520, BASE_FOG_DENSITY);
 scene.background = new THREE.Color(0x2a3818);
 
 // ============ POND (floor + disabled rim/pebbles) ============
-DAIDAI.buildPond(scene, renderer, THREE, { cols: COLS, rows: ROWS, cell: CELL });
+buildPond(scene, renderer, THREE, { cols: COLS, rows: ROWS, cell: CELL });
 
 // ============ GRASS TUFTS - 3D clumps that sway and react to snake ============
-const grassTufts = DAIDAI.buildGrass(scene, THREE, { cols: COLS, rows: ROWS, cell: CELL });
+const grassTufts = buildGrass(scene, THREE, { cols: COLS, rows: ROWS, cell: CELL });
 
 // ============ CAUSTICS + WATER SURFACE for underwater feel ============
 const { causticsTex, causticsTex2, causticsMesh, waterGeom, waterBasePositions, rippleRings, spawnRipple, bubbles } =
-    DAIDAI.buildWater(scene, THREE, { cols: COLS, rows: ROWS, cell: CELL });
+    buildWater(scene, THREE, { cols: COLS, rows: ROWS, cell: CELL });
 
 // ============ UNDERWATER ATMOSPHERE ============
-const { overlayMesh, shafts } = DAIDAI.buildAtmosphere(scene, camera, THREE, { cols: COLS, rows: ROWS, cell: CELL });
+const { overlayMesh, shafts } = buildAtmosphere(scene, camera, THREE, { cols: COLS, rows: ROWS, cell: CELL });
 
 // ============ 3D OBJECT POOLS ============
-const meshFactories = DAIDAI.createMeshFactories(scene, renderer, camera, THREE, {
+const meshFactories = createMeshFactories(scene, renderer, camera, THREE, {
     colorsHex: COLORS_HEX,
     cell: CELL,
 });
@@ -580,12 +606,12 @@ function initGame() {
 }
 
 function spawnBean() {
-    const cell = DAIDAI.findFreeCell(COLS, ROWS, [snake, beans, shedSkin, goldBeans]);
+    const cell = findFreeCell(COLS, ROWS, [snake, beans, shedSkin, goldBeans]);
     if (cell) beans.push({ x: cell.x, y: cell.y, color: Math.floor(Math.random() * COLORS_HEX.length) });
 }
 
 function isOccupied(x, y) {
-    return DAIDAI.isCellOccupied(x, y, [snake, beans, shedSkin, goldBeans]);
+    return isCellOccupied(x, y, [snake, beans, shedSkin, goldBeans]);
 }
 
 function gameUpdate() {
@@ -597,7 +623,7 @@ function gameUpdate() {
     }
 
     direction = nextDirection;
-    const head = DAIDAI.wrapPosition(snake[0].x + direction.x, snake[0].y + direction.y, COLS, ROWS);
+    const head = wrapPosition(snake[0].x + direction.x, snake[0].y + direction.y, COLS, ROWS);
 
     if (
         !godMode &&
@@ -672,7 +698,7 @@ function gameUpdate() {
 
 function eatBean(bean) {
     beansEaten++;
-    const basePoints = DAIDAI.eatScore({
+    const basePoints = eatScore({
         isRaining,
         isBoosted: boost.active,
         boostMultiplier: boost.multiplier,
@@ -734,7 +760,7 @@ function eatBean(bean) {
     updateUI();
 }
 
-const boost = DAIDAI.createBoostTimer();
+const boost = createBoostTimer();
 
 function endBoost() {
     if (!boost.active) return;
@@ -929,7 +955,7 @@ function updateUI() {
 function updateGoldenProjectiles() {
     for (let i = goldenProjectiles.length - 1; i >= 0; i--) {
         const p = goldenProjectiles[i];
-        DAIDAI.stepProjectile(p);
+        stepProjectile(p);
         if (p.mesh) {
             p.mesh.position.set(p.x, 0.5, p.z);
             p.mesh.rotation.y += 0.2;
@@ -937,7 +963,7 @@ function updateGoldenProjectiles() {
         if (p.light) p.light.position.set(p.x, 0.5, p.z);
         for (let j = beans.length - 1; j >= 0; j--) {
             const b = beans[j];
-            if (DAIDAI.projectileHits(p, b.x, b.y, CELL)) {
+            if (projectileHits(p, b.x, b.y, CELL)) {
                 goldBeans.push({ x: b.x, y: b.y, life: 300 });
                 beans.splice(j, 1);
                 if (beanMeshes[j]) {
@@ -951,14 +977,14 @@ function updateGoldenProjectiles() {
         }
         for (let j = shedSkin.length - 1; j >= 0; j--) {
             const s = shedSkin[j];
-            if (DAIDAI.projectileHits(p, s.x, s.y, CELL)) {
+            if (projectileHits(p, s.x, s.y, CELL)) {
                 goldBeans.push({ x: s.x, y: s.y, life: 300 });
                 shedSkin.splice(j, 1);
                 spawnParticles3D(s.x * CELL, s.y * CELL, 0xffd700, 10);
                 audio.play('gold');
             }
         }
-        if (DAIDAI.isProjectileDead(p, COLS, ROWS, CELL)) {
+        if (isProjectileDead(p, COLS, ROWS, CELL)) {
             if (p.mesh) scene.remove(p.mesh);
             releaseGoldenProjLight(p.light);
             goldenProjectiles.splice(i, 1);
@@ -1401,7 +1427,8 @@ function syncScene(time) {
         s.userData.driftPhase += s.userData.driftSpeed;
         s.position.x = s.userData.baseX + Math.sin(s.userData.driftPhase) * 1.5;
         s.position.z = s.userData.baseZ + Math.cos(s.userData.driftPhase * 0.7) * 1.5;
-        s.material.opacity = s.userData.baseOpacity * (0.7 + Math.sin(time * 0.0008 + s.userData.driftPhase) * 0.3);
+        (s.material as THREE.Material & { opacity: number }).opacity =
+            s.userData.baseOpacity * (0.7 + Math.sin(time * 0.0008 + s.userData.driftPhase) * 0.3);
     });
 
     // Animate caustics — scroll opposite directions
@@ -1409,7 +1436,7 @@ function syncScene(time) {
     causticsTex.offset.y = (time * 0.00002) % 1;
     causticsTex2.offset.x = (-time * 0.00004) % 1;
     causticsTex2.offset.y = (time * 0.000035) % 1;
-    causticsMesh.material.opacity = 0.4 + Math.sin(time * 0.0012) * 0.08;
+    (causticsMesh.material as THREE.Material & { opacity: number }).opacity = 0.4 + Math.sin(time * 0.0012) * 0.08;
 
     // Animate water surface waves
     const wpos = waterGeom.attributes.position;
@@ -1464,10 +1491,10 @@ function syncScene(time) {
         // Fade in fast at start, fade out slow at end
         const fadeIn = Math.min(1, t * 4);
         const fadeOut = Math.max(0, 1 - t);
-        r.mesh.material.opacity = 0.28 * fadeIn * fadeOut;
+        (r.mesh.material as THREE.Material & { opacity: number }).opacity = 0.28 * fadeIn * fadeOut;
         if (r.life <= 0) {
             scene.remove(r.mesh);
-            r.mesh.material.dispose();
+            (r.mesh.material as THREE.Material).dispose();
             rippleRings.splice(i, 1);
         }
     }
@@ -1577,20 +1604,20 @@ document.addEventListener('keydown', (e) => {
             return;
         }
     }
-    const newDir = DAIDAI.keyToDirection(e.key);
+    const newDir = keyToDirection(e.key);
     if (newDir) {
         heldDirKeys.add(e.key);
         const combined = combineHeldDir();
-        if (combined && !DAIDAI.isOppositeDir(direction, combined)) {
+        if (combined && !isOppositeDir(direction, combined)) {
             nextDirection = combined;
         }
         e.preventDefault();
     }
 });
 // ============ DIAGONAL MOVEMENT (held-key tracking) ============
-const heldDirKeys = new Set();
+const heldDirKeys = new Set<string>();
 function combineHeldDir() {
-    return DAIDAI.combineHeldDir(heldDirKeys);
+    return combineHeldDirImpl(heldDirKeys);
 }
 window.addEventListener('keyup', (e) => {
     heldDirKeys.delete(e.key);
@@ -1605,9 +1632,9 @@ window.addEventListener('blur', () => heldDirKeys.clear());
         moved = false;
     const SWIPE_THRESHOLD = 24; // px
     function applyDir(dx, dy) {
-        const nd = DAIDAI.classifyDelta(dx, dy);
+        const nd = classifyDelta(dx, dy);
         if (!nd) return;
-        if (!DAIDAI.isOppositeDir(direction, nd)) {
+        if (!isOppositeDir(direction, nd)) {
             nextDirection = nd;
         }
     }
@@ -1703,7 +1730,7 @@ window.addEventListener('blur', () => heldDirKeys.clear());
     // (keyboard shortcut, gamepad glyph, or touch).
     function refreshRestartBtnLabel() {
         if (!btnRestart) return;
-        btnRestart.textContent = DAIDAI.getRestartLabel(t, currentModality(), {
+        btnRestart.textContent = getRestartLabel(t, currentModality(), {
             gpBtnB: () => gpBtn('B'),
         });
     }
@@ -1844,7 +1871,7 @@ window.addEventListener('blur', () => heldDirKeys.clear());
                 const ax = pad.axes[0] || 0,
                     ay = pad.axes[1] || 0;
                 if (!dx && !dy && (Math.abs(ax) > DEAD || Math.abs(ay) > DEAD)) {
-                    const nd2 = DAIDAI.classifyDelta(ax, ay);
+                    const nd2 = classifyDelta(ax, ay);
                     if (nd2) {
                         dx = nd2.x;
                         dy = nd2.y;
@@ -1861,7 +1888,7 @@ window.addEventListener('blur', () => heldDirKeys.clear());
                     // After game over, direction input is ignored —
                     // restart requires an explicit A/B/Start/Back press
                     // (or the on-screen restart button / ↵ Enter).
-                    if (!gameOver && !DAIDAI.isOppositeDir(direction, nd)) nextDirection = nd;
+                    if (!gameOver && !isOppositeDir(direction, nd)) nextDirection = nd;
                 }
                 // Edge-triggered button presses
                 const prev = prevButtons[pad.index] || [];

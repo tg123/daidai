@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/layout.ts';
-
-const { computeGridDims, computeCameraFit } = globalThis.DAIDAI;
+import { computeGridDims, computeCameraFit } from '../../src/layout';
 
 describe('computeGridDims', () => {
     it('landscape: rows = SHORT, cols scales with aspect', () => {

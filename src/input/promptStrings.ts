@@ -24,23 +24,15 @@ export interface RestartLabelDeps {
     gpBtnB: () => string;
 }
 
-(function (g: any) {
-    'use strict';
+export function getStartPrompt(t: Translator, m: InputModality): string {
+    if (m.hasGamepad) return t('start.gamepad');
+    if (m.hasTouch && !m.hasFineKeyboard) return t('start.touch');
+    if (m.hasTouch && m.hasFineKeyboard) return t('start.both');
+    return t('start.keyboard');
+}
 
-    function getStartPrompt(t: Translator, m: InputModality): string {
-        if (m.hasGamepad) return t('start.gamepad');
-        if (m.hasTouch && !m.hasFineKeyboard) return t('start.touch');
-        if (m.hasTouch && m.hasFineKeyboard) return t('start.both');
-        return t('start.keyboard');
-    }
-
-    function getRestartLabel(t: Translator, m: InputModality, deps: RestartLabelDeps): string {
-        if (m.hasGamepad) return t('hint.restartGamepad', { btn: deps.gpBtnB() });
-        if (m.hasTouch && !m.hasFineKeyboard) return '⟳ ' + t('btn.restart');
-        return t('hint.restartKey');
-    }
-
-    g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.getStartPrompt = getStartPrompt;
-    g.DAIDAI.getRestartLabel = getRestartLabel;
-})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));
+export function getRestartLabel(t: Translator, m: InputModality, deps: RestartLabelDeps): string {
+    if (m.hasGamepad) return t('hint.restartGamepad', { btn: deps.gpBtnB() });
+    if (m.hasTouch && !m.hasFineKeyboard) return '⟳ ' + t('btn.restart');
+    return t('hint.restartKey');
+}
