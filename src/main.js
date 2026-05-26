@@ -369,10 +369,10 @@
     fitCameraToPond();
 
     // Lighting - bright and even like original
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8 * Math.PI);
     scene.add(ambientLight);
 
-    const mainLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    const mainLight = new THREE.DirectionalLight(0xffffff, 0.6 * Math.PI);
     mainLight.position.set(5, 30, 5);
     mainLight.castShadow = true;
     mainLight.shadow.mapSize.set(2048, 2048);
@@ -385,13 +385,13 @@
     mainLight.shadow.normalBias = 0.05;
     scene.add(mainLight);
 
-    const fillLight = new THREE.DirectionalLight(0xccddcc, 0.4);
+    const fillLight = new THREE.DirectionalLight(0xccddcc, 0.4 * Math.PI);
     fillLight.position.set(-10, 15, -5);
     scene.add(fillLight);
 
     // Subtle aquatic tint and stronger underwater fog
-    scene.fog = new THREE.FogExp2(0x0d3a55, 0.018);
-    scene.background = new THREE.Color(0x0a2540);
+    scene.fog = new THREE.FogExp2(0x3d5520, 0.016);
+    scene.background = new THREE.Color(0x2a3818);
 
     // ============ POND (ORIGINAL STYLE - grass texture background) ============
     const pondW = COLS * CELL + 4;
@@ -661,6 +661,7 @@
         }
         const tex = new THREE.CanvasTexture(c);
         tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.colorSpace = THREE.SRGBColorSpace;
         return tex;
     }
     const causticsTex = makeCausticsTexture(512);
@@ -697,13 +698,11 @@
     // Water surface above the play field (subtle blue tint with wave normal)
     const waterGeom = new THREE.PlaneGeometry(COLS * CELL * 3, ROWS * CELL * 3, 60, 60);
     const waterMat = new THREE.MeshPhysicalMaterial({
-        color: 0x4a90c8,
+        color: 0xcce4f0,
         transparent: true,
-        opacity: 0.18,
+        opacity: 0.04,
         roughness: 0.15,
         metalness: 0.0,
-        transmission: 0.6,
-        thickness: 0.5,
         side: THREE.DoubleSide,
     });
     const waterSurface = new THREE.Mesh(waterGeom, waterMat);
@@ -907,8 +906,6 @@
             metalness: 0.05,
             transparent: true,
             opacity: isHead ? 0.92 : 0.75,
-            transmission: 0.15,
-            thickness: 0.3,
             clearcoat: 1.0,
             clearcoatRoughness: 0.1,
         });
@@ -1025,6 +1022,7 @@
         hg.fillStyle = rg;
         hg.fillRect(0, 0, 64, 64);
         const haloTex = new THREE.CanvasTexture(haloCanvas);
+        haloTex.colorSpace = THREE.SRGBColorSpace;
         const halo = new THREE.Sprite(new THREE.SpriteMaterial({
             map: haloTex,
             color: COLORS_HEX[colorIdx],
@@ -1439,7 +1437,7 @@
                     scene.add(pMesh);
                     goldenProjectiles[goldenProjectiles.length - 1].mesh = pMesh;
                     // Add a light to the projectile
-                    const pLight = new THREE.PointLight(0xffd700, 1.5, 5);
+                    const pLight = new THREE.PointLight(0xffd700, 1.5 * Math.PI, 5);
                     pMesh.add(pLight);
                 }
                 showEffect(t('fx.gold'));
