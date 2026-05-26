@@ -118,4 +118,33 @@ describe('computeCameraFit', () => {
         const narrow = computeCameraFit({ ...baseSquare, vFovDeg: 30 });
         expect(narrow.distance).toBeGreaterThan(wide.distance);
     });
+
+    it('default rightGutterFrac is 0 → no offset, same distance as before', () => {
+        const f = computeCameraFit({ ...baseSquare, aspect: 2.0, cols: 44 });
+        expect(f.offsetX).toBe(0);
+    });
+
+    it('rightGutterFrac > 0: increases distance (pond must fit in narrower band)', () => {
+        const flush = computeCameraFit({ ...baseSquare, aspect: 0.5, rows: 44 });
+        const gutter = computeCameraFit({ ...baseSquare, aspect: 0.5, rows: 44, rightGutterFrac: 0.15 });
+        // Width-dominated case: shrinking the usable aspect must push the camera back.
+        expect(gutter.distance).toBeGreaterThan(flush.distance);
+    });
+
+    it('rightGutterFrac > 0: offsetX shifts camera left by half the gutter in world units', () => {
+        const f = computeCameraFit({ ...baseSquare, aspect: 0.5, rows: 44, rightGutterFrac: 0.2 });
+        const tanHalf = Math.tan((50 * Math.PI) / 360);
+        const fullWorldWidth = 2 * f.distance * tanHalf * 0.5;
+        expect(f.offsetX).toBeCloseTo(-0.2 * fullWorldWidth * 0.5, 6);
+        expect(f.offsetX).toBeLessThan(0);
+    });
+
+    it('rightGutterFrac is clamped into [0, 0.9]', () => {
+        const neg = computeCameraFit({ ...baseSquare, rightGutterFrac: -1 });
+        expect(neg.offsetX).toBe(0);
+        const huge = computeCameraFit({ ...baseSquare, rightGutterFrac: 5 });
+        // visibleAspect = aspect * (1 - 0.9) = 0.1 → distance is finite, offsetX is negative
+        expect(Number.isFinite(huge.distance)).toBe(true);
+        expect(huge.offsetX).toBeLessThan(0);
+    });
 });

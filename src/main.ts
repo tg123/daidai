@@ -297,6 +297,13 @@ function applyCanvasSize() {
 applyCanvasSize();
 const BASE_FOG_DENSITY = 0.016;
 function fitCameraToPond() {
+    // On touch/mobile, reserve a vertical strip on the right for the
+    // floating pause/mute/lang buttons (~56px). Without this the play
+    // field extends underneath the buttons and the worm visually
+    // disappears at the right wall on iPhone in portrait mode.
+    const isMobile = window.matchMedia('(max-width: 720px), (pointer: coarse)').matches;
+    const rightGutterPx = isMobile ? 56 : 0;
+    const rightGutterFrac = window.innerWidth > 0 ? rightGutterPx / window.innerWidth : 0;
     const fit = DAIDAI.computeCameraFit({
         aspect: camera.aspect,
         cols: COLS,
@@ -304,10 +311,11 @@ function fitCameraToPond() {
         cell: CELL,
         vFovDeg: camera.fov,
         margin: 1.02,
+        rightGutterFrac,
     });
     camera.up.set(0, 1, 0);
-    camera.position.set(fit.centerX, fit.distance, fit.centerZ + 0.5);
-    camera.lookAt(fit.centerX, 0, fit.centerZ);
+    camera.position.set(fit.centerX + fit.offsetX, fit.distance, fit.centerZ + 0.5);
+    camera.lookAt(fit.centerX + fit.offsetX, 0, fit.centerZ);
     camera.updateProjectionMatrix();
     // Keep fog visual constant regardless of camera distance (portrait vs landscape)
     if (scene.fog) (scene.fog as THREE.FogExp2).density = BASE_FOG_DENSITY * (25 / fit.distance);
@@ -1596,11 +1604,17 @@ window.addEventListener('blur', () => heldDirKeys.clear());
     surface.addEventListener(
         'touchend',
         (e) => {
-            // Quick tap (no swipe) → unpause / start game
-            if (tracking && !moved && paused) {
-                paused = false;
-                showMessage('');
-                audio.play('start');
+            // Quick tap (no swipe) → start the game only from the initial
+            // idle screen. A mid-run pause requires the explicit ▶ button
+            // so an accidental tap (pocket, palm, double-tap) can't kick
+            // the player back into a running game.
+            if (tracking && !moved && paused && !gameOver) {
+                const isInitial = score === 0 && snake && snake.length <= 5;
+                if (isInitial) {
+                    paused = false;
+                    showMessage('');
+                    audio.play('start');
+                }
             }
             tracking = false;
             e.preventDefault();
