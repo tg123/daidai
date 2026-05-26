@@ -1,6 +1,6 @@
 // Pure queue that tracks which bean colors are currently visible on the
 // snake's body segments (most-recent-first). No DOM, no rendering.
-// Loaded as a classic <script> in the browser and side-effect-imported in Vitest.
+// Loaded as an ES module (<script type="module">) in the browser and side-effect-imported in Vitest.
 
 export interface EatenColorsQueue {
     recordEaten(colorIdx: number): void;

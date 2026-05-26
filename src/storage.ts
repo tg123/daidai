@@ -1,6 +1,6 @@
 // Persistent hi-score storage. Wraps localStorage with best-effort semantics:
 // any read/write error returns/keeps the default value rather than crashing.
-// No DOM, no rendering. Loaded as a classic <script> in the browser and
+// No DOM, no rendering. Loaded as an ES module (<script type="module">) in the browser and
 // side-effect-imported in Vitest.
 
 export interface HiScoreStorage {

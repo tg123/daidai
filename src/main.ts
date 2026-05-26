@@ -148,7 +148,7 @@ function applyI18nDOM() {
         el.textContent = t(el.getAttribute('data-i18n'));
     });
     document.querySelectorAll('[data-i18n-title]').forEach((el) => {
-        (el as HTMLElement).title = t(el.getAttribute('data-i18n')!);
+        (el as HTMLElement).title = t(el.getAttribute('data-i18n-title')!);
     });
     // Reveal the i18n-bound nodes in the loading screen (kept hidden
     // by critical inline CSS until this runs, to avoid a flash of

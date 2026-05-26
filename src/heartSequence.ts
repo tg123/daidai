@@ -1,5 +1,5 @@
 // Pure heart-pattern matcher (no DOM, no globals beyond DAIDAI namespace).
-// Loaded as a classic <script> in the browser and side-effect-imported in Vitest.
+// Loaded as an ES module (<script type="module">) in the browser and side-effect-imported in Vitest.
 
 export interface HeartMatcher {
     push(key: string): boolean;

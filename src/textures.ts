@@ -74,7 +74,7 @@ export type CanvasTextureFactory = (size: number) => THREE.CanvasTexture;
             });
         }
         const tex = new THREE.CanvasTexture(c);
-        (tex as any).colorSpace = (THREE as any).SRGBColorSpace;
+        tex.colorSpace = THREE.SRGBColorSpace;
         return tex;
     }
 
@@ -112,7 +112,7 @@ export type CanvasTextureFactory = (size: number) => THREE.CanvasTexture;
             ctx.fill();
         }
         const tex = new THREE.CanvasTexture(c);
-        (tex as any).colorSpace = (THREE as any).SRGBColorSpace;
+        tex.colorSpace = THREE.SRGBColorSpace;
         return tex;
     }
 

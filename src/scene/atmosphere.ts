@@ -34,7 +34,7 @@ export interface AtmosphereRefs {
         const overlayCanvas = document.createElement('canvas');
         overlayCanvas.width = overlayCanvas.height = 512;
         {
-            const og = overlayCanvas.getContext('2d');
+            const og = overlayCanvas.getContext('2d')!;
             og.fillStyle = 'rgba(30, 110, 150, 0.18)';
             og.fillRect(0, 0, 512, 512);
             const vg = og.createRadialGradient(256, 256, 100, 256, 256, 360);
@@ -72,7 +72,7 @@ export interface AtmosphereRefs {
             const c = document.createElement('canvas');
             c.width = 128;
             c.height = 512;
-            const gc = c.getContext('2d');
+            const gc = c.getContext('2d')!;
             const grad = gc.createLinearGradient(0, 0, 128, 0);
             grad.addColorStop(0.0, 'rgba(180,220,255,0)');
             grad.addColorStop(0.5, 'rgba(220,240,255,0.55)');
