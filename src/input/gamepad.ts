@@ -1,16 +1,33 @@
 // Pure helpers for gamepad detection & button glyph mapping.
 // No DOM, no window.* — safe to import in unit tests.
-(function (g) {
+
+export interface GamepadLike {
+    id?: string | null;
+    connected?: boolean;
+}
+
+export interface DetectResult {
+    connected: boolean;
+    isPS: boolean;
+}
+
+export interface StartPromptOpts {
+    hasGamepad?: boolean;
+    hasTouchEnv?: boolean;
+    hasFineKeyboardEnv?: boolean;
+}
+
+(function (g: any) {
     'use strict';
 
     const PS_PATTERN = /dualshock|dualsense|playstation|ps[345]|sony|054c/i;
 
-    function isPlayStationGamepadId(id) {
+    function isPlayStationGamepadId(id: unknown): boolean {
         if (!id || typeof id !== 'string') return false;
         return PS_PATTERN.test(id);
     }
 
-    function glyphForButton(btn, isPS) {
+    function glyphForButton(btn: string, isPS: boolean): string {
         if (isPS) {
             if (btn === 'A') return '✕';
             if (btn === 'B') return '◯';
@@ -25,7 +42,9 @@
         return btn;
     }
 
-    function detectConnectedGamepad(pads) {
+    function detectConnectedGamepad(
+        pads: ReadonlyArray<GamepadLike | null | undefined> | null | undefined,
+    ): DetectResult {
         let connected = false;
         let isPS = false;
         if (!pads) return { connected, isPS };
@@ -39,7 +58,7 @@
         return { connected, isPS };
     }
 
-    function pickStartPromptKey(opts) {
+    function pickStartPromptKey(opts?: StartPromptOpts): string {
         const o = opts || {};
         if (o.hasGamepad) return 'start.gamepad';
         if (o.hasTouchEnv && !o.hasFineKeyboardEnv) return 'start.touch';
@@ -52,4 +71,4 @@
     g.DAIDAI.glyphForButton = glyphForButton;
     g.DAIDAI.detectConnectedGamepad = detectConnectedGamepad;
     g.DAIDAI.pickStartPromptKey = pickStartPromptKey;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/input/gamepad.js';
+import '../../src/input/gamepad.ts';
 
 const { isPlayStationGamepadId, glyphForButton, detectConnectedGamepad, pickStartPromptKey } = globalThis.DAIDAI;
 
