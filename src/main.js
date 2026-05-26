@@ -576,6 +576,7 @@
         new THREE.DodecahedronGeometry(0.14, 0),
     ];
     const pebbleColors = [0x5c4a36, 0x6b5640, 0x4a3a28, 0x807060, 0x3d2e20];
+    // eslint-disable-next-line no-constant-condition -- pebble decoration disabled, kept for reference
     if (false) for (let i = 0; i < 60; i++) {
         // Pick which side of the rim
         const side = Math.floor(Math.random() * 4);
@@ -1466,7 +1467,7 @@
                 }
                 showEffect(t('fx.gold'));
                 break;
-            case 4:
+            case 4: {
                 audio.play('magic_purple');
                 const halfLen = Math.max(3, Math.floor(snake.length / 2));
                 while (snake.length > halfLen) snake.pop();
@@ -1477,6 +1478,7 @@
                 }
                 showEffect(t('fx.halve'));
                 break;
+            }
         }
     }
 
