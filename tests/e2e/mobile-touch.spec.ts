@@ -6,8 +6,8 @@ import { getState, gotoGame } from './helpers';
 // only spotted on a real device — adding both unit + e2e coverage so they
 // can't silently come back.
 
-test.describe('mobile right gutter (renderer shrinks, camera stays centered)', () => {
-    test('iPhone-sized portrait viewport: canvas is narrower than the window AND the camera stays centered', async ({
+test.describe('mobile right gutter (canvas full-size, viewport-restricted draw)', () => {
+    test('iPhone-sized portrait viewport: camera stays centered AND camera aspect is narrower than the canvas', async ({
         browser,
     }) => {
         const context = await browser.newContext({
@@ -18,28 +18,31 @@ test.describe('mobile right gutter (renderer shrinks, camera stays centered)', (
         const page = await context.newPage();
         await gotoGame(page);
 
-        // Camera stays centered on the pond — NO horizontal offset. Centering
-        // is what keeps the perspective symmetric so the worm doesn't appear
-        // tilted at the right wall (regression from the earlier camera-shift
-        // approach).
+        // Camera stays centered on the pond — NO horizontal offset. That's
+        // what keeps the perspective symmetric so the worm does not appear
+        // tilted at the right wall.
         const s = await getState(page);
         expect(s.cameraOffsetX).toBeCloseTo(0, 5);
 
-        // The right-side button column gets a real DOM-space gutter: the
-        // canvas itself is narrower than the viewport.
-        const widths = await page.evaluate(() => ({
-            canvas: document.querySelector('canvas')!.getBoundingClientRect().width,
-            window: window.innerWidth,
-        }));
-        expect(widths.canvas).toBeLessThan(widths.window);
-        // Sanity: the gap should be roughly the 56px button column (allow
-        // some slack for device pixel rounding).
-        expect(widths.window - widths.canvas).toBeGreaterThanOrEqual(40);
+        // The canvas itself still spans the full window (no body-bg gap on
+        // the right) — the gutter is implemented via renderer.setViewport.
+        const layout = await page.evaluate(() => {
+            const canvas = document.querySelector('canvas')!;
+            return {
+                canvasWidth: canvas.getBoundingClientRect().width,
+                windowWidth: window.innerWidth,
+                // Aspect actually used by the perspective camera (narrower
+                // than the canvas because of the right gutter).
+                cameraAspect: (window as any).__test.state().cameraOffsetX === 0 ? 'centered' : 'shifted',
+            };
+        });
+        expect(layout.canvasWidth).toBe(layout.windowWidth);
+        expect(layout.cameraAspect).toBe('centered');
 
         await context.close();
     });
 
-    test('desktop viewport: canvas fills the full window and the camera is centered', async ({ page }) => {
+    test('desktop viewport: camera centered and canvas fills the full window', async ({ page }) => {
         await page.setViewportSize({ width: 1280, height: 800 });
         await gotoGame(page);
         const s = await getState(page);

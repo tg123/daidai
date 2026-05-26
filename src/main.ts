@@ -286,26 +286,44 @@ function getRightGutterPx(): number {
     // Reserve a vertical strip on the right for the floating pause/mute/
     // lang buttons on touch/mobile. Without this the play field extends
     // underneath the buttons and the worm visually disappears at the
-    // right wall on iPhone in portrait mode. We shrink the renderer
-    // (rather than offset the camera) so the perspective stays centered
-    // — otherwise the worm appears tilted near the gutter side.
+    // right wall on iPhone in portrait mode.
+    //
+    // Implementation: the WebGL canvas still spans the full window (no
+    // body-bg "gap" on the right) — we use renderer.setViewport() to
+    // confine the actual draw region to the left strip, and rely on the
+    // scene's clear colour (scene.background, dark green) to fill the
+    // gutter. This keeps the camera perfectly centred over the pond, so
+    // the perspective is symmetric and the worm does not appear tilted
+    // when it hugs the right wall (a regression we saw on iPhone after
+    // the earlier camera-shift approach).
     const isMobile = window.matchMedia('(max-width: 720px), (pointer: coarse)').matches;
     return isMobile ? 56 : 0;
 }
 function getVisibleArea() {
     const infoEl = document.getElementById('info-bar');
     const top = infoEl ? infoEl.getBoundingClientRect().bottom : 0;
+    const gutter = getRightGutterPx();
     return {
         top,
         height: Math.max(150, window.innerHeight - top),
-        width: Math.max(1, window.innerWidth - getRightGutterPx()),
+        // Full window width — canvas spans the screen, no body-bg gap.
+        width: window.innerWidth,
+        // Width of the actually-rendered region (the rest of the canvas
+        // shows the scene clear colour).
+        drawWidth: Math.max(1, window.innerWidth - gutter),
     };
 }
 function applyCanvasSize() {
     const v = getVisibleArea();
     renderer.setSize(v.width, v.height);
+    // Restrict the draw region to the left side so the right gutter is
+    // available for the floating HUD buttons. Must be re-applied after
+    // every setSize() because three.js resets the viewport.
+    renderer.setViewport(0, 0, v.drawWidth, v.height);
     renderer.domElement.style.top = v.top + 'px';
-    camera.aspect = v.width / v.height;
+    // Camera aspect matches the DRAW region (not the canvas) so the
+    // perspective stays correct inside the visible strip.
+    camera.aspect = v.drawWidth / v.height;
     camera.updateProjectionMatrix();
 }
 applyCanvasSize();
