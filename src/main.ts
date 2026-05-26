@@ -15,6 +15,7 @@ import { createBoostTimer } from './game/boost';
 import { isProjectileDead, projectileHits, stepProjectile } from './game/projectiles';
 import { eatScore, findFreeCell, isCellOccupied, wrapPosition } from './gameRules';
 import { createHeartMatcher, HEART_SEQUENCE } from './heartSequence';
+import { installTestApi } from './testApi';
 import { applyI18nDOM as applyI18nDOMImpl, installLangMenu } from './i18n/dom';
 import { createT, hasLocale, pickLang } from './i18n/index';
 import './i18n/zh-cn';
@@ -1791,109 +1792,82 @@ window.addEventListener('resize', () => {
 
 // ============ TEST API (used by Playwright e2e specs) ============
 // Intentionally exposed in production builds too — payload is tiny and lets
-// bug reproductions run straight from devtools.
-window.__test = {
-    state: () => ({
-        score,
-        hiScore,
-        gameOver,
-        paused,
-        godMode,
-        snake: snake.map((s) => ({ x: s.x, y: s.y })),
-        direction: { x: direction.x, y: direction.y },
-        nextDirection: { x: nextDirection.x, y: nextDirection.y },
-        beans: beans.map((b) => ({ x: b.x, y: b.y, color: b.color })),
-        goldBeans: goldBeans.map((g) => ({ x: g.x, y: g.y, life: g.life })),
-        shedSkin: shedSkin.map((s) => ({ x: s.x, y: s.y, life: s.life })),
-        eatenColors: eatenColors.snapshot(),
-        comboColor: combo.color,
-        comboCount: combo.count,
-        isBoosted: boost.active,
-        boostMultiplier: boost.multiplier,
-        isRaining,
-        growthPending,
-        beansEaten,
-        goldenProjectiles: goldenProjectiles.length,
-        speed,
-        baseSpeed,
-        cameraOffsetX: camera.position.x - ((COLS - 1) * CELL) / 2,
-    }),
-    setSnake: (cells) => {
-        snake = cells.map((c) => ({ x: c.x, y: c.y }));
-        eatenColors.reset();
-        growthPending = 0;
+// bug reproductions run straight from devtools. The shape of state() is a
+// contract; see src/testApi.ts and tests/e2e/helpers.ts.
+installTestApi({
+    getScore: () => score,
+    getHiScore: () => hiScore,
+    getGameOver: () => gameOver,
+    getPaused: () => paused,
+    getGodMode: () => godMode,
+    getSnake: () => snake,
+    getDirection: () => direction,
+    getNextDirection: () => nextDirection,
+    getBeans: () => beans,
+    getGoldBeans: () => goldBeans,
+    getShedSkin: () => shedSkin,
+    getIsRaining: () => isRaining,
+    getGrowthPending: () => growthPending,
+    getBeansEaten: () => beansEaten,
+    getGoldenProjectilesCount: () => goldenProjectiles.length,
+    getSpeed: () => speed,
+    getBaseSpeed: () => baseSpeed,
+    combo,
+    boost,
+    eatenColors,
+    camera,
+    COLS: () => COLS,
+    ROWS: () => ROWS,
+    CELL,
+    setSnake: (s) => {
+        snake = s;
     },
-    setDirection: (x, y) => {
-        direction = { x, y };
-        nextDirection = { x, y };
+    setDirection: (d) => {
+        direction = d;
     },
-    clearBeans: () => {
-        beans = [];
+    setNextDirection: (d) => {
+        nextDirection = d;
     },
-    placeBean: (x, y, color) => {
-        beans.push({ x, y, color: color | 0 });
+    setBeans: (b) => {
+        beans = b;
     },
-    clearGold: () => {
-        goldBeans = [];
+    pushBean: (b) => {
+        beans.push(b);
     },
-    placeGold: (x, y) => {
-        goldBeans.push({ x, y, life: 300 });
+    setGoldBeans: (g) => {
+        goldBeans = g;
     },
-    clearShed: () => {
-        shedSkin = [];
+    pushGoldBean: (g) => {
+        goldBeans.push(g);
     },
-    placeShed: (x, y) => {
-        shedSkin.push({ x, y, life: 600 });
+    setShedSkin: (s) => {
+        shedSkin = s;
+    },
+    pushShedSkin: (s) => {
+        shedSkin.push(s);
     },
     setPaused: (p) => {
-        paused = !!p;
+        paused = p;
     },
     setGameOver: (g) => {
-        gameOver = !!g;
+        gameOver = g;
     },
     setGodMode: (g) => {
-        godMode = !!g;
+        godMode = g;
     },
-    setComboColor: (c, n) => {
-        combo.color = c;
-        combo.count = n;
+    setGrowthPending: (n) => {
+        growthPending = n;
     },
     setBaseSpeed: (s) => {
         baseSpeed = s;
         speed = s;
     },
-    step: () => {
-        const wasPaused = paused;
-        paused = false;
-        try {
-            gameUpdate();
-        } finally {
-            paused = wasPaused;
-        }
-    },
-    triggerMagic: (c) => {
-        triggerMagic(c);
-    },
-    stepProjectiles: (n) => {
-        const steps = Math.max(0, Math.floor(Number(n)) || 0);
-        for (let i = 0; i < steps; i++) updateGoldenProjectiles();
-    },
-    dismissTribute: () => {
-        const el = document.getElementById('tribute-overlay');
-        if (el) {
-            const t = Number(el.dataset.staticTimer);
-            if (t) clearInterval(t);
-            el.remove();
-        }
-        tributeState.tributeActive = false;
-    },
-    tributeTriggered: () => tributeState.tributeTriggeredThisLoad,
-    callActivateTribute: () => {
-        activateTribute();
-    },
-    COLS: () => COLS,
-    ROWS: () => ROWS,
-};
+    gameUpdate,
+    triggerMagic,
+    updateGoldenProjectiles,
+    activateTribute,
+    tributeState,
+});
 
 // ============ START ============
 initGame();
