@@ -287,7 +287,9 @@
     let typedBuf = '';
     const heartMatcher = DAIDAI.createHeartMatcher(DAIDAI.HEART_SEQUENCE);
 
-    // Build-time injected; remains `'dev'` for unbundled / locally-served runs.
+    // Replaced at build time with the git short SHA. Stays as the literal
+    // placeholder for unbundled / locally-served runs; the banner then
+    // displays `'dev'` via the startsWith('__') check below.
     const BUILD_SHA = '__DAIDAI_BUILD_SHA__';
 
     function announceDebugHelp() {
@@ -297,7 +299,7 @@
         const tag  = 'color:#666;font-family:Consolas,monospace;font-size:11px';
         console.log('%c🐛 DaiDai DEBUG mode active', big);
         console.log('%cbuild: ' + (BUILD_SHA.startsWith('__') ? 'dev' : BUILD_SHA), tag);
-        console.log('%cPress 1-5 to trigger the matching magic (no 5-bean combo required):', sub);
+        console.log('%cPress 1-6 to trigger the matching magic (no 5-bean combo required):', sub);
         console.log('%c  1  🔴 speed boost\n  2  🔵 rain\n  3  🟢 shed → beans\n  4  🟠 gold laser\n  5  🟣 halve length\n  6  ➕ length +1', mono);
     }
     function detectDevtools() {

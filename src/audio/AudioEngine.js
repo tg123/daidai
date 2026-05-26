@@ -152,7 +152,7 @@
                 }
                 if (v.paused || v.ended) {
                     const p = v.play();
-                    if (p && p.then) p.catch(err => console.warn('[audio] silent-video play fail:', err.message));
+                    if (p) Promise.resolve(p).catch(err => console.warn('[audio] silent-video play fail:', err && err.message));
                 }
             } catch(e) { console.warn('[audio] silent-video fail:', e); }
         }

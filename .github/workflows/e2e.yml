@@ -51,6 +51,8 @@ jobs:
           name: dist
           path: dist
       - name: Test
+        env:
+          TEST_DIST_SKIP_BUILD: ${{ matrix.target == 'dist' && '1' || '' }}
         run: ${{ matrix.target == 'dist' && 'npm run test:dist' || 'npm test' }}
       - uses: actions/upload-artifact@v4
         if: failure()
