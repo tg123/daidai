@@ -1,6 +1,6 @@
 (function (g) {
     g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.registerLocale('es', {
+    g.DAIDAI.registerLocale('es-es', {
         title: 'Gusano DaiDai del Estanque DouDou',
         'loading.title': 'Gusano DaiDai del Estanque DouDou',
         'loading.sub': 'Cargando…',

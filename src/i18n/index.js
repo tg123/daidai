@@ -10,11 +10,12 @@
     }
 
     /**
-     * Resolves a 2-letter UI locale from a prioritised list of candidates.
+     * Resolves a UI locale code from a prioritised list of candidates.
+     * All supported codes are BCP-47 language-region tags (lower-cased).
      * Recognises Traditional Chinese region/script tags (Hant/TW/HK/MO).
      *
      * @param {{url?: string|null, stored?: string|null, navigator?: string[]}} opts
-     * @returns {'zh'|'zh-tw'|'en'|'ja'|'ko'|'es'}
+     * @returns {'zh-cn'|'zh-tw'|'en-us'|'ja-jp'|'ko-kr'|'es-es'}
      */
     function pickLang(opts) {
         const o = opts || {};
@@ -25,25 +26,25 @@
             if (lc === 'zh-tw' || lc === 'zh-hk' || lc === 'zh-mo'
                 || lc.startsWith('zh-hant') || lc.startsWith('zh-tw')
                 || lc.startsWith('zh-hk') || lc.startsWith('zh-mo')) return 'zh-tw';
-            if (lc.startsWith('zh')) return 'zh';
-            if (lc.startsWith('en')) return 'en';
-            if (lc.startsWith('ja')) return 'ja';
-            if (lc.startsWith('ko')) return 'ko';
-            if (lc.startsWith('es')) return 'es';
+            if (lc.startsWith('zh')) return 'zh-cn';
+            if (lc.startsWith('en')) return 'en-us';
+            if (lc.startsWith('ja')) return 'ja-jp';
+            if (lc.startsWith('ko')) return 'ko-kr';
+            if (lc.startsWith('es')) return 'es-es';
         }
-        return 'zh';
+        return 'zh-cn';
     }
 
     /**
      * Builds a `t(key, params?)` translator bound to the current language.
      * `getLang` is a function so the same translator stays valid after setLang().
-     * Falls back through current → en → zh → key.
+     * Falls back through current → en-us → zh-cn → key.
      */
     function createT(getLang) {
         return function t(key, params) {
             const dict = I18N_DICT[getLang()];
-            const en = I18N_DICT.en || {};
-            const zh = I18N_DICT.zh || {};
+            const en = I18N_DICT['en-us'] || {};
+            const zh = I18N_DICT['zh-cn'] || {};
             let s = dict ? dict[key] : undefined;
             if (s == null) s = en[key] != null ? en[key] : (zh[key] != null ? zh[key] : key);
             if (params) {

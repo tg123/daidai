@@ -31,12 +31,12 @@ replaceOnce(
     <script src="./src/heartSequence.js"></script>
     <script src="./src/eatenColors.js"></script>
     <script src="./src/i18n/index.js"></script>
-    <script src="./src/i18n/zh.js"></script>
+    <script src="./src/i18n/zh-cn.js"></script>
     <script src="./src/i18n/zh-tw.js"></script>
-    <script src="./src/i18n/en.js"></script>
-    <script src="./src/i18n/ja.js"></script>
-    <script src="./src/i18n/ko.js"></script>
-    <script src="./src/i18n/es.js"></script>
+    <script src="./src/i18n/en-us.js"></script>
+    <script src="./src/i18n/ja-jp.js"></script>
+    <script src="./src/i18n/ko-kr.js"></script>
+    <script src="./src/i18n/es-es.js"></script>
     <script src="./src/audio/AudioEngine.js"></script>
     <script src="./src/input/gamepad.js"></script>
     <script>
@@ -63,7 +63,7 @@ replaceBlock(
     let LANG = DAIDAI.pickLang({
         url: new URLSearchParams(location.search).get('lang'),
         stored: (() => { try { return localStorage.getItem('daidai_lang'); } catch(e) { return null; } })(),
-        navigator: (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'zh']),
+        navigator: (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'zh-cn']),
     });
     const t = DAIDAI.createT(() => LANG);
     try { document.documentElement.lang = LANG; document.title = t('title'); } catch(e) {}

@@ -1,6 +1,6 @@
 (function (g) {
     g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.registerLocale('ja', {
+    g.DAIDAI.registerLocale('ja-jp', {
         title: '豆豆池のダイダイ虫',
         'loading.title': '豆豆池のダイダイ虫',
         'loading.sub': '読み込み中…',

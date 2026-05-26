@@ -1,6 +1,6 @@
 (function (g) {
     g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.registerLocale('en', {
+    g.DAIDAI.registerLocale('en-us', {
         title: '"DAIDAI" Worm',
         'loading.title': '"DAIDAI" Worm',
         'loading.sub': 'Loading…',

@@ -203,7 +203,7 @@
     let LANG = DAIDAI.pickLang({
         url: new URLSearchParams(location.search).get('lang'),
         stored: (() => { try { return localStorage.getItem('daidai_lang'); } catch(e) { return null; } })(),
-        navigator: (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'zh']),
+        navigator: (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'zh-cn']),
     });
     const t = DAIDAI.createT(() => LANG);
     try { document.documentElement.lang = LANG; document.title = t('title'); } catch(e) {}
@@ -1231,7 +1231,7 @@
         speed = baseSpeed;
         combo.reset();
         growthPending = 0;
-        gameStartTime = performance.now();
+        accumulatedPlayMs = 0;
         elapsedSeconds = 0;
         document.getElementById('timer').textContent = '00:00';
 
@@ -1988,8 +1988,9 @@
     let gameAccumulator = 0;
     // Store previous snake positions for smooth interpolation
     let prevSnake = [];
-    // Timer
-    let gameStartTime = 0;
+    // Timer — tracks accumulated unpaused playtime so pausing/idle don't bleed
+    // into the displayed elapsed time.
+    let accumulatedPlayMs = 0;
     let elapsedSeconds = 0;
 
     function mainLoop(timestamp) {
@@ -2004,8 +2005,9 @@
                 prevSnake = snake.map(s => ({ x: s.x, y: s.y }));
                 gameUpdate();
             }
-            // Update timer
-            const newSeconds = Math.floor((timestamp - gameStartTime) / 1000);
+            // Update timer (only counts active play time, not pauses / pre-start idle)
+            accumulatedPlayMs += delta;
+            const newSeconds = Math.floor(accumulatedPlayMs / 1000);
             if (newSeconds !== elapsedSeconds) {
                 elapsedSeconds = newSeconds;
                 const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
@@ -2339,7 +2341,7 @@
                             }
                             // Y/Triangle (3): cycle language — only while paused / waiting to start (not game over)
                             if (i === 3 && paused && !gameOver) {
-                                const langs = ['zh', 'zh-tw', 'en', 'ja', 'ko', 'es'];
+                                const langs = ['zh-cn', 'zh-tw', 'en-us', 'ja-jp', 'ko-kr', 'es-es'];
                                 const idx = langs.indexOf(LANG);
                                 const next = langs[(idx + 1) % langs.length];
                                 setLang(next);
@@ -2513,6 +2515,20 @@
         }
     });
     requestAnimationFrame(mainLoop);
+
+    // Auto-pause when the window loses focus / tab is hidden so the timer
+    // (and the snake) don't keep running while the user is away.
+    function autoPauseOnFocusLoss() {
+        if (gameOver || paused) return;
+        paused = true;
+        showMessage(t('paused'));
+        const bp = document.getElementById('btn-pause');
+        if (bp) bp.textContent = '▶';
+    }
+    window.addEventListener('blur', autoPauseOnFocusLoss);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') autoPauseOnFocusLoss();
+    });
 
     // Random sky-drop event: every frame we roll the dice, but at most one
     // event per 60 s. Each event drops 0–3 random beans from the sky.

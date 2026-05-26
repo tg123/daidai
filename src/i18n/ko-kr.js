@@ -1,6 +1,6 @@
 (function (g) {
     g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.registerLocale('ko', {
+    g.DAIDAI.registerLocale('ko-kr', {
         title: '콩 연못의 다이다이 벌레',
         'loading.title': '콩 연못의 다이다이 벌레',
         'loading.sub': '로딩 중…',

@@ -1,6 +1,6 @@
 (function (g) {
     g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.registerLocale('zh', {
+    g.DAIDAI.registerLocale('zh-cn', {
         title: '呆呆虫之豆豆潭',
         'loading.title': '呆呆虫之豆豆潭',
         'loading.sub': '加载中…',
