@@ -1,6 +1,13 @@
 // Pure heart-pattern matcher (no DOM, no globals beyond DAIDAI namespace).
 // Loaded as a classic <script> in the browser and side-effect-imported in Vitest.
-(function (g) {
+
+export interface HeartMatcher {
+    push(key: string): boolean;
+    reset(): void;
+    readonly bufferLength: number;
+}
+
+(function (g: any) {
     'use strict';
 
     /**
@@ -12,13 +19,13 @@
      * The matcher is intentionally generic — the call site decides which
      * key events are even fed in (e.g. arrow-only keys for the heart code).
      */
-    function createHeartMatcher(seq) {
+    function createHeartMatcher(seq?: readonly string[]): HeartMatcher {
         if (!Array.isArray(seq) || seq.length === 0) {
             throw new Error('createHeartMatcher: seq must be a non-empty array');
         }
-        let buf = [];
+        let buf: string[] = [];
         return {
-            push(key) {
+            push(key: string): boolean {
                 buf.push(key);
                 if (buf.length > seq.length) buf.shift();
                 if (buf.length === seq.length && buf.every((k, i) => k === seq[i])) {
@@ -33,7 +40,7 @@
     }
 
     // The "heart" cheat: four CW circles drawn with the arrow keys.
-    const HEART_SEQUENCE = [
+    const HEART_SEQUENCE: readonly string[] = [
         'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft',
         'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft',
         'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft',
@@ -43,4 +50,4 @@
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.createHeartMatcher = createHeartMatcher;
     g.DAIDAI.HEART_SEQUENCE = HEART_SEQUENCE;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));

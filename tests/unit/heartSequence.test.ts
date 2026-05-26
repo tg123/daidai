@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/heartSequence.js';
+import '../../src/heartSequence.ts';
 
 const { createHeartMatcher, HEART_SEQUENCE } = globalThis.DAIDAI;
 
