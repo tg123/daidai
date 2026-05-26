@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/eatenColors.js';
+import '../../src/eatenColors.ts';
 
 const { createEatenColorsQueue } = globalThis.DAIDAI;
 
