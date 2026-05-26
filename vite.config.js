@@ -29,6 +29,9 @@ function injectBuildSha() {
 
 export default defineConfig({
   plugins: [injectBuildSha(), viteSingleFile()],
+  // Use relative asset URLs so the site works under any subpath
+  // (GitHub Pages project page, PR previews under /pr-preview/..., etc.)
+  base: './',
   build: {
     target: 'es2020',
     outDir: 'dist',
