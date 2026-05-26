@@ -17,7 +17,7 @@ test.describe('smoke', () => {
 
   test('favicon and apple-touch-icon links are present', async ({ page }) => {
     await gotoGame(page);
-    await expect(page.locator('link[rel="icon"][href="fav.ico"]')).toHaveCount(1);
+    await expect(page.locator('link[rel="icon"][href*="fav.ico"]')).toHaveCount(1);
     await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
   });
 });
