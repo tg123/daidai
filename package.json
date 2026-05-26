@@ -4,9 +4,10 @@
   "private": true,
   "description": "DaiDai Worm 3D web game — test harness",
   "scripts": {
-    "serve": "http-server -p 8080 -s -c-1 .",
-    "serve:dist": "http-server -p 8080 -s -c-1 dist",
-    "build": "node scripts/build.mjs",
+    "dev": "vite",
+    "serve": "vite",
+    "serve:dist": "vite preview --outDir dist",
+    "build": "vite build",
     "test": "playwright test",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
@@ -18,8 +19,11 @@
   "devDependencies": {
     "@playwright/test": "^1.48.0",
     "cross-env": "^7.0.3",
-    "html-minifier-terser": "^7.2.0",
-    "http-server": "^14.1.1",
+    "vite": "^5.4.21",
+    "vite-plugin-singlefile": "^2.3.3",
     "vitest": "^2.1.0"
+  },
+  "dependencies": {
+    "three": "^0.128.0"
   }
 }

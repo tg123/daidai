@@ -17,7 +17,16 @@ test.describe('smoke', () => {
 
   test('favicon and apple-touch-icon links are present', async ({ page }) => {
     await gotoGame(page);
-    await expect(page.locator('link[rel="icon"][href="fav.ico"]')).toHaveCount(1);
-    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
+    const iconHref = await page.locator('link[rel="icon"]').first().getAttribute('href');
+    const touchHref = await page.locator('link[rel="apple-touch-icon"]').first().getAttribute('href');
+    expect(iconHref).toMatch(/fav\.ico$/);
+    expect(touchHref).toMatch(/apple-touch-icon\.png$/);
+    // Built output must use relative URLs so the site works under any deploy
+    // subpath (GitHub Pages project page, PR previews under /pr-preview/...).
+    // Dev server always serves from root, so only enforce in dist mode.
+    if (process.env.TEST_DIST) {
+      expect(iconHref).not.toMatch(/^\//);
+      expect(touchHref).not.toMatch(/^\//);
+    }
   });
 });

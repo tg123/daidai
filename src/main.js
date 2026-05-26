@@ -1,3 +1,4 @@
+    import * as THREE from 'three';
     // ============ AUDIO ENGINE (extracted to src/audio/AudioEngine.js) ============
     const AudioEngine = DAIDAI.AudioEngine;
     const audio = new AudioEngine();
@@ -1517,7 +1518,7 @@
         wrap.dataset.staticTimer = String(staticTimer);
         // Scrolling subtitle
         const subtitle = document.createElement('div');
-        subtitle.style.cssText = 'position:absolute;left:100%;top:50%;transform:translateY(-50%);white-space:nowrap;font-size:56px;font-weight:bold;color:#fff;text-shadow:0 0 18px #ff66aa, 0 0 4px #000;font-family:"Microsoft YaHei",sans-serif;letter-spacing:6px;transition:left 5s linear;';
+        subtitle.style.cssText = 'position:absolute;left:100%;top:50%;transform:translateY(-50%);white-space:nowrap;font-size:56px;font-weight:bold;color:#fff;text-shadow:0 0 18px #ff66aa, 0 0 4px #000;font-family:inherit;letter-spacing:6px;transition:left 5s linear;';
         subtitle.textContent = t('subtitle');
         wrap.appendChild(subtitle);
         document.body.appendChild(wrap);
