@@ -15,6 +15,7 @@ import { createBoostTimer } from './game/boost';
 import { isProjectileDead, projectileHits, stepProjectile } from './game/projectiles';
 import { eatScore, findFreeCell, isCellOccupied, wrapPosition } from './gameRules';
 import { createHeartMatcher, HEART_SEQUENCE } from './heartSequence';
+import { applyI18nDOM as applyI18nDOMImpl, installLangMenu } from './i18n/dom';
 import { createT, hasLocale, pickLang } from './i18n/index';
 import './i18n/zh-cn';
 import './i18n/zh-tw';
@@ -88,16 +89,7 @@ try {
     /* document may be missing in headless edge cases */
 }
 function applyI18nDOM() {
-    document.querySelectorAll('[data-i18n]').forEach((el) => {
-        el.textContent = t(el.getAttribute('data-i18n'));
-    });
-    document.querySelectorAll('[data-i18n-title]').forEach((el) => {
-        (el as HTMLElement).title = t(el.getAttribute('data-i18n-title')!);
-    });
-    // Reveal the i18n-bound nodes in the loading screen (kept hidden
-    // by critical inline CSS until this runs, to avoid a flash of
-    // hard-coded zh-CN text for non-CN users).
-    document.body.classList.add('i18n-ready');
+    applyI18nDOMImpl(t);
 }
 function setLang(lang) {
     if (!hasLocale(lang) || lang === LANG) return;
@@ -1602,52 +1594,15 @@ window.addEventListener('blur', () => heldDirKeys.clear());
     });
     refreshMuteUI();
     // Language switcher
-    (function setupLangMenu() {
-        const btn = document.getElementById('btn-lang');
-        const menu = document.getElementById('lang-menu');
-        if (!btn || !menu) return;
-        // Add gamepad-shortcut badge to button (shown only when gamepad detected)
-        const badge = document.createElement('span');
-        badge.className = 'gp-badge';
-        badge.id = 'btn-lang-badge';
-        btn.appendChild(badge);
-        menu.querySelectorAll('button[data-lang]').forEach((b) => {
-            if (b.getAttribute('data-lang') === LANG) b.classList.add('active');
-        });
-        function canSwitch() {
-            return paused && !gameOver;
-        }
-        function updateBtnState() {
-            btn.style.display = canSwitch() ? 'flex' : 'none';
-            if (!canSwitch()) menu.classList.remove('open');
-        }
-        window.__updateLangBtnState = updateBtnState;
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!canSwitch()) {
-                showEffect('⏸ ' + t('hint.langPauseFirst'));
-                return;
-            }
-            menu.classList.toggle('open');
-        });
-        menu.addEventListener('click', (e) => {
-            const target = (e.target as HTMLElement).closest('button[data-lang]');
-            if (!target) return;
-            e.preventDefault();
-            e.stopPropagation();
-            const lang = target.getAttribute('data-lang');
-            setLang(lang);
-            menu.classList.remove('open');
-        });
-        document.addEventListener('click', (e) => {
-            if (!menu.classList.contains('open')) return;
-            if (e.target === btn || menu.contains(e.target as Node)) return;
-            menu.classList.remove('open');
-        });
-        updateBtnState();
-        setInterval(updateBtnState, 250);
-    })();
+    // Language switcher (extracted to src/i18n/dom.ts)
+    const updateLangBtnState = installLangMenu({
+        getLang: () => LANG,
+        setLang,
+        t,
+        canSwitch: () => paused && !gameOver,
+        showEffect,
+    });
+    if (updateLangBtnState) window.__updateLangBtnState = updateLangBtnState;
     // ============ GAMEPAD CONTROLLER SUPPORT ============
     (function setupGamepad() {
         const prevButtons = [];
