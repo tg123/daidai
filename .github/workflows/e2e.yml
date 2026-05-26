@@ -15,6 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           # On pull_request events, the default checkout is a synthetic
           # base⊕head merge commit, so `git rev-parse HEAD` (used by
           # vite.config.js to stamp the build banner) returns that merge
@@ -45,6 +46,9 @@ jobs:
         target: [src, dist]
     steps:
       - uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
