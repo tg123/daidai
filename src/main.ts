@@ -1,5 +1,6 @@
+// @ts-nocheck — main.ts migrated as-is from main.js. Progressive typing is a follow-up.
     import * as THREE from 'three';
-    // ============ AUDIO ENGINE (extracted to src/audio/AudioEngine.js) ============
+    // ============ AUDIO ENGINE (extracted to src/audio/AudioEngine.ts) ============
     const AudioEngine = DAIDAI.AudioEngine;
     const audio = new AudioEngine();
     // iOS WKWebView reliability: prime audio on the very first user interaction
