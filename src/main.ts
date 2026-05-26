@@ -1,4 +1,4 @@
-// @ts-nocheck — main.ts migrated as-is from main.js. Progressive typing is a follow-up.
+// main.ts migrated as-is from main.js. Progressive typing is a follow-up.
     import * as THREE from 'three';
     // ============ AUDIO ENGINE (extracted to src/audio/AudioEngine.ts) ============
     const AudioEngine = DAIDAI.AudioEngine;
@@ -131,7 +131,7 @@
             el.textContent = t(el.getAttribute('data-i18n'));
         });
         document.querySelectorAll('[data-i18n-title]').forEach(el => {
-            el.title = t(el.getAttribute('data-i18n-title'));
+            (el as HTMLElement).title = t(el.getAttribute('data-i18n')!);
         });
     }
     function setLang(lang) {
@@ -273,7 +273,7 @@
         camera.lookAt(cx, 0, cz);
         camera.updateProjectionMatrix();
         // Keep fog visual constant regardless of camera distance (portrait vs landscape)
-        if (scene.fog) scene.fog.density = 0.018 * (25 / dist);
+        if (scene.fog) (scene.fog as THREE.FogExp2).density = 0.018 * (25 / dist);
     }
     fitCameraToPond();
 
@@ -899,7 +899,7 @@
             seg.castShadow = true;
             group.add(seg);
         }
-        group.material = mat;
+        (group as any).material = mat;
         scene.add(group);
         return group;
     }
@@ -1364,10 +1364,10 @@
     }
 
     function showEffect(text) {
-        const el = document.getElementById('effect-text');
+        const el = document.getElementById('effect-text')!;
         el.textContent = text;
-        el.style.opacity = 1;
-        setTimeout(() => { el.style.opacity = 0; }, 2000);
+        el.style.opacity = '1';
+        setTimeout(() => { el.style.opacity = '0'; }, 2000);
     }
 
     // ============ EASTER EGG EFFECTS ============
@@ -2141,7 +2141,7 @@
                 menu.classList.toggle('open');
             });
             menu.addEventListener('click', e => {
-                const target = e.target.closest('button[data-lang]');
+                const target = (e.target as HTMLElement).closest('button[data-lang]');
                 if (!target) return;
                 e.preventDefault();
                 e.stopPropagation();
@@ -2151,7 +2151,7 @@
             });
             document.addEventListener('click', e => {
                 if (!menu.classList.contains('open')) return;
-                if (e.target === btn || menu.contains(e.target)) return;
+                if (e.target === btn || menu.contains(e.target as Node)) return;
                 menu.classList.remove('open');
             });
             updateBtnState();
@@ -2168,9 +2168,9 @@
                 // unconditionally — without this guard we'd light up the gamepad
                 // hints on keyboard / touch users every time they change locale.
                 if (!hasGamepad) return;
-                const hintKey = document.querySelector('#instr-line .hint-key');
+                const hintKey = document.querySelector('#instr-line .hint-key') as HTMLElement | null;
                 if (hintKey) { hintKey.textContent = t('hint.pauseGamepad', { btn: gpBtn('A') }); hintKey.style.display = 'inline'; }
-                const hintSep = document.querySelector('#instr-line .hint-sep');
+                const hintSep = document.querySelector('#instr-line .hint-sep') as HTMLElement | null;
                 if (hintSep) hintSep.style.display = 'inline';
                 // Restart button label now also reflects gamepad modality
                 if (typeof window.__refreshRestartBtnLabel === 'function') window.__refreshRestartBtnLabel();
@@ -2275,7 +2275,7 @@
             morePopup.classList.toggle('open');
         });
         document.addEventListener('click', e => {
-            if (!moreMenu.contains(e.target)) morePopup.classList.remove('open');
+            if (!moreMenu.contains(e.target as Node)) morePopup.classList.remove('open');
         });
         // Show ⋯ only when info-bar would overflow
         const infoBar = document.getElementById('info-bar');
