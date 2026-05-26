@@ -297,169 +297,17 @@
 
     // ============ POND (floor + disabled rim/pebbles) ============
     DAIDAI.buildPond(scene, renderer, THREE, { cols: COLS, rows: ROWS, cell: CELL });
-    const pondCX = COLS * CELL / 2;
-    const pondCZ = ROWS * CELL / 2;
 
     // ============ GRASS TUFTS - 3D clumps that sway and react to snake ============
     const grassTufts = DAIDAI.buildGrass(scene, THREE, { cols: COLS, rows: ROWS, cell: CELL });
 
     // ============ CAUSTICS + WATER SURFACE for underwater feel ============
-    function makeCausticsTexture(size) {
-        const c = document.createElement('canvas');
-        c.width = c.height = size;
-        const g = c.getContext('2d');
-        g.fillStyle = 'rgba(0,0,0,0)';
-        g.fillRect(0, 0, size, size);
-        const wrapDraw = (x, y, fn) => {
-            for (const ox of [-size, 0, size]) for (const oy of [-size, 0, size]) fn(x + ox, y + oy);
-        };
-        // Voronoi-like light cells, drawn wrapped to be seamless
-        const cells = 30;
-        const radius = size * 0.12;
-        for (let i = 0; i < cells; i++) {
-            const cx = Math.random() * size, cy = Math.random() * size;
-            wrapDraw(cx, cy, (px, py) => {
-                if (px < -radius || px > size+radius || py < -radius || py > size+radius) return;
-                const rg = g.createRadialGradient(px, py, 0, px, py, radius);
-                rg.addColorStop(0, 'rgba(180,230,255,0.55)');
-                rg.addColorStop(0.5, 'rgba(140,210,255,0.18)');
-                rg.addColorStop(1, 'rgba(140,210,255,0)');
-                g.fillStyle = rg;
-                g.beginPath(); g.arc(px, py, radius, 0, Math.PI*2); g.fill();
-            });
-        }
-        // Thin bright refraction lines (wrapped)
-        for (let i = 0; i < 50; i++) {
-            const x = Math.random()*size, y = Math.random()*size;
-            const len = 30 + Math.random()*80;
-            const a = Math.random()*Math.PI*2;
-            const dx = Math.cos(a)*len, dy = Math.sin(a)*len;
-            wrapDraw(x, y, (px, py) => {
-                if (px < -len || px > size+len || py < -len || py > size+len) return;
-                const grd = g.createLinearGradient(px, py, px+dx, py+dy);
-                grd.addColorStop(0, 'rgba(220,240,255,0)');
-                grd.addColorStop(0.5, 'rgba(220,240,255,0.6)');
-                grd.addColorStop(1, 'rgba(220,240,255,0)');
-                g.strokeStyle = grd;
-                g.lineWidth = 1.5;
-                g.beginPath();
-                g.moveTo(px, py);
-                g.lineTo(px+dx, py+dy);
-                g.stroke();
-            });
-        }
-        const tex = new THREE.CanvasTexture(c);
-        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-        tex.colorSpace = THREE.SRGBColorSpace;
-        return tex;
-    }
-    const causticsTex = makeCausticsTexture(512);
-    const causticsMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(COLS * CELL * 10, ROWS * CELL * 10),
-        new THREE.MeshBasicMaterial({
-            map: causticsTex,
-            transparent: true,
-            opacity: 0.22,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-        })
-    );
-    causticsMesh.rotation.x = -Math.PI / 2;
-    causticsMesh.position.set(pondCX, -0.15, pondCZ);
-    scene.add(causticsMesh);
-
-    // Second caustics layer moving opposite direction for shimmer
-    const causticsTex2 = makeCausticsTexture(512);
-    const causticsMesh2 = new THREE.Mesh(
-        new THREE.PlaneGeometry(COLS * CELL * 10, ROWS * CELL * 10),
-        new THREE.MeshBasicMaterial({
-            map: causticsTex2,
-            transparent: true,
-            opacity: 0.18,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-        })
-    );
-    causticsMesh2.rotation.x = -Math.PI / 2;
-    causticsMesh2.position.set(pondCX, -0.14, pondCZ);
-    scene.add(causticsMesh2);
-
-    // Water surface above the play field (subtle blue tint with wave normal)
-    const waterGeom = new THREE.PlaneGeometry(COLS * CELL * 3, ROWS * CELL * 3, 60, 60);
-    const waterMat = new THREE.MeshPhysicalMaterial({
-        color: 0xcce4f0,
-        transparent: true,
-        opacity: 0.04,
-        roughness: 0.15,
-        metalness: 0.0,
-        side: THREE.DoubleSide,
-    });
-    const waterSurface = new THREE.Mesh(waterGeom, waterMat);
-    waterSurface.rotation.x = -Math.PI / 2;
-    waterSurface.position.set(pondCX, 4.5, pondCZ);
-    scene.add(waterSurface);
-    const waterBasePositions = waterGeom.attributes.position.array.slice();
-
-    // Water ripple rings (spawned when snake moves) — soft radial gradient, multiple concentric waves
-    const rippleRings = [];
-    // Generate a soft ring texture: bright thin band, soft falloff
-    const rippleTex = (() => {
-        const c = document.createElement('canvas');
-        c.width = c.height = 128;
-        const g = c.getContext('2d');
-        const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-        grad.addColorStop(0.00, 'rgba(180,225,255,0)');
-        grad.addColorStop(0.55, 'rgba(180,225,255,0)');
-        grad.addColorStop(0.72, 'rgba(200,235,255,0.55)');
-        grad.addColorStop(0.82, 'rgba(230,245,255,0.85)');
-        grad.addColorStop(0.92, 'rgba(200,235,255,0.35)');
-        grad.addColorStop(1.00, 'rgba(180,225,255,0)');
-        g.fillStyle = grad;
-        g.fillRect(0, 0, 128, 128);
-        const t = new THREE.CanvasTexture(c);
-        t.colorSpace = THREE.SRGBColorSpace;
-        return t;
-    })();
-    const rippleQuadGeom = new THREE.PlaneGeometry(1, 1);
-    function spawnRipple(x, z) {
-        const mat = new THREE.MeshBasicMaterial({
-            map: rippleTex,
-            color: 0xbfe6ff,
-            transparent: true,
-            opacity: 0,
-            depthWrite: false,
-            blending: THREE.AdditiveBlending,
-            side: THREE.DoubleSide,
-        });
-        const mesh = new THREE.Mesh(rippleQuadGeom, mat);
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.position.set(x, 0.04, z);
-        const initScale = 0.4;
-        mesh.scale.set(initScale, initScale, 1);
-        scene.add(mesh);
-        rippleRings.push({
-            mesh, life: 55, maxLife: 55,
-            startScale: initScale,
-            endScale: 3.2,
-            delay: 0,
-        });
-    }
-
-    // Subtle floating particles (spores/debris) — more density for underwater feel
-    const bubbleGeom = new THREE.SphereGeometry(0.04, 6, 6);
-    const bubbleMat = new THREE.MeshBasicMaterial({ color: 0xddeeff, transparent: true, opacity: 0.45 });
-    const bubbles = [];
-    for (let i = 0; i < 80; i++) {
-        const bubble = new THREE.Mesh(bubbleGeom, bubbleMat.clone());
-        bubble.position.set(
-            (Math.random() - 0.5) * COLS * CELL * 1.4 + COLS * CELL / 2,
-            Math.random() * 5,
-            (Math.random() - 0.5) * ROWS * CELL * 1.4 + ROWS * CELL / 2
-        );
-        bubble.userData = { speed: 0.004 + Math.random() * 0.01, phase: Math.random() * Math.PI * 2 };
-        scene.add(bubble);
-        bubbles.push(bubble);
-    }
+    const {
+        causticsTex, causticsTex2, causticsMesh,
+        waterGeom, waterBasePositions,
+        rippleRings, spawnRipple,
+        bubbles,
+    } = DAIDAI.buildWater(scene, THREE, { cols: COLS, rows: ROWS, cell: CELL });
 
     // ============ UNDERWATER ATMOSPHERE ============
     const { overlayMesh, shafts } = DAIDAI.buildAtmosphere(scene, camera, THREE, { cols: COLS, rows: ROWS, cell: CELL });
