@@ -1,4 +1,4 @@
-(function (g) {
+(function (g: any) {
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.registerLocale('ko-kr', {
         title: '콩 연못의 다이다이 벌레',
@@ -43,4 +43,4 @@
         'fx.lenPlus': '➕ 길이 +1',
         subtitle: '❤️  판이펑 님께 — 어린 시절을 감사합니다  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));

@@ -1,4 +1,4 @@
-(function (g) {
+(function (g: any) {
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.registerLocale('ja-jp', {
         title: '豆豆池のダイダイ虫',
@@ -43,4 +43,4 @@
         'fx.lenPlus': '➕ 長さ +1',
         subtitle: '❤️  樊一鵬様へ — 子供時代をありがとう  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));

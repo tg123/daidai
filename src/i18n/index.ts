@@ -1,11 +1,23 @@
 // i18n core: dictionary registry, locale picker, and string formatter.
 // Pure data + functions, no DOM.
-(function (g) {
+
+export type LocaleCode = 'zh-cn' | 'zh-tw' | 'en-us' | 'ja-jp' | 'ko-kr' | 'es-es';
+export type LocaleDict = Record<string, string>;
+
+export interface PickLangOpts {
+    url?: string | null;
+    stored?: string | null;
+    navigator?: ReadonlyArray<string | null | undefined>;
+}
+
+export type TFunction = (key: string, params?: Record<string, unknown>) => string;
+
+(function (g: any) {
     'use strict';
 
-    const I18N_DICT = {};
+    const I18N_DICT: Record<string, LocaleDict> = {};
 
-    function registerLocale(code, dict) {
+    function registerLocale(code: string, dict: LocaleDict): void {
         I18N_DICT[code] = dict;
     }
 
@@ -13,13 +25,10 @@
      * Resolves a UI locale code from a prioritised list of candidates.
      * All supported codes are BCP-47 language-region tags (lower-cased).
      * Recognises Traditional Chinese region/script tags (Hant/TW/HK/MO).
-     *
-     * @param {{url?: string|null, stored?: string|null, navigator?: string[]}} opts
-     * @returns {'zh-cn'|'zh-tw'|'en-us'|'ja-jp'|'ko-kr'|'es-es'}
      */
-    function pickLang(opts) {
+    function pickLang(opts?: PickLangOpts): LocaleCode {
         const o = opts || {};
-        const candidates = [o.url, o.stored, ...(o.navigator || [])];
+        const candidates: Array<string | null | undefined> = [o.url, o.stored, ...(o.navigator || [])];
         for (const raw of candidates) {
             if (!raw) continue;
             const lc = String(raw).toLowerCase();
@@ -40,22 +49,24 @@
      * `getLang` is a function so the same translator stays valid after setLang().
      * Falls back through current → en-us → zh-cn → key.
      */
-    function createT(getLang) {
+    function createT(getLang: () => string): TFunction {
         return function t(key, params) {
             const dict = I18N_DICT[getLang()];
             const en = I18N_DICT['en-us'] || {};
             const zh = I18N_DICT['zh-cn'] || {};
-            let s = dict ? dict[key] : undefined;
+            let s: string | undefined = dict ? dict[key] : undefined;
             if (s == null) s = en[key] != null ? en[key] : (zh[key] != null ? zh[key] : key);
             if (params) {
-                for (const k in params) s = s.split('{' + k + '}').join(params[k]);
+                for (const k in params) s = (s as string).split('{' + k + '}').join(String(params[k]));
             }
-            return s;
+            return s as string;
         };
     }
 
-    function hasLocale(code) { return Object.prototype.hasOwnProperty.call(I18N_DICT, code); }
-    function locales() { return Object.keys(I18N_DICT); }
+    function hasLocale(code: string): boolean {
+        return Object.prototype.hasOwnProperty.call(I18N_DICT, code);
+    }
+    function locales(): string[] { return Object.keys(I18N_DICT); }
 
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.I18N_DICT = I18N_DICT;
@@ -64,4 +75,4 @@
     g.DAIDAI.createT = createT;
     g.DAIDAI.hasLocale = hasLocale;
     g.DAIDAI.locales = locales;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));

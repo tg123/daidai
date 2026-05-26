@@ -1,4 +1,4 @@
-(function (g) {
+(function (g: any) {
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.registerLocale('zh-cn', {
         title: '呆呆虫之豆豆潭',
@@ -43,4 +43,4 @@
         'fx.lenPlus': '➕ 长度 +1',
         subtitle: '❤️  致樊一鹏 —— 谢谢你写出我们的童年  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));

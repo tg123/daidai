@@ -1,4 +1,4 @@
-(function (g) {
+(function (g: any) {
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.registerLocale('es-es', {
         title: 'Gusano DaiDai del Estanque DouDou',
@@ -43,4 +43,4 @@
         'fx.lenPlus': '➕ Longitud +1',
         subtitle: '❤️  Para Fan Yipeng — gracias por nuestra infancia  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));

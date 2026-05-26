@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 
 // Side-effect imports register each locale into DAIDAI.I18N_DICT.
-import '../../src/i18n/index.js';
-import '../../src/i18n/zh-cn.js';
-import '../../src/i18n/zh-tw.js';
-import '../../src/i18n/en-us.js';
-import '../../src/i18n/ja-jp.js';
-import '../../src/i18n/ko-kr.js';
-import '../../src/i18n/es-es.js';
+import '../../src/i18n/index.ts';
+import '../../src/i18n/zh-cn.ts';
+import '../../src/i18n/zh-tw.ts';
+import '../../src/i18n/en-us.ts';
+import '../../src/i18n/ja-jp.ts';
+import '../../src/i18n/ko-kr.ts';
+import '../../src/i18n/es-es.ts';
 
 const { I18N_DICT, pickLang, createT, locales } = globalThis.DAIDAI;
 

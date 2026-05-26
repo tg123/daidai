@@ -1,4 +1,4 @@
-(function (g) {
+(function (g: any) {
     g.DAIDAI = g.DAIDAI || {};
     g.DAIDAI.registerLocale('en-us', {
         title: '"DAIDAI" Worm',
@@ -43,4 +43,4 @@
         'fx.lenPlus': '➕ Length +1',
         subtitle: '❤️  For Fan Yipeng — thanks for our childhood  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
