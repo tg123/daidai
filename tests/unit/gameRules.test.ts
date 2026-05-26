@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/gameRules.js';
+import '../../src/gameRules.ts';
 
 const { wrapPosition, eatScore, isCellOccupied, findFreeCell } = globalThis.DAIDAI;
 

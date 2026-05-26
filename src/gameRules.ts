@@ -1,10 +1,20 @@
 // Pure game-rules helpers: torus wrap, scoring, cell occupancy, random spawn.
 // No DOM, no Three.js — fully testable with deterministic RNG.
-(function (g) {
+
+export interface Cell { x: number; y: number; }
+
+export interface EatScoreOpts {
+    isRaining?: boolean;
+    isBoosted?: boolean;
+    boostMultiplier?: number;
+    godMode?: boolean;
+}
+
+(function (g: any) {
     'use strict';
 
     /** Wrap a head position around a COLS×ROWS torus. */
-    function wrapPosition(x, y, cols, rows) {
+    function wrapPosition(x: number, y: number, cols: number, rows: number): Cell {
         let nx = x, ny = y;
         if (nx < 0) nx = cols - 1;
         else if (nx >= cols) nx = 0;
@@ -19,7 +29,7 @@
      *   ×10 during god mode (rainbow). Order matches the legacy code:
      *   rain bonus is added BEFORE multipliers stack.
      */
-    function eatScore(opts) {
+    function eatScore(opts?: EatScoreOpts): number {
         const o = opts || {};
         let pts = 5;
         if (o.isRaining) pts += 10;
@@ -35,7 +45,11 @@
      * Returns true when (x,y) is taken by any cell in any of the supplied lists.
      * Each list is an array of {x,y} objects (snake segments, beans, etc.).
      */
-    function isCellOccupied(x, y, occupants) {
+    function isCellOccupied(
+        x: number,
+        y: number,
+        occupants: ReadonlyArray<ReadonlyArray<Cell> | null | undefined> | null | undefined,
+    ): boolean {
         if (!occupants) return false;
         for (const list of occupants) {
             if (!list) continue;
@@ -51,7 +65,13 @@
      * `rng` is a function returning a float in [0,1) — defaults to Math.random.
      * Returns null if no free cell was found in `maxAttempts` tries.
      */
-    function findFreeCell(cols, rows, occupants, rng, maxAttempts) {
+    function findFreeCell(
+        cols: number,
+        rows: number,
+        occupants: ReadonlyArray<ReadonlyArray<Cell> | null | undefined> | null | undefined,
+        rng?: () => number,
+        maxAttempts?: number | null,
+    ): Cell | null {
         const r = typeof rng === 'function' ? rng : Math.random;
         const tries = (maxAttempts === undefined || maxAttempts === null)
             ? 100
@@ -69,4 +89,4 @@
     g.DAIDAI.eatScore = eatScore;
     g.DAIDAI.isCellOccupied = isCellOccupied;
     g.DAIDAI.findFreeCell = findFreeCell;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));
