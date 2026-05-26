@@ -3,6 +3,11 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 import { execSync } from 'node:child_process';
 
 function gitSha() {
+  // Prefer an explicit build SHA from CI (e.g. the PR head SHA passed by
+  // the workflow), so the banner matches what users see in the PR UI even
+  // when CI checks out a synthetic merge commit.
+  const fromEnv = (process.env.DAIDAI_BUILD_SHA || '').trim();
+  if (fromEnv) return fromEnv.slice(0, 12);
   try {
     return execSync('git rev-parse --short=12 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
       .toString().trim() || 'dev';
