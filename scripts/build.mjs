@@ -6,6 +6,7 @@ import { minify } from 'html-minifier-terser';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -41,6 +42,7 @@ async function copyAsset(name) {
 async function buildHtml() {
   let html = await fs.readFile(path.join(ROOT, 'index.html'), 'utf8');
   html = await inlineSrcScripts(html);
+  html = injectBuildSha(html);
   const minified = await minify(html, {
     collapseWhitespace: true,
     conservativeCollapse: true,
@@ -62,6 +64,18 @@ async function buildHtml() {
   });
   await fs.writeFile(path.join(DIST, 'index.html'), minified, 'utf8');
   return { srcBytes: Buffer.byteLength(html, 'utf8'), outBytes: Buffer.byteLength(minified, 'utf8') };
+}
+
+// Replaces the literal `__DAIDAI_BUILD_SHA__` placeholder (used by
+// announceDebugHelp) with the current commit short SHA, or `'dev'` when
+// not in a git checkout.
+function injectBuildSha(html) {
+  let sha = 'dev';
+  try {
+    sha = execSync('git rev-parse --short=12 HEAD', { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString().trim() || 'dev';
+  } catch { /* not a git repo or git missing */ }
+  return html.split('__DAIDAI_BUILD_SHA__').join(sha);
 }
 
 // Replaces <script src="./src/foo.js"></script> tags with inline <script>…</script>

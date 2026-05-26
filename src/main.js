@@ -287,13 +287,18 @@
     let typedBuf = '';
     const heartMatcher = DAIDAI.createHeartMatcher(DAIDAI.HEART_SEQUENCE);
 
+    // Build-time injected; remains `'dev'` for unbundled / locally-served runs.
+    const BUILD_SHA = '__DAIDAI_BUILD_SHA__';
+
     function announceDebugHelp() {
         const big = 'color:#ffd700;font-size:18px;font-weight:bold;text-shadow:1px 1px 0 #000';
         const sub = 'color:#88aaff;font-size:13px';
         const mono = 'color:#fff;font-family:Consolas,monospace;font-size:12px;line-height:1.6';
-        console.log('%c🐛 DaiDai DEBUG 模式已激活', big);
-        console.log('%c按 1-5 触发对应魔法（不需 5 连豆）：', sub);
-        console.log('%c  1  🔴 变速魔法 (Speed Boost)\n  2  🔵 降雨魔法 (Rain)\n  3  🟢 生机魔法 (Shed→Beans)\n  4  🟠 圣光魔法 (Gold Laser)\n  5  🟣 寸缩魔法 (Halve)\n  6  ➕ 长度 +1', mono);
+        const tag  = 'color:#8fbcff;font-family:Consolas,monospace;font-size:11px';
+        console.log('%c🐛 DaiDai DEBUG mode active', big);
+        console.log('%cbuild: ' + (BUILD_SHA.startsWith('__') ? 'dev' : BUILD_SHA), tag);
+        console.log('%cPress 1-5 to trigger the matching magic (no 5-bean combo required):', sub);
+        console.log('%c  1  🔴 speed boost\n  2  🔵 rain\n  3  🟢 shed → beans\n  4  🟠 gold laser\n  5  🟣 halve length\n  6  ➕ length +1', mono);
     }
     function detectDevtools() {
         const threshold = 160;
