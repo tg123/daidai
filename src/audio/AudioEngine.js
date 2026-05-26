@@ -49,8 +49,6 @@
             this.onProgress = null;
         }
         async _fetchOne(name, url) {
-            const t0 = performance.now();
-            console.log(`[audio] fetching ${name} (${url})`);
             const ctrl = new AbortController();
             const tid = setTimeout(() => { console.warn(`[audio] timeout ${name}`); ctrl.abort(); }, 60000);
             try {
@@ -58,7 +56,6 @@
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 const arrayBuf = await resp.arrayBuffer();
                 this.rawBuffers[name] = arrayBuf;
-                console.log(`[audio] loaded ${name} (${(arrayBuf.byteLength/1024).toFixed(1)} KB, ${(performance.now()-t0).toFixed(0)} ms)`);
                 if (this.ctx) {
                     try { this.buffers[name] = await this.ctx.decodeAudioData(arrayBuf.slice(0)); } catch(e) {}
                 }
@@ -78,10 +75,8 @@
                 this.masterGain.gain.value = this.muted ? 0 : 1;
                 this.masterGain.connect(this.ctx.destination);
                 this.ctx.onstatechange = () => {
-                    console.log('[audio] statechange →', this.ctx.state);
                     if (this.ctx.state === 'running') this._flushQueue();
                 };
-                console.log('[audio] context created (eager), state:', this.ctx.state);
             } catch (e) { console.warn('[audio] ctx create fail:', e); }
         }
         async preload() {
@@ -112,15 +107,13 @@
             this._ensureCtx();
             if (this.initialized) {
                 if (this.ctx && this.ctx.state === 'suspended') {
-                    this.ctx.resume().then(() => { console.log('[audio] re-resumed, state:', this.ctx.state); this._flushQueue(); }).catch(e => console.warn('[audio] re-resume fail:', e));
+                    this.ctx.resume().then(() => { this._flushQueue(); }).catch(e => console.warn('[audio] re-resume fail:', e));
                 }
                 return;
             }
             this.initialized = true;
             this._pendingPlays = [];
-            console.log('[audio] init() unlock, state:', this.ctx.state, 'muted:', this.muted);
             this.ctx.resume().then(() => {
-                console.log('[audio] resume resolved, state:', this.ctx.state);
                 this._flushQueue();
             }).catch(err => console.warn('[audio] resume failed:', err));
             try {
@@ -135,7 +128,6 @@
                 osc.connect(ga).connect(this.ctx.destination);
                 osc.start(0);
                 osc.stop(this.ctx.currentTime + 0.05);
-                console.log('[audio] unlock buffer + osc started');
             } catch(e) { console.warn('[audio] unlock fail:', e); }
             this._ensureSilentVideo();
             this._decodeAll();
@@ -156,18 +148,16 @@
                     v.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px';
                     document.body.appendChild(v);
                     this._silentVideo = v;
-                    v.addEventListener('pause', () => console.log('[audio] silent-video paused'));
                     v.addEventListener('ended', () => { try { v.currentTime = 0; v.play().catch(()=>{}); } catch(_){} });
                 }
                 if (v.paused || v.ended) {
                     const p = v.play();
-                    if (p && p.then) p.then(() => console.log('[audio] silent-video playing → playback session')).catch(err => console.warn('[audio] silent-video play fail:', err.message));
+                    if (p) Promise.resolve(p).catch(err => console.warn('[audio] silent-video play fail:', err && err.message));
                 }
             } catch(e) { console.warn('[audio] silent-video fail:', e); }
         }
         _flushQueue() {
             if (!this._pendingPlays || this._pendingPlays.length === 0) return;
-            console.log('[audio] flushing', this._pendingPlays.length, 'queued plays');
             const q = this._pendingPlays.splice(0);
             for (const type of q) this.play(type);
         }
@@ -179,7 +169,6 @@
                 this.masterGain.gain.cancelScheduledValues(t);
                 this.masterGain.gain.linearRampToValueAtTime(this.muted ? 0 : 1, t + 0.1);
             }
-            console.log('[audio] setMuted →', this.muted);
         }
         async _decodeAll() {
             await this.preload();
@@ -231,10 +220,8 @@
                 this._pendingPlays = this._pendingPlays || [];
                 if (this._pendingPlays.length < 32) this._pendingPlays.push(type);
                 this.ctx.resume().catch(()=>{});
-                console.log('[audio] queued (suspended):', type);
                 return;
             }
-            console.log('[audio] play()', type, 'state:', this.ctx.state, 'buffers:', Object.keys(this.buffers).length);
             switch(type) {
                 case 'eat': this._playBuffer('eat', 0.7); break;
                 case 'combo': this._playBuffer('beat', 0.8); break;

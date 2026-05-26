@@ -7,10 +7,30 @@ on:
     types: [opened, reopened, synchronize, closed]
 
 jobs:
+  build:
+    name: build
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 1
+
   test:
     name: ${{ matrix.target }}
     timeout-minutes: 15
     runs-on: ubuntu-latest
+    needs: build
     if: github.event.action != 'closed'
     strategy:
       fail-fast: false
@@ -24,17 +44,15 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - name: Build (dist target only)
+      - name: Download dist artifact (dist target only)
         if: matrix.target == 'dist'
-        run: npm run build
-      - name: Upload dist artifact
-        if: matrix.target == 'dist'
-        uses: actions/upload-artifact@v4
+        uses: actions/download-artifact@v4.1.3
         with:
           name: dist
           path: dist
-          retention-days: 1
       - name: Test
+        env:
+          TEST_DIST_SKIP_BUILD: ${{ matrix.target == 'dist' && '1' || '' }}
         run: ${{ matrix.target == 'dist' && 'npm run test:dist' || 'npm test' }}
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -47,7 +65,7 @@ jobs:
 
   deploy:
     name: deploy to GitHub Pages
-    needs: test
+    needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     concurrency:
@@ -71,7 +89,7 @@ jobs:
 
   pr-preview:
     name: deploy PR preview
-    needs: test
+    needs: build
     if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     concurrency:
