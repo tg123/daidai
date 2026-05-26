@@ -218,15 +218,13 @@ test.describe('gameplay — orange laser collisions', () => {
     // syncScene still runs in mainLoop and advances projectile physics.
     await page.evaluate(() => (window as any).__test.setPaused(true));
     await page.evaluate(() => (window as any).__test.triggerMagic(3));
-
-    // Poll for the conversion — parallel workers can starve the rAF loop, so
-    // a fixed waitForTimeout is flaky. Two seconds is plenty for ~8 frames.
-    await expect.poll(async () => {
-      const s = await getState(page);
-      return s.goldBeans.length;
-    }, { timeout: 2000 }).toBeGreaterThanOrEqual(1);
+    // Deterministically step projectile physics (rAF can starve under
+    // parallel workers / headless CI). 20 steps × 0.4 = 8 units, plenty
+    // for a bean ~3 cells away.
+    await page.evaluate(() => (window as any).__test.stepProjectiles(20));
 
     const after = await getState(page);
+    expect(after.goldBeans.length).toBeGreaterThanOrEqual(1);
     expect(after.beans.find(b => b.x === 13 && b.y === 10)).toBeUndefined();
   });
 
@@ -243,13 +241,10 @@ test.describe('gameplay — orange laser collisions', () => {
 
     await page.evaluate(() => (window as any).__test.setPaused(true));
     await page.evaluate(() => (window as any).__test.triggerMagic(3));
-
-    await expect.poll(async () => {
-      const s = await getState(page);
-      return s.shedSkin.length;
-    }, { timeout: 2000 }).toBe(0);
+    await page.evaluate(() => (window as any).__test.stepProjectiles(20));
 
     const after = await getState(page);
+    expect(after.shedSkin.length).toBe(0);
     expect(after.goldBeans.length).toBeGreaterThanOrEqual(1);
     expect(after.goldBeans.some(g => g.x === 13 && g.y === 10)).toBe(true);
   });

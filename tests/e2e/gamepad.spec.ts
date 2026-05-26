@@ -7,7 +7,7 @@ test.describe('gamepad detection', () => {
       { id: 'Xbox Wireless Controller', connected: false },
       null, null, null,
     ]);
-    await gotoGame(page, { lang: 'en' });
+    await gotoGame(page, { lang: 'en-us' });
     const msg = await page.locator('#message').innerText();
     expect(msg).not.toMatch(/Ⓐ|Ⓑ|Ⓧ|Ⓨ|△|◯|✕|☐/);
     expect(msg).not.toMatch(/D-Pad|stick/i);
@@ -17,7 +17,7 @@ test.describe('gamepad detection', () => {
     await stubGamepads(page, [
       { id: 'Xbox 360 Controller (XInput STANDARD GAMEPAD)', connected: true },
     ]);
-    await gotoGame(page, { lang: 'en' });
+    await gotoGame(page, { lang: 'en-us' });
     await page.waitForTimeout(400);
     const msg = await page.locator('#message').innerText();
     expect(msg).toMatch(/D-Pad|stick/i);
@@ -25,14 +25,14 @@ test.describe('gamepad detection', () => {
 
   test('empty getGamepads (all null) leaves keyboard/touch prompt', async ({ page }) => {
     await stubGamepads(page, [null, null, null, null]);
-    await gotoGame(page, { lang: 'en' });
+    await gotoGame(page, { lang: 'en-us' });
     const msg = await page.locator('#message').innerText();
     expect(msg).not.toMatch(/D-Pad|stick/i);
   });
 
   test('ghost pad with empty id is also ignored', async ({ page }) => {
     await stubGamepads(page, [{ id: '', connected: true }]);
-    await gotoGame(page, { lang: 'en' });
+    await gotoGame(page, { lang: 'en-us' });
     const msg = await page.locator('#message').innerText();
     expect(msg).not.toMatch(/D-Pad|stick/i);
   });
@@ -42,7 +42,7 @@ test.describe('gamepad detection', () => {
     // unconditionally, so any language switch lit up A/B/X/Y hints on
     // keyboard / touch users.
     await stubGamepads(page, [null, null, null, null]);
-    await gotoGame(page, { lang: 'en' });
+    await gotoGame(page, { lang: 'en-us' });
 
     // Switch language via the in-page API. Cycle a few times to be thorough.
     await page.evaluate(() => {
@@ -51,9 +51,9 @@ test.describe('gamepad detection', () => {
         const btn = document.querySelector<HTMLButtonElement>(`#lang-menu button[data-lang="${lang}"]`);
         btn?.click();
       };
-      click('zh');
-      click('ja');
-      click('en');
+      click('zh-cn');
+      click('ja-jp');
+      click('en-us');
     });
     await page.waitForTimeout(150);
 
