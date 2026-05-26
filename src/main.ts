@@ -1905,7 +1905,6 @@ window.addEventListener('blur', () => heldDirKeys.clear());
                                 'ja-jp',
                                 'ko-kr',
                                 'es-es',
-                                'es-419',
                                 'fr-fr',
                                 'it-it',
                                 'de-de',

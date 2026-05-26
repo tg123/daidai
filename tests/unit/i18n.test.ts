@@ -8,7 +8,6 @@ import '../../src/i18n/en-us.ts';
 import '../../src/i18n/ja-jp.ts';
 import '../../src/i18n/ko-kr.ts';
 import '../../src/i18n/es-es.ts';
-import '../../src/i18n/es-419.ts';
 import '../../src/i18n/fr-fr.ts';
 import '../../src/i18n/it-it.ts';
 import '../../src/i18n/de-de.ts';
@@ -21,13 +20,12 @@ import '../../src/i18n/th-th.ts';
 const { I18N_DICT, pickLang, createT, locales } = globalThis.DAIDAI;
 
 describe('i18n', () => {
-    it('registers all 15 locales', () => {
+    it('registers all 14 locales', () => {
         expect(locales().sort()).toEqual(
             [
                 'ar-sa',
                 'de-de',
                 'en-us',
-                'es-419',
                 'es-es',
                 'fr-fr',
                 'it-it',
@@ -76,12 +74,12 @@ describe('i18n', () => {
             expect(pickLang({ navigator: ['ja-JP'] })).toBe('ja-jp');
             expect(pickLang({ navigator: ['ko-KR'] })).toBe('ko-kr');
         });
-        it('splits Spanish into Spain vs. Latin America', () => {
+        it('matches all Spanish variants to es-es', () => {
             expect(pickLang({ navigator: ['es-ES'] })).toBe('es-es');
             expect(pickLang({ navigator: ['es'] })).toBe('es-es');
-            expect(pickLang({ navigator: ['es-MX'] })).toBe('es-419');
-            expect(pickLang({ navigator: ['es-AR'] })).toBe('es-419');
-            expect(pickLang({ navigator: ['es-419'] })).toBe('es-419');
+            expect(pickLang({ navigator: ['es-MX'] })).toBe('es-es');
+            expect(pickLang({ navigator: ['es-AR'] })).toBe('es-es');
+            expect(pickLang({ navigator: ['es-419'] })).toBe('es-es');
         });
         it('matches the newly added European/Asian locales by prefix', () => {
             expect(pickLang({ navigator: ['fr-FR'] })).toBe('fr-fr');

@@ -8,7 +8,6 @@ const expectedTitles: Record<string, string> = {
     'ja-jp': '豆豆池のダイダイ虫',
     'ko-kr': '콩 연못의 다이다이 벌레',
     'es-es': 'Gusano DaiDai del Estanque DouDou',
-    'es-419': 'Gusano DaiDai del Estanque DouDou',
     'fr-fr': 'Ver DaiDai de l’étang DouDou',
     'it-it': 'Verme DaiDai dello stagno DouDou',
     'de-de': '„DaiDai“-Wurm vom DouDou-Teich',

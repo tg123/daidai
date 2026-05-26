@@ -7,7 +7,6 @@ import '../../src/i18n/zh-tw.ts';
 import '../../src/i18n/ja-jp.ts';
 import '../../src/i18n/ko-kr.ts';
 import '../../src/i18n/es-es.ts';
-import '../../src/i18n/es-419.ts';
 import '../../src/i18n/fr-fr.ts';
 import '../../src/i18n/it-it.ts';
 import '../../src/i18n/de-de.ts';
@@ -26,7 +25,6 @@ const LANGS = [
     'ja-jp',
     'ko-kr',
     'es-es',
-    'es-419',
     'fr-fr',
     'it-it',
     'de-de',
