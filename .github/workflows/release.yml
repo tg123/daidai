@@ -1,0 +1,96 @@
+name: Release
+
+# Two-phase, manual-gate release flow (mirrors github.com/tg123/bbb):
+#
+#   1. push to main  →  `draft` job creates/refreshes a *draft* release at
+#      the next patch version, using auto-generated release notes. The draft
+#      is never auto-published; you click "Publish release" in the GitHub UI
+#      when you're ready.
+#   2. on release published  →  `build` job runs `tauri build` on a
+#      win/mac/linux matrix and uploads the bundles (.msi/.exe, .dmg/.app,
+#      .deb/.AppImage) to that release as binary assets.
+
+on:
+    push:
+        branches: [main]
+    release:
+        types: [released]
+
+permissions:
+    contents: write
+
+jobs:
+    draft:
+        if: github.event_name != 'release'
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+            - name: Compute next semver
+              id: repo-semver
+              uses: lhstrh/action-repo-semver@v1.2.1
+              with:
+                  bump: patch
+            - name: Refresh draft release
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  gh release list | grep Draft | grep "v${{ steps.repo-semver.outputs.bump }}" | cut -f 1 | xargs -r -L 1 gh release delete --yes
+                  gh release create -d --generate-notes "v${{ steps.repo-semver.outputs.bump }}"
+
+    build:
+        if: github.event_name == 'release'
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - platform: macos-latest
+                      args: '--target universal-apple-darwin'
+                    - platform: ubuntu-latest
+                      args: ''
+                    - platform: windows-latest
+                      args: ''
+        runs-on: ${{ matrix.platform }}
+        timeout-minutes: 60
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '20.19.0'
+                  cache: 'npm'
+
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@stable
+              with:
+                  targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+            - name: Cache cargo registry + build
+              uses: Swatinem/rust-cache@v2
+              with:
+                  workspaces: src-tauri -> target
+
+            - name: Install Linux build deps
+              if: matrix.platform == 'ubuntu-latest'
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y \
+                    libwebkit2gtk-4.1-dev \
+                    libappindicator3-dev \
+                    librsvg2-dev \
+                    patchelf
+
+            - name: Install npm deps
+              run: npm ci
+
+            - name: Build & upload Tauri bundle
+              uses: tauri-apps/tauri-action@v0
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  DAIDAI_BUILD_SHA: ${{ github.sha }}
+              with:
+                  # Attach the produced bundle artifacts to the release that
+                  # triggered this workflow run (the one you just published).
+                  releaseId: ${{ github.event.release.id }}
+                  args: ${{ matrix.args }}

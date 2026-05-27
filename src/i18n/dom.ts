@@ -14,6 +14,16 @@ export function applyI18nDOM(t: TFn): void {
         const k = el.getAttribute('data-i18n-title');
         if (k) (el as HTMLElement).title = t(k);
     });
+    // Sync the document title with the localized game name. Browsers update
+    // the tab title; the Tauri webview does NOT auto-mirror document.title to
+    // the OS window, so we also call the window API when available.
+    const localized = t('title');
+    document.title = localized;
+    if (typeof (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== 'undefined') {
+        import('@tauri-apps/api/window')
+            .then((m) => m.getCurrentWindow().setTitle(localized))
+            .catch(() => {});
+    }
     document.body.classList.add('i18n-ready');
 }
 
@@ -82,9 +92,14 @@ export function installLangMenu(opts: LangMenuOpts): (() => void) | undefined {
     menu.addEventListener('click', onMenuClick);
     document.addEventListener('click', onDocClick);
     updateBtnState();
-    const timer = setInterval(updateBtnState, 250);
+    let rafId = 0;
+    const tick = () => {
+        updateBtnState();
+        rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
     btn.__langMenuCleanup = () => {
-        clearInterval(timer);
+        cancelAnimationFrame(rafId);
         btn.removeEventListener('click', onBtnClick);
         menu.removeEventListener('click', onMenuClick);
         document.removeEventListener('click', onDocClick);

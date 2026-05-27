@@ -35,9 +35,9 @@ describe('computeGridDims', () => {
         expect(m.rows).toBe(51);
     });
 
-    it('caps both dimensions at maxSide (default 60)', () => {
-        const g = computeGridDims({ winW: 10000, winH: 200 });
-        expect(g.cols).toBe(60);
+    it('caps both dimensions at maxSide (default 120)', () => {
+        const g = computeGridDims({ winW: 100000, winH: 200 });
+        expect(g.cols).toBe(120);
         expect(g.rows).toBe(22);
     });
 
@@ -60,9 +60,9 @@ describe('computeGridDims', () => {
         // Without the floor, winH=50, reservedTop=42 → h=8 → aspect huge → rows would
         // shrink dramatically. With the floor, h is clamped to minHeight (200).
         const g = computeGridDims({ winW: 800, winH: 50 });
-        // aspect = 800/200 = 4; cols = round(22*4) = 88 → clamped 60
+        // aspect = 800/200 = 4; cols = round(22*4) = 88 (now under the 120 cap)
         expect(g.rows).toBe(22);
-        expect(g.cols).toBe(60);
+        expect(g.cols).toBe(88);
     });
 });
 

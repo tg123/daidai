@@ -292,6 +292,20 @@ canvas {
         right: 64px;
     }
 }
+/* Same treatment in the Tauri desktop port — no browser tab-mute affordance,
+   so users need an in-app mute toggle. */
+body.tauri #btn-mute {
+    display: flex;
+}
+body.tauri #btn-lang {
+    top: 150px;
+}
+/* Hide the mute button during active play in the Tauri desktop port so it
+   doesn't clutter the playfield. It reappears on pause / game-over / pre-start.
+   Mobile keeps it visible — the iOS silent-switch workaround relies on it. */
+body.tauri.playing #btn-mute {
+    display: none;
+}
 /* Small badge showing gamepad shortcut on top-right of utility buttons */
 .gp-badge {
     position: absolute;

@@ -54,6 +54,15 @@ export default defineConfig({
             output: { inlineDynamicImports: true },
         },
     },
-    server: { port: 8080, strictPort: true, host: '127.0.0.1' },
+    server: {
+        port: 8080,
+        strictPort: true,
+        host: '127.0.0.1',
+        watch: {
+            // src-tauri/target is rewritten constantly by cargo during `tauri dev`.
+            // Watching it makes Vite throw EBUSY on the Rust output DLL.
+            ignored: ['**/src-tauri/**'],
+        },
+    },
     preview: { port: 8080, strictPort: true, host: '127.0.0.1' },
 });

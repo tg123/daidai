@@ -18,7 +18,7 @@ export interface GridOptions {
     isMobile?: boolean;
     /** Shortest grid side. Defaults to 22 (matches the original game tuning). */
     shortSide?: number;
-    /** Hard upper bound to keep ultra-wide screens reasonable. Defaults to 60. */
+    /** Hard upper bound to keep ultra-wide screens reasonable. Defaults to 120. */
     maxSide?: number;
     /** Floor for usable height after reserving the HUD bar. Defaults to 200. */
     minHeight?: number;
@@ -49,7 +49,7 @@ export function computeGridDims(opts: GridOptions): GridDims {
     const reservedTop = opts.isMobile ? 38 : 42;
     const minHeight = opts.minHeight ?? 200;
     const SHORT = opts.shortSide ?? 22;
-    const MAX = opts.maxSide ?? 60;
+    const MAX = opts.maxSide ?? 120;
     const h = Math.max(minHeight, winH - reservedTop);
     const aspect = winW / h;
 

@@ -118,6 +118,10 @@ const COLORS_STR = ['#ff3333', '#2266ff', '#22ee22', '#ffaa00', '#dd55ff'];
 
 let snake, direction, nextDirection, beans, shedSkin, score, beansEaten;
 let gameOver, paused, speed, baseSpeed;
+// True once the player has explicitly started the run (first unpause from
+// the idle screen). Resets on initGame. Used to gate the "direction input
+// implicitly unpauses" affordance — see canStartFromDirection.
+let hasStarted = false;
 interface GameOverInfo {
     score: number;
     isNew: boolean;
@@ -509,6 +513,7 @@ function initGame() {
     gameOver = false;
     gameOverInfo = null;
     paused = false;
+    hasStarted = false;
     baseSpeed = 150;
     speed = baseSpeed;
     combo.reset();
@@ -793,6 +798,13 @@ function mainLoop(timestamp) {
     const delta = timestamp - lastGameTime;
     lastGameTime = timestamp;
 
+    // Sync a body.playing class so CSS can hide HUD chrome (e.g. the Tauri
+    // mute button) during active play and show it again on pause / game over.
+    const playing = !paused && !gameOver;
+    if (playing !== document.body.classList.contains('playing')) {
+        document.body.classList.toggle('playing', playing);
+    }
+
     if (!paused && !gameOver) {
         gameAccumulator += delta;
         while (gameAccumulator >= speed) {
@@ -818,6 +830,13 @@ function mainLoop(timestamp) {
 }
 
 // ============ INPUT (keyboard extracted to src/input/keyboard.ts) ============
+// Single shared paused setter that also flips hasStarted on the
+// first paused=true→false transition of a run. Used by keyboard, touch, and
+// game-rules deps so canStartFromDirection sees a consistent signal.
+function setPausedShared(p: boolean) {
+    if (paused && !p) hasStarted = true;
+    paused = p;
+}
 const keyboardControls = installKeyboardControls({
     audio,
     t,
@@ -832,9 +851,7 @@ const keyboardControls = installKeyboardControls({
     initGame,
     getGameOver: () => gameOver,
     getPaused: () => paused,
-    setPaused: (p) => {
-        paused = p;
-    },
+    setPaused: setPausedShared,
     isDevtoolsOpen: () => devtoolsOpen,
     getDirection: () => direction,
     setNextDirection: (d) => {
@@ -853,17 +870,14 @@ const touchApi = installTouchControls({
     showMessage,
     showEffect,
     initGame,
-    getScore: () => score,
-    getSnake: () => snake,
     getDirection: () => direction,
     setNextDirection: (d) => {
         nextDirection = d;
     },
     getGameOver: () => gameOver,
     getPaused: () => paused,
-    setPaused: (p) => {
-        paused = p;
-    },
+    setPaused: setPausedShared,
+    getHasStarted: () => hasStarted,
     getLang: () => LANG,
     setLang,
     currentModality,
@@ -953,9 +967,7 @@ installTestApi({
     pushShedSkin: (s) => {
         shedSkin.push(s);
     },
-    setPaused: (p) => {
-        paused = p;
-    },
+    setPaused: setPausedShared,
     setGameOver: (g) => {
         gameOver = g;
     },
@@ -1021,6 +1033,113 @@ function refreshDynamicI18n() {
         touchApi.refreshRestartBtnLabel();
     } catch (_) {}
 }
+const isTauri = typeof (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== 'undefined';
+
+// Tauri desktop port polish:
+//   - Disable the right-click context menu (no native "Inspect / Reload").
+//   - Mark <body> so CSS can show/hide HUD chrome (e.g. mute button).
+//   - Forward http(s) link clicks to the system browser via the opener
+//     plugin; the webview ignores `target="_blank"` by default.
+// Browsers keep all of the native behavior above.
+if (isTauri) {
+    window.addEventListener('contextmenu', (e) => e.preventDefault());
+    document.body.classList.add('tauri');
+    document.addEventListener('click', (e) => {
+        const anchor = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
+        if (!anchor) return;
+        const href = anchor.getAttribute('href') || '';
+        if (!/^https?:/i.test(href)) return;
+        e.preventDefault();
+        import('@tauri-apps/plugin-opener')
+            .then((m) => m.openUrl(href))
+            .catch(() => {});
+    });
+}
+
+// Swallow browser-style reload shortcuts (F5, Ctrl+R, Ctrl+Shift+R).
+// On the web this is just polish; in the Tauri desktop port the webview
+// would otherwise reload the whole game mid-run.
+window.addEventListener(
+    'keydown',
+    (e) => {
+        // Swallow F5 / Ctrl+R, but keep Ctrl+Shift+R as an explicit escape
+        // hatch (matches the browser "hard reload" intent — useful during
+        // Tauri dev when the webview gets into a bad state).
+        const isReload =
+            e.key === 'F5' || ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'r' || e.key === 'R'));
+        if (isReload) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        // F11 toggles fullscreen (browsers only — in the Tauri desktop port the
+        // OS already provides maximize, and true fullscreen on ultra-wide just
+        // squashes the pond into a thin strip).
+        if (e.key === 'F11') {
+            if (isTauri) {
+                e.preventDefault();
+                return;
+            }
+            e.preventDefault();
+            const fsEl =
+                document.fullscreenElement ||
+                (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement;
+            if (fsEl) {
+                (document.exitFullscreen || (document as unknown as { webkitExitFullscreen?: () => Promise<void> }).webkitExitFullscreen)?.call(document);
+            } else {
+                const root = document.documentElement as HTMLElement & {
+                    webkitRequestFullscreen?: () => Promise<void>;
+                };
+                (root.requestFullscreen || root.webkitRequestFullscreen)?.call(root);
+            }
+        }
+    },
+    { capture: true },
+);
+
+// Some browsers/webviews don't fire `resize` when entering/leaving fullscreen
+// fast enough; piggy-back on the fullscreen change event so the camera refits.
+document.addEventListener('fullscreenchange', () => window.dispatchEvent(new Event('resize')));
+
+// Pond grid (COLS/ROWS) is decided once at startup by `pickGridForAspect`.
+// When the user drags/maximizes into a substantially different size (e.g.
+// ultra-wide), the camera refits but the playfield aspect stays wrong.
+// Cheapest fix: debounce-detect a meaningful change and reload, so
+// `pickGridForAspect` reruns. Hi-score lives in localStorage so nothing
+// the player cares about is lost.
+// Exception: F11 / Fullscreen API transitions are an expected, transient
+// resize — we just refit the camera and rebaseline without reloading,
+// otherwise pressing F11 dumps the player back to the title screen.
+{
+    let baselineW = window.innerWidth;
+    let baselineH = window.innerHeight;
+    let reloadTimer: ReturnType<typeof setTimeout> | null = null;
+    const THRESH = 80;
+    const cancelPending = () => {
+        if (reloadTimer) {
+            clearTimeout(reloadTimer);
+            reloadTimer = null;
+        }
+    };
+    const rebaseline = () => {
+        baselineW = window.innerWidth;
+        baselineH = window.innerHeight;
+    };
+    window.addEventListener('resize', () => {
+        const dw = Math.abs(window.innerWidth - baselineW);
+        const dh = Math.abs(window.innerHeight - baselineH);
+        if (dw < THRESH && dh < THRESH) return;
+        cancelPending();
+        reloadTimer = setTimeout(() => {
+            location.reload();
+        }, 800);
+    });
+    document.addEventListener('fullscreenchange', () => {
+        cancelPending();
+        rebaseline();
+    });
+}
+
 // Update prompt dynamically if first interaction reveals a different modality
 window.addEventListener(
     'touchstart',
@@ -1039,7 +1158,7 @@ window.addEventListener(
 document.addEventListener('keydown', function startHandler(e) {
     const dirs = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'];
     if (dirs.includes(e.key)) {
-        paused = false;
+        setPausedShared(false);
         showMessage('');
         audio.play('start');
         document.removeEventListener('keydown', startHandler);

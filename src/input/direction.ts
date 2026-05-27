@@ -80,3 +80,25 @@ export function isOppositeDir(current: Dir2 | null, next: Dir2 | null): boolean 
     if (!current || !next) return false;
     return next.x === -current.x && next.y === -current.y;
 }
+
+/**
+ * Cross-platform policy: when can a direction input (gamepad stick / d-pad,
+ * touch swipe) implicitly start the game?
+ *
+ * Only from the truly-initial idle screen — i.e. paused, not game-over, and
+ * the game has never been started in this run (`started === false`). After
+ * the player has explicitly paused mid-run, only an A/Start/▶ press is
+ * allowed to resume so a resting stick (or accidental swipe) can't kick
+ * them back into a running game. Keyboard arrows never unpause at all
+ * (see keyboard.ts).
+ */
+export function canStartFromDirection(opts: {
+    paused: boolean;
+    gameOver: boolean;
+    started: boolean;
+}): boolean {
+    if (!opts.paused) return false;
+    if (opts.gameOver) return false;
+    if (opts.started) return false;
+    return true;
+}

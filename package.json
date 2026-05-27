@@ -22,11 +22,15 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.48.0",
+    "@tauri-apps/cli": "^2.11.2",
     "@types/node": "^25.9.1",
     "@types/three": "^0.184.1",
     "cross-env": "^7.0.3",
@@ -41,6 +45,8 @@
     "vitest": "^4.1.7"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/plugin-opener": "^2.5.4",
     "three": "0.184.0"
   }
 }

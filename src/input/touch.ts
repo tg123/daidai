@@ -1,7 +1,7 @@
 import type { AudioEngine } from '../audio/AudioEngine';
 import { installLangMenu } from '../i18n/dom';
 import { getRestartLabel } from './promptStrings';
-import { classifyDelta, isOppositeDir } from './direction';
+import { canStartFromDirection, classifyDelta, isOppositeDir } from './direction';
 
 type Dir = { x: number; y: number };
 type TFn = (key: string, vars?: Record<string, unknown>) => string;
@@ -14,13 +14,12 @@ export interface TouchControlsDeps {
     showMessage: (m: string) => void;
     showEffect: (m: string) => void;
     initGame: () => void;
-    getScore: () => number;
-    getSnake: () => { x: number; y: number }[];
     getDirection: () => Dir;
     setNextDirection: (d: Dir) => void;
     getGameOver: () => boolean;
     getPaused: () => boolean;
     setPaused: (p: boolean) => void;
+    getHasStarted: () => boolean;
     getLang: () => string;
     setLang: (lang: string) => void;
     currentModality: () => Modality;
@@ -49,13 +48,12 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
         showMessage,
         showEffect,
         initGame,
-        getScore,
-        getSnake,
         getDirection,
         setNextDirection,
         getGameOver,
         getPaused,
         setPaused,
+        getHasStarted,
         getLang,
         setLang,
         currentModality,
@@ -108,13 +106,21 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
                 dy = tt.clientY - sy;
             if (Math.hypot(dx, dy) >= SWIPE_THRESHOLD) {
                 moved = true;
-                // Swipe also starts/unpauses the game
-                if (getPaused() && !getGameOver()) {
+                // Swipe only starts the game from the initial idle screen —
+                // mid-run a swipe must NOT unpause (matches keyboard, where
+                // arrows never unpause; only ▶ / Space resumes).
+                if (
+                    canStartFromDirection({
+                        paused: getPaused(),
+                        gameOver: getGameOver(),
+                        started: getHasStarted(),
+                    })
+                ) {
                     setPaused(false);
                     showMessage('');
                     audio.play('start');
                 }
-                applyDir(dx, dy);
+                if (!getPaused()) applyDir(dx, dy);
                 // Reset origin so continued drag can chain another direction
                 sx = tt.clientX;
                 sy = tt.clientY;
@@ -131,9 +137,13 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
             // so an accidental tap (pocket, palm, double-tap) can't kick
             // the player back into a running game.
             if (tracking && !moved && getPaused() && !getGameOver()) {
-                const snake = getSnake();
-                const isInitial = getScore() === 0 && snake && snake.length <= 5;
-                if (isInitial) {
+                if (
+                    canStartFromDirection({
+                        paused: getPaused(),
+                        gameOver: getGameOver(),
+                        started: getHasStarted(),
+                    })
+                ) {
                     setPaused(false);
                     showMessage('');
                     audio.play('start');
@@ -184,9 +194,23 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
     refreshRestartBtnLabel();
     // Mute button
     const btnMute = document.getElementById('btn-mute') as HTMLElement;
+    // Detect Tauri so we can wire X/Square as a true mute shortcut on desktop
+    // (the previous condition only fired on touch / mobile).
+    const isTauriEnv =
+        typeof (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !==
+        'undefined';
+    const wantsGamepadMute = (hasTouchEnv && !hasFineKeyboardEnv) || isTauriEnv;
+    // Gamepad badge for the mute button — mirrors btn-lang's badge so the
+    // shortcut hint is visible at a glance.
+    const muteBadge = document.createElement('span');
+    muteBadge.className = 'gp-badge';
+    muteBadge.id = 'btn-mute-badge';
+    btnMute.appendChild(muteBadge);
     function refreshMuteUI() {
         const m = audio.muted;
+        // textContent wipes children, so re-attach the badge after updating.
         btnMute.textContent = m ? '🔇' : '🔊';
+        btnMute.appendChild(muteBadge);
         btnMute.classList.toggle('muted', m);
         btnMute.setAttribute('aria-label', m ? 'Unmute' : 'Mute');
         const hint = document.getElementById('mute-hint');
@@ -229,7 +253,12 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
         // Restart button label now also reflects gamepad modality
         refreshRestartBtnLabel();
         const mb = document.getElementById('btn-mute');
-        if (mb && hasTouchEnv && !hasFineKeyboardEnv) mb.title = t('btn.sound') + ' (' + gpBtn('X') + ')';
+        if (mb && wantsGamepadMute) mb.title = t('btn.sound') + ' (' + gpBtn('X') + ')';
+        const mbadge = document.getElementById('btn-mute-badge');
+        if (mbadge && wantsGamepadMute) {
+            mbadge.textContent = getIsPSGamepad() ? '□' : 'X';
+            mbadge.classList.add('show');
+        }
         const lb = document.getElementById('btn-lang');
         if (lb) lb.title = t('btn.language') + ' (' + gpBtn('Y') + ')';
         const lbadge = document.getElementById('btn-lang-badge');
@@ -287,16 +316,25 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
             }
             if (dx || dy) {
                 const nd = { x: dx, y: dy };
-                if (getPaused() && !getGameOver()) {
+                // Match the touch behavior: a direction press starts the game
+                // ONLY from the initial idle screen. After the player has
+                // explicitly paused mid-run, only A/Start can resume — this
+                // prevents an idle stick (or controller drift) from kicking
+                // the player back into a running game.
+                if (
+                    canStartFromDirection({
+                        paused: getPaused(),
+                        gameOver: getGameOver(),
+                        started: getHasStarted(),
+                    })
+                ) {
                     audio.init();
                     setPaused(false);
                     showMessage('');
                     audio.play('start');
                 }
-                // After game over, direction input is ignored —
-                // restart requires an explicit A/B/Start/Back press
-                // (or the on-screen restart button / ↵ Enter).
-                if (!getGameOver() && !isOppositeDir(getDirection(), nd)) setNextDirection(nd);
+                if (!getGameOver() && !getPaused() && !isOppositeDir(getDirection(), nd))
+                    setNextDirection(nd);
             }
             // Edge-triggered button presses
             const prev = prevButtons[pad.index] || [];
@@ -321,8 +359,9 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
                             doRestart();
                         }
                     }
-                    // X/Square (2): toggle mute (mobile / touch only — desktop uses system volume)
-                    if (i === 2 && hasTouchEnv && !hasFineKeyboardEnv) {
+                    // X/Square (2): toggle mute (touch/mobile + Tauri desktop —
+                    // browsers on desktop have their own tab-mute affordance)
+                    if (i === 2 && wantsGamepadMute) {
                         audio.init();
                         audio.setMuted(!audio.muted);
                         refreshMuteUI();
