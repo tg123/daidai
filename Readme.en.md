@@ -10,7 +10,9 @@
 
 A nostalgic 3D remake of _"DAIDAI" Worm_, built with Three.js and runs in your browser.
 
-🎮 **Play online:** <https://tg123.github.io/daidai/>
+🎮 **Play online:** <https://tg123.github.io/daidai/> · <https://farmer1992.itch.io/daidai>
+
+[![Play on itch.io](https://static.itch.io/images/badge-color.svg)](https://farmer1992.itch.io/daidai)
 
 📖 [中文说明](Readme.md)
 

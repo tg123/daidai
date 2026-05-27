@@ -12,7 +12,9 @@
 
 一个用 Three.js 在浏览器里 3D 复刻的怀旧版《呆呆虫之豆豆潭》。
 
-🎮 **在线试玩：** <https://tg123.github.io/daidai/>
+🎮 **在线试玩：** <https://tg123.github.io/daidai/> · <https://farmer1992.itch.io/daidai>
+
+[![Play on itch.io](https://static.itch.io/images/badge-color.svg)](https://farmer1992.itch.io/daidai)
 
 ## 玩法
 
