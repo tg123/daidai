@@ -37,11 +37,12 @@ export interface LangMenuOpts {
  * double-install cannot stack multiple intervals.
  */
 export function installLangMenu(opts: LangMenuOpts): (() => void) | undefined {
-    const btn = document.getElementById('btn-lang');
+    const btn = document.getElementById('btn-lang') as (HTMLElement & { __langMenuCleanup?: () => void }) | null;
     const menu = document.getElementById('lang-menu');
     if (!btn || !menu) return undefined;
-    const prev = (btn as HTMLElement & { __langMenuTimer?: ReturnType<typeof setInterval> }).__langMenuTimer;
-    if (prev !== undefined) clearInterval(prev);
+    // Idempotent: tear down any previous install on the same #btn-lang
+    // (HMR, accidental double-call) — interval, listeners, and badge.
+    if (btn.__langMenuCleanup) btn.__langMenuCleanup();
     const badge = document.createElement('span');
     badge.className = 'gp-badge';
     badge.id = 'btn-lang-badge';
@@ -54,7 +55,7 @@ export function installLangMenu(opts: LangMenuOpts): (() => void) | undefined {
         btn!.style.display = opts.canSwitch() ? 'flex' : 'none';
         if (!opts.canSwitch()) menu!.classList.remove('open');
     }
-    btn.addEventListener('click', (e) => {
+    const onBtnClick = (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
         if (!opts.canSwitch()) {
@@ -62,8 +63,8 @@ export function installLangMenu(opts: LangMenuOpts): (() => void) | undefined {
             return;
         }
         menu.classList.toggle('open');
-    });
-    menu.addEventListener('click', (e) => {
+    };
+    const onMenuClick = (e: Event) => {
         const target = (e.target as HTMLElement).closest('button[data-lang]');
         if (!target) return;
         e.preventDefault();
@@ -71,14 +72,24 @@ export function installLangMenu(opts: LangMenuOpts): (() => void) | undefined {
         const lang = target.getAttribute('data-lang');
         if (lang) opts.setLang(lang);
         menu.classList.remove('open');
-    });
-    document.addEventListener('click', (e) => {
+    };
+    const onDocClick = (e: Event) => {
         if (!menu.classList.contains('open')) return;
         if (e.target === btn || menu.contains(e.target as Node)) return;
         menu.classList.remove('open');
-    });
+    };
+    btn.addEventListener('click', onBtnClick);
+    menu.addEventListener('click', onMenuClick);
+    document.addEventListener('click', onDocClick);
     updateBtnState();
     const timer = setInterval(updateBtnState, 250);
-    (btn as HTMLElement & { __langMenuTimer?: ReturnType<typeof setInterval> }).__langMenuTimer = timer;
+    btn.__langMenuCleanup = () => {
+        clearInterval(timer);
+        btn.removeEventListener('click', onBtnClick);
+        menu.removeEventListener('click', onMenuClick);
+        document.removeEventListener('click', onDocClick);
+        const oldBadge = btn.querySelector('#btn-lang-badge');
+        if (oldBadge) oldBadge.remove();
+    };
     return updateBtnState;
 }

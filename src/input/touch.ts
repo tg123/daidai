@@ -334,12 +334,18 @@ export function installTouchControls(deps: TouchControlsDeps): void {
             }
             requestAnimationFrame(poll);
         }
+        let pollStarted = false;
+        function startPoll() {
+            if (pollStarted) return;
+            pollStarted = true;
+            requestAnimationFrame(poll);
+        }
         window.addEventListener('gamepadconnected', () => {
             markGamepad();
-            requestAnimationFrame(poll);
+            startPoll();
         });
         // Some browsers (Chrome) need an active poll loop even without an event
-        requestAnimationFrame(poll);
+        startPoll();
     })();
     // More menu toggle
     const moreMenu = document.getElementById('more-menu') as HTMLElement;
