@@ -28,8 +28,13 @@ jobs:
       - run: npm ci
       - name: Build
         # See ci.yml `build` step for rationale on DAIDAI_BUILD_SHA.
+        # DAIDAI_INCLUDE_CHEATS=1 on pull_request events keeps the 1-6
+        # keyboard cheat backdoor compiled in for PR-preview builds so
+        # reviewers can exercise the magic effects; production deploys
+        # from `push` to main leave it unset, dropping the cheat code.
         env:
           DAIDAI_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          DAIDAI_INCLUDE_CHEATS: ${{ github.event_name == 'pull_request' && '1' || '' }}
         run: npm run build
       - uses: actions/upload-artifact@v4
         with:
