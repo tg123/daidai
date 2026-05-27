@@ -197,8 +197,7 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
     // Detect Tauri so we can wire X/Square as a true mute shortcut on desktop
     // (the previous condition only fired on touch / mobile).
     const isTauriEnv =
-        typeof (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !==
-        'undefined';
+        typeof (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== 'undefined';
     const wantsGamepadMute = (hasTouchEnv && !hasFineKeyboardEnv) || isTauriEnv;
     // Gamepad badge for the mute button — mirrors btn-lang's badge so the
     // shortcut hint is visible at a glance.
@@ -333,8 +332,7 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
                     showMessage('');
                     audio.play('start');
                 }
-                if (!getGameOver() && !getPaused() && !isOppositeDir(getDirection(), nd))
-                    setNextDirection(nd);
+                if (!getGameOver() && !getPaused() && !isOppositeDir(getDirection(), nd)) setNextDirection(nd);
             }
             // Edge-triggered button presses
             const prev = prevButtons[pad.index] || [];

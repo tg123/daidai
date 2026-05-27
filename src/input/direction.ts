@@ -92,11 +92,7 @@ export function isOppositeDir(current: Dir2 | null, next: Dir2 | null): boolean 
  * them back into a running game. Keyboard arrows never unpause at all
  * (see keyboard.ts).
  */
-export function canStartFromDirection(opts: {
-    paused: boolean;
-    gameOver: boolean;
-    started: boolean;
-}): boolean {
+export function canStartFromDirection(opts: { paused: boolean; gameOver: boolean; started: boolean }): boolean {
     if (!opts.paused) return false;
     if (opts.gameOver) return false;
     if (opts.started) return false;

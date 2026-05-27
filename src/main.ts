@@ -1057,9 +1057,7 @@ if (isTauri) {
         const href = anchor.getAttribute('href') || '';
         if (!/^https?:/i.test(href)) return;
         e.preventDefault();
-        import('@tauri-apps/plugin-opener')
-            .then((m) => m.openUrl(href))
-            .catch(() => {});
+        import('@tauri-apps/plugin-opener').then((m) => m.openUrl(href)).catch(() => {});
     });
 }
 
@@ -1092,7 +1090,10 @@ window.addEventListener(
                 document.fullscreenElement ||
                 (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement;
             if (fsEl) {
-                (document.exitFullscreen || (document as unknown as { webkitExitFullscreen?: () => Promise<void> }).webkitExitFullscreen)?.call(document);
+                (
+                    document.exitFullscreen ||
+                    (document as unknown as { webkitExitFullscreen?: () => Promise<void> }).webkitExitFullscreen
+                )?.call(document);
             } else {
                 const root = document.documentElement as HTMLElement & {
                     webkitRequestFullscreen?: () => Promise<void>;

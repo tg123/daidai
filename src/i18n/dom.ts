@@ -20,9 +20,7 @@ export function applyI18nDOM(t: TFn): void {
     const localized = t('title');
     document.title = localized;
     if (typeof (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== 'undefined') {
-        import('@tauri-apps/api/window')
-            .then((m) => m.getCurrentWindow().setTitle(localized))
-            .catch(() => {});
+        import('@tauri-apps/api/window').then((m) => m.getCurrentWindow().setTitle(localized)).catch(() => {});
     }
     document.body.classList.add('i18n-ready');
 }
