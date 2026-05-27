@@ -15,7 +15,7 @@ import { createBoostTimer } from './game/boost';
 import { eatScore, findFreeCell, isCellOccupied, wrapPosition } from './gameRules';
 import { createHeartMatcher, HEART_SEQUENCE } from './heartSequence';
 import { installTestApi } from './testApi';
-import { applyI18nDOM as applyI18nDOMImpl, installLangMenu } from './i18n/dom';
+import { applyI18nDOM as applyI18nDOMImpl } from './i18n/dom';
 import { createT, hasLocale, pickLang } from './i18n/index';
 import './i18n/zh-cn';
 import './i18n/zh-tw';
@@ -23,10 +23,10 @@ import './i18n/en-us';
 import './i18n/ja-jp';
 import './i18n/ko-kr';
 import './i18n/es-es';
-import { classifyDelta, isOppositeDir } from './input/direction';
 import { detectConnectedGamepad, glyphForButton } from './input/gamepad';
 import { installKeyboardControls } from './input/keyboard';
-import { getRestartLabel, getStartPrompt as getStartPromptImpl } from './input/promptStrings';
+import { installTouchControls } from './input/touch';
+import { getStartPrompt as getStartPromptImpl } from './input/promptStrings';
 import { createKonamiMatcher } from './konami';
 import { computeCameraFit, computeGridDims } from './layout';
 import { buildAtmosphere } from './scene/atmosphere';
@@ -918,318 +918,44 @@ const keyboardControls = installKeyboardControls({
     },
 });
 
-// ============ TOUCH / SWIPE CONTROLS ============
-(function () {
-    let sx = 0,
-        sy = 0,
-        tracking = false,
-        moved = false;
-    const SWIPE_THRESHOLD = 24; // px
-    function applyDir(dx, dy) {
-        const nd = classifyDelta(dx, dy);
-        if (!nd) return;
-        if (!isOppositeDir(direction, nd)) {
-            nextDirection = nd;
-        }
-    }
-    const surface = renderer.domElement;
-    surface.addEventListener(
-        'touchstart',
-        (e) => {
-            audio.init();
-            if (gameOver) {
-                e.preventDefault();
-                return;
-            }
-            const t = e.touches[0];
-            sx = t.clientX;
-            sy = t.clientY;
-            tracking = true;
-            moved = false;
-            e.preventDefault();
-        },
-        { passive: false },
-    );
-    surface.addEventListener(
-        'touchmove',
-        (e) => {
-            if (!tracking) return;
-            const t = e.touches[0];
-            const dx = t.clientX - sx,
-                dy = t.clientY - sy;
-            if (Math.hypot(dx, dy) >= SWIPE_THRESHOLD) {
-                moved = true;
-                // Swipe also starts/unpauses the game
-                if (paused && !gameOver) {
-                    paused = false;
-                    showMessage('');
-                    audio.play('start');
-                }
-                applyDir(dx, dy);
-                // Reset origin so continued drag can chain another direction
-                sx = t.clientX;
-                sy = t.clientY;
-            }
-            e.preventDefault();
-        },
-        { passive: false },
-    );
-    surface.addEventListener(
-        'touchend',
-        (e) => {
-            // Quick tap (no swipe) → start the game only from the initial
-            // idle screen. A mid-run pause requires the explicit ▶ button
-            // so an accidental tap (pocket, palm, double-tap) can't kick
-            // the player back into a running game.
-            if (tracking && !moved && paused && !gameOver) {
-                const isInitial = score === 0 && snake && snake.length <= 5;
-                if (isInitial) {
-                    paused = false;
-                    showMessage('');
-                    audio.play('start');
-                }
-            }
-            tracking = false;
-            e.preventDefault();
-        },
-        { passive: false },
-    );
-    // Pause button
-    const btnPause = document.getElementById('btn-pause');
-    btnPause.addEventListener('click', (e) => {
-        e.preventDefault();
-        audio.init();
-        // After game over the pause button is meaningless — the player
-        // must use the dedicated restart button (or ↵ / gamepad shortcut).
-        if (gameOver) return;
-        paused = !paused;
-        showMessage(paused ? t('paused') : '');
-        btnPause.textContent = paused ? '▶' : '⏸';
-    });
-    // Restart button (single consolidated UI)
-    function doRestart() {
-        audio.init();
-        initGame();
-        paused = false;
-        btnPause.textContent = '⏸';
-        showMessage('');
-    }
-    const btnRestart = document.getElementById('btn-restart');
-    btnRestart.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        doRestart();
-    });
-    // Refresh the button label to reflect the active input modality
-    // (keyboard shortcut, gamepad glyph, or touch).
-    function refreshRestartBtnLabel() {
-        if (!btnRestart) return;
-        btnRestart.textContent = getRestartLabel(t, currentModality(), {
-            gpBtnB: () => gpBtn('B'),
-        });
-    }
-    refreshRestartBtnLabel();
-    window.__refreshRestartBtnLabel = refreshRestartBtnLabel;
-    // Mute button
-    const btnMute = document.getElementById('btn-mute');
-    function refreshMuteUI() {
-        const m = audio.muted;
-        btnMute.textContent = m ? '🔇' : '🔊';
-        btnMute.classList.toggle('muted', m);
-        btnMute.setAttribute('aria-label', m ? 'Unmute' : 'Mute');
-        const hint = document.getElementById('mute-hint');
-        if (hint) hint.style.display = m ? 'block' : 'none';
-    }
-    btnMute.addEventListener('click', (e) => {
-        e.preventDefault();
-        audio.init();
-        audio.setMuted(!audio.muted);
-        refreshMuteUI();
-    });
-    refreshMuteUI();
-    // Language switcher
-    // Language switcher (extracted to src/i18n/dom.ts)
-    const updateLangBtnState = installLangMenu({
-        getLang: () => LANG,
-        setLang,
-        t,
-        canSwitch: () => paused && !gameOver,
-        showEffect,
-    });
-    if (updateLangBtnState) window.__updateLangBtnState = updateLangBtnState;
-    // ============ GAMEPAD CONTROLLER SUPPORT ============
-    (function setupGamepad() {
-        const prevButtons = [];
-        const DEAD = 0.4;
-        function applyGamepadGlyphs() {
-            // Defense-in-depth: this function paints the UI as if a gamepad
-            // is connected, so refuse to run when one isn't. Several callers
-            // (e.g. refreshDynamicI18n after a language switch) invoke this
-            // unconditionally — without this guard we'd light up the gamepad
-            // hints on keyboard / touch users every time they change locale.
-            if (!hasGamepad) return;
-            const hintKey = document.querySelector('#instr-line .hint-key') as HTMLElement | null;
-            if (hintKey) {
-                hintKey.textContent = t('hint.pauseGamepad', { btn: gpBtn('A') });
-                hintKey.style.display = 'inline';
-            }
-            const hintSep = document.querySelector('#instr-line .hint-sep') as HTMLElement | null;
-            if (hintSep) hintSep.style.display = 'inline';
-            // Restart button label now also reflects gamepad modality
-            if (typeof window.__refreshRestartBtnLabel === 'function') window.__refreshRestartBtnLabel();
-            const mb = document.getElementById('btn-mute');
-            if (mb && hasTouchEnv && !hasFineKeyboardEnv) mb.title = t('btn.sound') + ' (' + gpBtn('X') + ')';
-            const lb = document.getElementById('btn-lang');
-            if (lb) lb.title = t('btn.language') + ' (' + gpBtn('Y') + ')';
-            const lbadge = document.getElementById('btn-lang-badge');
-            if (lbadge) {
-                lbadge.textContent = isPSGamepad ? '△' : 'Y';
-                lbadge.classList.add('show');
-            }
-        }
-        window.__applyGamepadGlyphs = applyGamepadGlyphs;
-        function markGamepad() {
-            const firstTime = !hasGamepad;
-            hasGamepad = true;
-            if (!firstTime) return;
-            if (typeof window.__refreshIdlePrompt === 'function') window.__refreshIdlePrompt();
-            applyGamepadGlyphs();
-        }
-        window.__markGamepad = markGamepad;
-        window.__applyGamepadGlyphs = applyGamepadGlyphs;
-        // Log first-seen gamepad id once so unknown pads can be added to the PS regex
-        let loggedPad = false;
-        function poll() {
-            const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-            for (const pad of pads) {
-                if (!pad || pad.connected === false) continue;
-                const idLower = (pad.id || '').trim().toLowerCase();
-                if (!idLower) continue;
-                if (!loggedPad) {
-                    console.log('[gamepad] detected:', pad.id, 'mapping:', pad.mapping);
-                    loggedPad = true;
-                }
-                const wasPS = isPSGamepad;
-                if (/dualshock|dualsense|playstation|ps[345]|sony|054c/.test(idLower)) isPSGamepad = true;
-                markGamepad();
-                // If we just discovered it's a PS pad after first marking, re-apply glyphs
-                if (!wasPS && isPSGamepad) {
-                    applyGamepadGlyphs();
-                    if (paused && !gameOver && typeof window.__refreshIdlePrompt === 'function')
-                        window.__refreshIdlePrompt();
-                }
-                // Direction: D-pad (buttons 12-15) or left stick (axes 0,1)
-                let dx = 0,
-                    dy = 0;
-                if (pad.buttons[12]?.pressed) dy = -1;
-                else if (pad.buttons[13]?.pressed) dy = 1;
-                if (pad.buttons[14]?.pressed) dx = -1;
-                else if (pad.buttons[15]?.pressed) dx = 1;
-                const ax = pad.axes[0] || 0,
-                    ay = pad.axes[1] || 0;
-                if (!dx && !dy && (Math.abs(ax) > DEAD || Math.abs(ay) > DEAD)) {
-                    const nd2 = classifyDelta(ax, ay);
-                    if (nd2) {
-                        dx = nd2.x;
-                        dy = nd2.y;
-                    }
-                }
-                if (dx || dy) {
-                    const nd = { x: dx, y: dy };
-                    if (paused && !gameOver) {
-                        audio.init();
-                        paused = false;
-                        showMessage('');
-                        audio.play('start');
-                    }
-                    // After game over, direction input is ignored —
-                    // restart requires an explicit A/B/Start/Back press
-                    // (or the on-screen restart button / ↵ Enter).
-                    if (!gameOver && !isOppositeDir(direction, nd)) nextDirection = nd;
-                }
-                // Edge-triggered button presses
-                const prev = prevButtons[pad.index] || [];
-                pad.buttons.forEach((b, i) => {
-                    const wasDown = !!prev[i];
-                    if (b.pressed && !wasDown) {
-                        // A/Cross (0) or Start (9): pause/unpause or restart
-                        if (i === 0 || i === 9) {
-                            audio.init();
-                            if (gameOver) doRestart();
-                            else {
-                                paused = !paused;
-                                showMessage(paused ? t('paused') : '');
-                                btnPause.textContent = paused ? '▶' : '⏸';
-                            }
-                        }
-                        // B/Circle (1) or Back (8): restart — only when paused or game over
-                        if (i === 1 || i === 8) {
-                            if (paused || gameOver) {
-                                audio.init();
-                                doRestart();
-                            }
-                        }
-                        // X/Square (2): toggle mute (mobile / touch only — desktop uses system volume)
-                        if (i === 2 && hasTouchEnv && !hasFineKeyboardEnv) {
-                            audio.init();
-                            audio.setMuted(!audio.muted);
-                            refreshMuteUI();
-                            showEffect(audio.muted ? '🔇 ' + t('btn.sound') : '🔊 ' + t('btn.sound'));
-                        }
-                        // Y/Triangle (3): cycle language — only while paused / waiting to start (not game over)
-                        if (i === 3 && paused && !gameOver) {
-                            const langs = ['zh-cn', 'zh-tw', 'en-us', 'ja-jp', 'ko-kr', 'es-es'];
-                            const idx = langs.indexOf(LANG);
-                            const next = langs[(idx + 1) % langs.length];
-                            setLang(next);
-                            showEffect('🌐 ' + next.toUpperCase());
-                        }
-                    }
-                });
-                prevButtons[pad.index] = pad.buttons.map((b) => b.pressed);
-            }
-            requestAnimationFrame(poll);
-        }
-        window.addEventListener('gamepadconnected', () => {
-            markGamepad();
-            requestAnimationFrame(poll);
-        });
-        // Some browsers (Chrome) need an active poll loop even without an event
-        requestAnimationFrame(poll);
-    })();
-    // More menu toggle
-    const moreMenu = document.getElementById('more-menu');
-    const morePopup = document.getElementById('more-popup');
-    moreMenu.addEventListener('click', (e) => {
-        e.stopPropagation();
-        morePopup.classList.toggle('open');
-    });
-    document.addEventListener('click', (e) => {
-        if (!moreMenu.contains(e.target as Node)) morePopup.classList.remove('open');
-    });
-    // Show ⋯ only when info-bar would overflow
-    const infoBar = document.getElementById('info-bar');
-    function checkInfoBarOverflow() {
-        // Try expanding (show HISCORE + GitHub). If it fits, keep expanded; otherwise stay compact.
-        const wasCompact = infoBar.classList.contains('compact');
-        infoBar.classList.remove('compact');
-        const fits = infoBar.scrollWidth <= infoBar.clientWidth + 1;
-        if (!fits) infoBar.classList.add('compact');
-        const isCompact = infoBar.classList.contains('compact');
-        if (wasCompact !== isCompact) {
-            applyCanvasSize();
-            fitCameraToPond();
-        }
-    }
-    window.addEventListener('resize', checkInfoBarOverflow);
-    setTimeout(checkInfoBarOverflow, 0);
-    // Re-check whenever score/hiscore text length changes
-    new MutationObserver(checkInfoBarOverflow).observe(infoBar, {
-        subtree: true,
-        characterData: true,
-        childList: true,
-    });
-})();
+// ============ TOUCH / SWIPE CONTROLS (extracted to src/input/touch.ts) ============
+installTouchControls({
+    canvas: renderer.domElement,
+    audio,
+    t,
+    showMessage,
+    showEffect,
+    initGame,
+    getScore: () => score,
+    getSnake: () => snake,
+    getDirection: () => direction,
+    setNextDirection: (d) => {
+        nextDirection = d;
+    },
+    getGameOver: () => gameOver,
+    getPaused: () => paused,
+    setPaused: (p) => {
+        paused = p;
+    },
+    getLang: () => LANG,
+    setLang,
+    currentModality,
+    gpBtn,
+    getHasGamepad: () => hasGamepad,
+    setHasGamepad: (v) => {
+        hasGamepad = v;
+    },
+    getIsPSGamepad: () => isPSGamepad,
+    setIsPSGamepad: (v) => {
+        isPSGamepad = v;
+    },
+    hasTouchEnv,
+    hasFineKeyboardEnv,
+    onResize: () => {
+        applyCanvasSize();
+        fitCameraToPond();
+    },
+});
 
 // Resize
 window.addEventListener('resize', () => {
