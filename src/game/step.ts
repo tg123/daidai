@@ -207,7 +207,7 @@ export function createGameStep(deps: GameStepDeps): GameStep {
             audio.play('heartbeat_start');
             // Ramp volume from 0.25 at len=20 to 1.0 at len=24
             const tt = (projectedLen - 20) / 4; // 0..1
-            const vol = 0.25 + tt * 0.85;
+            const vol = 0.25 + tt * 0.75;
             audio.setLoopVolume('beat', vol, 0.2);
         }
         if (projectedLen >= 25) {
