@@ -36,8 +36,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release list | grep Draft | grep "v${{ steps.repo-semver.outputs.bump }}" | cut -f 1 | xargs -r -L 1 gh release delete --yes
-          gh release create -d --generate-notes "v${{ steps.repo-semver.outputs.bump }}"
+          tag="v${{ steps.repo-semver.outputs.bump }}"
+          # Delete any existing draft at this tag so we can re-create with fresh notes.
+          # `gh release list | grep` exits non-zero on no-match (common on first run);
+          # use `--json` + `jq` instead so the step doesn't fail before `release create`.
+          existing=$(gh release list --json tagName,isDraft \
+            --jq ".[] | select(.isDraft and .tagName==\"$tag\") | .tagName")
+          if [ -n "$existing" ]; then
+            gh release delete "$existing" --yes
+          fi
+          gh release create -d --generate-notes "$tag"
 
   build:
     if: github.event_name == 'release'

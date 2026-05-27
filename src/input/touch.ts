@@ -204,6 +204,10 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
     const muteBadge = document.createElement('span');
     muteBadge.className = 'gp-badge';
     muteBadge.id = 'btn-mute-badge';
+    // Decorative gamepad-hint glyph; hide it from screen readers so the
+    // button's aria-label ("Mute" / "Unmute") is read cleanly.
+    muteBadge.setAttribute('aria-hidden', 'true');
+    muteBadge.setAttribute('role', 'presentation');
     btnMute.appendChild(muteBadge);
     function refreshMuteUI() {
         const m = audio.muted;

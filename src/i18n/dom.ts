@@ -54,6 +54,9 @@ export function installLangMenu(opts: LangMenuOpts): (() => void) | undefined {
     const badge = document.createElement('span');
     badge.className = 'gp-badge';
     badge.id = 'btn-lang-badge';
+    // Decorative gamepad-hint glyph; hide from screen readers.
+    badge.setAttribute('aria-hidden', 'true');
+    badge.setAttribute('role', 'presentation');
     btn.appendChild(badge);
     const LANG = opts.getLang();
     menu.querySelectorAll('button[data-lang]').forEach((b) => {
@@ -95,14 +98,14 @@ export function installLangMenu(opts: LangMenuOpts): (() => void) | undefined {
     menu.addEventListener('click', onMenuClick);
     document.addEventListener('click', onDocClick);
     updateBtnState();
-    let rafId = 0;
-    const tick = () => {
-        updateBtnState();
-        rafId = requestAnimationFrame(tick);
-    };
-    rafId = requestAnimationFrame(tick);
+    // Event-driven refresh: `body.playing` is toggled by the main loop on
+    // every paused/gameOver transition, so a MutationObserver on it is the
+    // cheapest way to keep the lang button in sync without a second 60fps
+    // rAF parallel to the game loop.
+    const bodyObserver = new MutationObserver(updateBtnState);
+    bodyObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     btn.__langMenuCleanup = () => {
-        cancelAnimationFrame(rafId);
+        bodyObserver.disconnect();
         btn.removeEventListener('click', onBtnClick);
         menu.removeEventListener('click', onMenuClick);
         document.removeEventListener('click', onDocClick);
