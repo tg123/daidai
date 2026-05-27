@@ -53,6 +53,12 @@ function injectBuildSha() {
 // An inline script in index.html picks the right one at runtime and
 // switches `<link rel="manifest">` href accordingly (see public/ logic
 // duplicated below for parity with src/i18n/index.ts pickLang).
+// Canonical PWA identity for production main-branch deploys. Used as the
+// manifest `id` only when we're shipping the real site — PR previews live
+// under the same gh-pages origin and would otherwise collide with the
+// installed production app (PWA `id` is origin-scoped).
+const CANONICAL_ID = 'https://tg123.github.io/daidai/';
+
 const MANIFEST_BASE = {
     start_url: './',
     scope: './',
@@ -63,11 +69,33 @@ const MANIFEST_BASE = {
     theme_color: '#02101c',
     categories: ['games', 'entertainment'],
     icons: [
-        // Browsers downscale 512px for the 192 slot — adequate for
-        // PWA installability checks without bundling a second PNG.
-        { src: 'logo-512.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        // Real PNGs at each declared size — Microsoft Store / PWABuilder
+        // reject manifests where the file dimensions don't match the
+        // declared `sizes` attribute. logo-{96,144,192,512}.png are all
+        // generated from the 512px master in public/.
+        { src: 'logo-96.png', sizes: '96x96', type: 'image/png', purpose: 'any' },
+        { src: 'logo-144.png', sizes: '144x144', type: 'image/png', purpose: 'any' },
+        { src: 'logo-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
         { src: 'logo-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
         { src: 'logo-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+    // Store listing previews (Microsoft Store / Chrome install dialog
+    // both honor these). Wide for desktop, narrow for mobile.
+    screenshots: [
+        {
+            src: 'screenshots/desktop-1280x800.png',
+            sizes: '1280x800',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: 'DaiDai Worm — idle screen on desktop',
+        },
+        {
+            src: 'screenshots/mobile-720x1280.png',
+            sizes: '720x1280',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: 'DaiDai Worm — idle screen on mobile',
+        },
     ],
 };
 
@@ -83,19 +111,24 @@ function loadPwaStrings() {
     return out;
 }
 
-function buildLocaleManifest(code, strings) {
-    return {
+function buildLocaleManifest(code, strings, { canonicalId } = {}) {
+    const manifest = {
         ...MANIFEST_BASE,
         name: strings.name,
         short_name: strings.short_name,
         description: strings.description,
         lang: code,
     };
+    // Only stamp the canonical `id` on real production builds — PR
+    // previews share the gh-pages origin and would otherwise hijack the
+    // installed production PWA's identity.
+    if (canonicalId) manifest.id = CANONICAL_ID;
+    return manifest;
 }
 
 // Custom plugin: emits one manifest per locale alongside the default
 // one (in addition to whatever VitePWA writes).
-function pwaLocaleManifests() {
+function pwaLocaleManifests({ canonicalId } = {}) {
     return {
         name: 'daidai-pwa-locale-manifests',
         apply: 'build',
@@ -105,7 +138,7 @@ function pwaLocaleManifests() {
                 this.emitFile({
                     type: 'asset',
                     fileName: `manifest.${code}.webmanifest`,
-                    source: JSON.stringify(buildLocaleManifest(code, strings[code])),
+                    source: JSON.stringify(buildLocaleManifest(code, strings[code], { canonicalId })),
                 });
             }
             // Default manifest at the canonical filename — used as a
@@ -114,7 +147,7 @@ function pwaLocaleManifests() {
             this.emitFile({
                 type: 'asset',
                 fileName: 'manifest.webmanifest',
-                source: JSON.stringify(buildLocaleManifest('en-us', strings['en-us'])),
+                source: JSON.stringify(buildLocaleManifest('en-us', strings['en-us'], { canonicalId })),
             });
         },
     };
@@ -180,7 +213,7 @@ export default defineConfig(({ mode }) => {
                     ],
                 },
             }),
-            pwaLocaleManifests(),
+            pwaLocaleManifests({ canonicalId: !includeCheats }),
         ],
         define: {
             __INCLUDE_CHEATS__: JSON.stringify(includeCheats),
