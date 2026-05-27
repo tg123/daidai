@@ -43,5 +43,6 @@ export function projectileHits(
     const tz = targetCellY * cell;
     const dx = p.x - tx;
     const dz = p.z - tz;
-    return Math.sqrt(dx * dx + dz * dz) < radius;
+    const r2 = radius * radius;
+    return dx * dx + dz * dz < r2;
 }

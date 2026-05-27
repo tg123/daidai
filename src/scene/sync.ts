@@ -187,6 +187,11 @@ export function createSceneSync(deps: SceneSyncDeps): SceneSyncApi {
         CELL,
     } = deps;
 
+    const instrEl = document.getElementById('instructions');
+    const btnRestartEl = document.getElementById('btn-restart');
+    const msgEl = document.getElementById('message');
+    const boostEl = document.getElementById('boost-timer') as HTMLElement | null;
+
     function updateGoldenProjectiles() {
         const goldenProjectiles = deps.getGoldenProjectiles();
         const beans = deps.getBeans();
@@ -251,25 +256,19 @@ export function createSceneSync(deps: SceneSyncDeps): SceneSyncApi {
         const gameAccumulator = deps.getGameAccumulator();
 
         const showHints = paused || gameOver;
-        const instrEl = document.getElementById('instructions');
-        const btnRestartEl = document.getElementById('btn-restart');
         if (instrEl) instrEl.classList.toggle('show', showHints);
         if (btnRestartEl) {
             btnRestartEl.classList.toggle('show', gameOver);
             btnRestartEl.classList.toggle('gameover', gameOver);
-            if (gameOver) {
-                const msgEl = document.getElementById('message');
-                if (msgEl) {
-                    const r = msgEl.getBoundingClientRect();
-                    if (r.height > 0) {
-                        btnRestartEl.style.top = r.bottom + 16 + 'px';
-                        btnRestartEl.style.transform = 'translate(-50%, 0)';
-                    }
+            if (gameOver && msgEl) {
+                const r = msgEl.getBoundingClientRect();
+                if (r.height > 0) {
+                    btnRestartEl.style.top = r.bottom + 16 + 'px';
+                    btnRestartEl.style.transform = 'translate(-50%, 0)';
                 }
             }
         }
-        if (boost.active) {
-            const boostEl = document.getElementById('boost-timer')!;
+        if (boost.active && boostEl) {
             const remain = boost.remaining(performance.now()) / 1000;
             boostEl.style.display = '';
             boostEl.textContent = `🔥 ×${boost.multiplier}  ${remain.toFixed(1)}s`;
