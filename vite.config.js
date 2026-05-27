@@ -53,11 +53,13 @@ function injectBuildSha() {
 // An inline script in index.html picks the right one at runtime and
 // switches `<link rel="manifest">` href accordingly (see public/ logic
 // duplicated below for parity with src/i18n/index.ts pickLang).
+// Canonical PWA identity for production main-branch deploys. Used as the
+// manifest `id` only when we're shipping the real site — PR previews live
+// under the same gh-pages origin and would otherwise collide with the
+// installed production app (PWA `id` is origin-scoped).
+const CANONICAL_ID = 'https://tg123.github.io/daidai/';
+
 const MANIFEST_BASE = {
-    // Stable identifier — keeps install identity intact even if start_url
-    // changes (PWABuilder/Store best practice). Use a URL-style ID that
-    // matches the production origin.
-    id: 'https://tg123.github.io/daidai/',
     start_url: './',
     scope: './',
     display: 'fullscreen',
@@ -109,19 +111,24 @@ function loadPwaStrings() {
     return out;
 }
 
-function buildLocaleManifest(code, strings) {
-    return {
+function buildLocaleManifest(code, strings, { canonicalId } = {}) {
+    const manifest = {
         ...MANIFEST_BASE,
         name: strings.name,
         short_name: strings.short_name,
         description: strings.description,
         lang: code,
     };
+    // Only stamp the canonical `id` on real production builds — PR
+    // previews share the gh-pages origin and would otherwise hijack the
+    // installed production PWA's identity.
+    if (canonicalId) manifest.id = CANONICAL_ID;
+    return manifest;
 }
 
 // Custom plugin: emits one manifest per locale alongside the default
 // one (in addition to whatever VitePWA writes).
-function pwaLocaleManifests() {
+function pwaLocaleManifests({ canonicalId } = {}) {
     return {
         name: 'daidai-pwa-locale-manifests',
         apply: 'build',
@@ -131,7 +138,7 @@ function pwaLocaleManifests() {
                 this.emitFile({
                     type: 'asset',
                     fileName: `manifest.${code}.webmanifest`,
-                    source: JSON.stringify(buildLocaleManifest(code, strings[code])),
+                    source: JSON.stringify(buildLocaleManifest(code, strings[code], { canonicalId })),
                 });
             }
             // Default manifest at the canonical filename — used as a
@@ -140,7 +147,7 @@ function pwaLocaleManifests() {
             this.emitFile({
                 type: 'asset',
                 fileName: 'manifest.webmanifest',
-                source: JSON.stringify(buildLocaleManifest('en-us', strings['en-us'])),
+                source: JSON.stringify(buildLocaleManifest('en-us', strings['en-us'], { canonicalId })),
             });
         },
     };
@@ -206,7 +213,7 @@ export default defineConfig(({ mode }) => {
                     ],
                 },
             }),
-            pwaLocaleManifests(),
+            pwaLocaleManifests({ canonicalId: !includeCheats }),
         ],
         define: {
             __INCLUDE_CHEATS__: JSON.stringify(includeCheats),
