@@ -145,15 +145,39 @@ export default defineConfig(({ mode }) => {
                 manifest: false,
                 workbox: {
                     // The whole game is inlined into index.html by
-                    // vite-plugin-singlefile, so the precache list is small:
-                    // index.html, favicons, and every locale manifest.
-                    globPatterns: ['**/*.{html,ico,png,webmanifest}'],
+                    // vite-plugin-singlefile, so the precache list is short:
+                    // index.html, favicons, locale manifests, and the small
+                    // audio clips boot needs. `music.ogg` (~460 KiB) is
+                    // intentionally excluded — it's the looping BGM and
+                    // streams happily over network once the SW is alive;
+                    // we don't want to bloat the install footprint by half
+                    // a megabyte. `silent.mp3`/`silent.mp4` are tiny iOS
+                    // audio-unlock helpers and stay precached.
+                    globPatterns: ['**/*.{html,ico,png,webmanifest,ogg,mp3,mp4}'],
+                    globIgnores: ['**/music.ogg'],
                     navigateFallback: 'index.html',
                     // The inlined HTML can exceed Workbox's default 2 MiB cap;
                     // bump generously so future asset additions don't silently
                     // drop the main entry from the precache.
                     maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
                     cleanupOutdatedCaches: true,
+                    // Runtime cache for music.ogg + any other audio that
+                    // slipped past precache — first play hits network, then
+                    // subsequent plays are served offline-friendly from cache.
+                    runtimeCaching: [
+                        {
+                            urlPattern: /\.(?:ogg|mp3|mp4)$/i,
+                            handler: 'CacheFirst',
+                            options: {
+                                cacheName: 'daidai-audio',
+                                expiration: {
+                                    maxEntries: 32,
+                                    maxAgeSeconds: 60 * 60 * 24 * 30,
+                                },
+                                rangeRequests: true,
+                            },
+                        },
+                    ],
                 },
             }),
             pwaLocaleManifests(),
