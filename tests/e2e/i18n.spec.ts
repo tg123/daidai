@@ -8,6 +8,13 @@ const expectedTitles: Record<string, string> = {
     'ja-jp': '豆豆池のダイダイ虫',
     'ko-kr': '콩 연못의 다이다이 벌레',
     'es-es': 'Gusano DaiDai del Estanque DouDou',
+    'fr-fr': 'Ver DaiDai de l’étang DouDou',
+    'it-it': 'Verme DaiDai dello stagno DouDou',
+    'de-de': '„DaiDai“-Wurm vom DouDou-Teich',
+    'pt-br': 'Verme DaiDai do Lago DouDou',
+    'pl-pl': 'Robak DaiDai ze Stawu DouDou',
+    'ru-ru': 'Червяк ДайДай из пруда ДоуДоу',
+    'th-th': 'หนอนไต่ไต่แห่งบ่อโต้วโต้ว',
 };
 
 for (const [lang, title] of Object.entries(expectedTitles)) {

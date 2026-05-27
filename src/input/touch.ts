@@ -369,7 +369,21 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
                     }
                     // Y/Triangle (3): cycle language — only while paused / waiting to start (not game over)
                     if (i === 3 && getPaused() && !getGameOver()) {
-                        const langs = ['zh-cn', 'zh-tw', 'en-us', 'ja-jp', 'ko-kr', 'es-es'];
+                        const langs = [
+                            'zh-cn',
+                            'zh-tw',
+                            'en-us',
+                            'ja-jp',
+                            'ko-kr',
+                            'es-es',
+                            'fr-fr',
+                            'it-it',
+                            'de-de',
+                            'pt-br',
+                            'pl-pl',
+                            'ru-ru',
+                            'th-th',
+                        ];
                         const idx = langs.indexOf(getLang());
                         const nextLang = langs[(idx + 1) % langs.length];
                         setLang(nextLang);
