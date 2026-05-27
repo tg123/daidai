@@ -1,10 +1,10 @@
 [package]
-name = "app"
+name = "daidai-worm"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+description = "DaiDai Worm — a 3D remake of the classic 呆呆虫之豆豆谭"
+authors = ["tg123 <https://github.com/tg123>"]
+repository = "https://github.com/tg123/daidai"
+homepage = "https://github.com/tg123/daidai"
 edition = "2021"
 rust-version = "1.77.2"
 

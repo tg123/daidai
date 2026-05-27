@@ -59,9 +59,14 @@ export function installLangMenu(opts: LangMenuOpts): (() => void) | undefined {
     menu.querySelectorAll('button[data-lang]').forEach((b) => {
         b.classList.toggle('active', b.getAttribute('data-lang') === LANG);
     });
+    let lastVisible: boolean | null = null;
     function updateBtnState() {
-        btn!.style.display = opts.canSwitch() ? 'flex' : 'none';
-        if (!opts.canSwitch()) menu!.classList.remove('open');
+        const visible = opts.canSwitch();
+        if (visible !== lastVisible) {
+            btn!.style.display = visible ? 'flex' : 'none';
+            lastVisible = visible;
+        }
+        if (!visible) menu!.classList.remove('open');
     }
     const onBtnClick = (e: Event) => {
         e.preventDefault();

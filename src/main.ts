@@ -1117,7 +1117,8 @@ document.addEventListener('fullscreenchange', () => window.dispatchEvent(new Eve
 // ultra-wide), the camera refits but the playfield aspect stays wrong.
 // Cheapest fix: debounce-detect a meaningful change and reload, so
 // `pickGridForAspect` reruns. Hi-score lives in localStorage so nothing
-// the player cares about is lost.
+// the player cares about is lost. Applies to browser + Tauri — a tab
+// resize / device rotation is rare during play and the refit is worth it.
 // Exception: F11 / Fullscreen API transitions are an expected, transient
 // resize — we just refit the camera and rebaseline without reloading,
 // otherwise pressing F11 dumps the player back to the title screen.
