@@ -7,6 +7,7 @@
     "node": "^20.19.0 || ^22.13.0 || >=24"
   },
   "description": "DaiDai Worm 3D web game — test harness",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "serve": "vite",
