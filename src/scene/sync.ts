@@ -198,6 +198,7 @@ export function createSceneSync(deps: SceneSyncDeps): SceneSyncApi {
         const goldBeans = deps.getGoldBeans();
         const shedSkin = deps.getShedSkin();
         const beanMeshes = deps.getBeanMeshes();
+        const skinMeshes = deps.getSkinMeshes();
         for (let i = goldenProjectiles.length - 1; i >= 0; i--) {
             const p = goldenProjectiles[i];
             stepProjectile(p);
@@ -225,6 +226,10 @@ export function createSceneSync(deps: SceneSyncDeps): SceneSyncApi {
                 if (projectileHits(p, s.x, s.y, CELL)) {
                     goldBeans.push({ x: s.x, y: s.y, life: 300 });
                     shedSkin.splice(j, 1);
+                    if (skinMeshes[j]) {
+                        scene.remove(skinMeshes[j]);
+                        skinMeshes.splice(j, 1);
+                    }
                     spawnParticles3D(s.x * CELL, s.y * CELL, 0xffd700, 10);
                     audio.play('gold');
                 }
