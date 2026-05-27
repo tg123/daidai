@@ -2,6 +2,11 @@ import { defineConfig } from 'vite';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import { VitePWA } from 'vite-plugin-pwa';
 import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const SHA_RE = /^[0-9a-f]{40}$/i;
 
@@ -40,6 +45,81 @@ function injectBuildSha() {
     };
 }
 
+// Base manifest properties shared across every locale variant. Per-locale
+// overrides (name / short_name / description / lang) come from
+// src/i18n/pwa-strings.json. We emit:
+//   - dist/manifest.<code>.webmanifest      (one per supported locale)
+//   - dist/manifest.webmanifest              (en-us copy, default fallback)
+// An inline script in index.html picks the right one at runtime and
+// switches `<link rel="manifest">` href accordingly (see public/ logic
+// duplicated below for parity with src/i18n/index.ts pickLang).
+const MANIFEST_BASE = {
+    start_url: './',
+    scope: './',
+    display: 'fullscreen',
+    display_override: ['fullscreen', 'standalone', 'minimal-ui'],
+    orientation: 'any',
+    background_color: '#02101c',
+    theme_color: '#02101c',
+    categories: ['games', 'entertainment'],
+    icons: [
+        // Browsers downscale 512px for the 192 slot — adequate for
+        // PWA installability checks without bundling a second PNG.
+        { src: 'logo-512.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: 'logo-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: 'logo-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+};
+
+function loadPwaStrings() {
+    const raw = readFileSync(resolve(__dirname, 'src/i18n/pwa-strings.json'), 'utf8');
+    const parsed = JSON.parse(raw);
+    // Strip the JSON-doc placeholder key so it doesn't leak into output.
+    const out = {};
+    for (const k of Object.keys(parsed)) {
+        if (k.startsWith('$')) continue;
+        out[k] = parsed[k];
+    }
+    return out;
+}
+
+function buildLocaleManifest(code, strings) {
+    return {
+        ...MANIFEST_BASE,
+        name: strings.name,
+        short_name: strings.short_name,
+        description: strings.description,
+        lang: code,
+    };
+}
+
+// Custom plugin: emits one manifest per locale alongside the default
+// one (in addition to whatever VitePWA writes).
+function pwaLocaleManifests() {
+    return {
+        name: 'daidai-pwa-locale-manifests',
+        apply: 'build',
+        generateBundle() {
+            const strings = loadPwaStrings();
+            for (const code of Object.keys(strings)) {
+                this.emitFile({
+                    type: 'asset',
+                    fileName: `manifest.${code}.webmanifest`,
+                    source: JSON.stringify(buildLocaleManifest(code, strings[code])),
+                });
+            }
+            // Default manifest at the canonical filename — used as a
+            // fallback for tools that fetch manifest.webmanifest directly
+            // (e.g. PWA Builder, manifest validators).
+            this.emitFile({
+                type: 'asset',
+                fileName: 'manifest.webmanifest',
+                source: JSON.stringify(buildLocaleManifest('en-us', strings['en-us'])),
+            });
+        },
+    };
+}
+
 export default defineConfig(({ mode }) => {
     // Compile-time gate for the 1-6 keyboard cheat backdoor (and its
     // announce-debug-help console banner). Enabled in `vite dev` and any
@@ -51,51 +131,23 @@ export default defineConfig(({ mode }) => {
             injectBuildSha(),
             viteSingleFile(),
             VitePWA({
-                // Auto-register service worker via the script tag the plugin
-                // injects into index.html (which viteSingleFile inlines).
+                // Auto-register service worker via the inline script tag the
+                // plugin injects into index.html (which viteSingleFile inlines).
                 registerType: 'autoUpdate',
-                // Inline the tiny registration snippet directly into index.html
-                // so we don't ship a separate registerSW.js file alongside the
-                // singlefile build. The service worker itself (sw.js) still
-                // needs to be a separately-served file by spec.
                 injectRegister: 'inline',
-                // Pinned filenames keep the gh-pages / itch.io / PR-preview
-                // deployments cacheable behind their own paths.
                 filename: 'sw.js',
                 manifestFilename: 'manifest.webmanifest',
-                // Note: do NOT use `includeAssets` for files already in
-                // public/ — Vite copies them to dist automatically and
-                // `workbox.globPatterns` below picks them up with proper
-                // content-hash revisions. Adding them via includeAssets
-                // produces duplicate (revision:null) precache entries.
-                manifest: {
-                    name: '呆呆虫之豆豆潭',
-                    short_name: 'DaiDai',
-                    description:
-                        'A nostalgic 3D Three.js remake of the classic 1999 game "DaiDai Worm" (呆呆虫之豆豆潭).',
-                    lang: 'zh-CN',
-                    start_url: './',
-                    scope: './',
-                    display: 'fullscreen',
-                    display_override: ['fullscreen', 'standalone', 'minimal-ui'],
-                    orientation: 'any',
-                    background_color: '#02101c',
-                    theme_color: '#02101c',
-                    categories: ['games', 'entertainment'],
-                    icons: [
-                        // Browsers downscale 512px for the 192 slot — adequate for
-                        // PWA installability checks without bundling a second PNG.
-                        { src: 'logo-512.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-                        { src: 'logo-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-                        { src: 'logo-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-                    ],
-                },
+                // Disable VitePWA's manifest emission + <link> injection.
+                // Our pwaLocaleManifests() plugin below emits 13 per-locale
+                // manifests plus a default `manifest.webmanifest` (= en-us),
+                // and index.html ships a static <link id="daidai-manifest">
+                // whose href is swapped by an inline script based on locale.
+                manifest: false,
                 workbox: {
                     // The whole game is inlined into index.html by
                     // vite-plugin-singlefile, so the precache list is small:
-                    // the single HTML shell + the favicons listed above.
+                    // index.html, favicons, and every locale manifest.
                     globPatterns: ['**/*.{html,ico,png,webmanifest}'],
-                    // index.html for any navigation request -> offline-ready.
                     navigateFallback: 'index.html',
                     // The inlined HTML can exceed Workbox's default 2 MiB cap;
                     // bump generously so future asset additions don't silently
@@ -104,6 +156,7 @@ export default defineConfig(({ mode }) => {
                     cleanupOutdatedCaches: true,
                 },
             }),
+            pwaLocaleManifests(),
         ],
         define: {
             __INCLUDE_CHEATS__: JSON.stringify(includeCheats),

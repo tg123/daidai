@@ -1,0 +1,68 @@
+{
+  "$schema_comment": "Per-locale PWA manifest strings. Read at build time by vite.config.js to emit dist/manifest.<code>.webmanifest for each entry. NOT shipped at runtime; the i18n/*.ts dictionaries cover in-game UI. Keep keys in sync with LocaleCode in src/i18n/index.ts.",
+  "zh-cn": {
+    "name": "呆呆虫之豆豆潭",
+    "short_name": "呆呆虫",
+    "description": "用 Three.js 在浏览器中 3D 复刻的怀旧版《呆呆虫之豆豆潭》。"
+  },
+  "zh-tw": {
+    "name": "呆呆蟲之豆豆潭",
+    "short_name": "呆呆蟲",
+    "description": "使用 Three.js 在瀏覽器中以 3D 重製的懷舊版《呆呆蟲之豆豆潭》。"
+  },
+  "en-us": {
+    "name": "DaiDai Worm",
+    "short_name": "DaiDai",
+    "description": "A nostalgic 3D Three.js remake of the classic 1999 game DaiDai Worm."
+  },
+  "ja-jp": {
+    "name": "ダイダイ虫の豆豆潭",
+    "short_name": "ダイダイ",
+    "description": "Three.js でブラウザ上に 3D で復刻した懐かしの『呆呆虫之豆豆潭』。"
+  },
+  "ko-kr": {
+    "name": "다이다이 벌레의 콩콩 연못",
+    "short_name": "다이다이",
+    "description": "Three.js로 브라우저에서 3D로 리메이크한 추억의 게임 《呆呆虫之豆豆潭》."
+  },
+  "es-es": {
+    "name": "Gusano DaiDai",
+    "short_name": "DaiDai",
+    "description": "Una remasterización nostálgica en 3D con Three.js del clásico juego de 1999 «DaiDai Worm»."
+  },
+  "fr-fr": {
+    "name": "Ver DaiDai",
+    "short_name": "DaiDai",
+    "description": "Un remake nostalgique en 3D avec Three.js du jeu classique de 1999 « DaiDai Worm »."
+  },
+  "it-it": {
+    "name": "Verme DaiDai",
+    "short_name": "DaiDai",
+    "description": "Un remake nostalgico in 3D con Three.js del classico del 1999 «DaiDai Worm»."
+  },
+  "de-de": {
+    "name": "DaiDai-Wurm",
+    "short_name": "DaiDai",
+    "description": "Ein nostalgisches 3D-Remake des Klassikers \"DaiDai Worm\" (1999) mit Three.js im Browser."
+  },
+  "pt-br": {
+    "name": "Verme DaiDai",
+    "short_name": "DaiDai",
+    "description": "Um remake nostálgico em 3D com Three.js do clássico de 1999 \"DaiDai Worm\"."
+  },
+  "pl-pl": {
+    "name": "Robak DaiDai",
+    "short_name": "DaiDai",
+    "description": "Nostalgiczny remake klasycznej gry \"DaiDai Worm\" z 1999 roku w 3D z użyciem Three.js."
+  },
+  "ru-ru": {
+    "name": "Червячок ДайДай",
+    "short_name": "ДайДай",
+    "description": "Ностальгический 3D-ремейк классической игры 1999 года «DaiDai Worm» в браузере на Three.js."
+  },
+  "th-th": {
+    "name": "หนอนไต๋ไต๋",
+    "short_name": "ไต๋ไต๋",
+    "description": "เกมรีเมก 3D สุดคิดถึงของ DaiDai Worm (1999) บนเบราว์เซอร์ด้วย Three.js"
+  }
+}

@@ -13,6 +13,70 @@
         <title>呆呆虫之豆豆潭</title>
         <link rel="icon" type="image/x-icon" href="./fav.ico" />
         <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
+        <!-- PWA manifest — must come BEFORE any other rel="manifest" link
+             in the document (browsers use the first one in tree order).
+             The inline script below swaps the href to the per-locale
+             manifest based on URL ?lang= / localStorage / navigator.languages
+             so the install prompt name/description show in the user's
+             language. The static en-us fallback applies if JS is
+             disabled. -->
+        <link rel="manifest" id="daidai-manifest" href="./manifest.en-us.webmanifest" />
+        <script>
+            (function () {
+                var supported = [
+                    'zh-cn',
+                    'zh-tw',
+                    'en-us',
+                    'ja-jp',
+                    'ko-kr',
+                    'es-es',
+                    'fr-fr',
+                    'it-it',
+                    'de-de',
+                    'pt-br',
+                    'pl-pl',
+                    'ru-ru',
+                    'th-th',
+                ];
+                function pick(raw) {
+                    if (!raw) return null;
+                    var lc = String(raw).toLowerCase();
+                    if (
+                        lc === 'zh-tw' ||
+                        lc === 'zh-hk' ||
+                        lc === 'zh-mo' ||
+                        lc.indexOf('zh-hant') === 0 ||
+                        lc.indexOf('zh-tw') === 0 ||
+                        lc.indexOf('zh-hk') === 0 ||
+                        lc.indexOf('zh-mo') === 0
+                    )
+                        return 'zh-tw';
+                    if (lc.indexOf('zh') === 0) return 'zh-cn';
+                    var two = lc.split('-')[0];
+                    for (var i = 0; i < supported.length; i++) {
+                        if (supported[i].split('-')[0] === two) return supported[i];
+                    }
+                    return null;
+                }
+                var picked = null;
+                try {
+                    var url = new URLSearchParams(location.search).get('lang');
+                    picked = pick(url);
+                } catch (_) {}
+                if (!picked) {
+                    try {
+                        picked = pick(localStorage.getItem('daidai_lang'));
+                    } catch (_) {}
+                }
+                if (!picked) {
+                    var navs = navigator.languages || [navigator.language];
+                    for (var i = 0; !picked && i < navs.length; i++) picked = pick(navs[i]);
+                }
+                picked = picked || 'en-us';
+                var link = document.getElementById('daidai-manifest');
+                if (link) link.href = './manifest.' + picked + '.webmanifest';
+            })();
+        </script>
         <!-- main.css is imported from src/main.ts so Vite handles it
              through its JS module pipeline (HMR + production bundling).
              A static <link> here would race with Vite's CSS module in
