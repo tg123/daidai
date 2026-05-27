@@ -13,8 +13,6 @@ declare global {
         /** Test-only handles exposed by main.ts for E2E inspection. */
         __test?: Record<string, unknown>;
 
-        /** Game-over metadata published for the game-over overlay handler. */
-        __gameOverInfo?: { score: number; isNew: boolean; hi: number } | null;
         /** Hook to re-render the restart button label after locale or input changes. */
         __refreshRestartBtnLabel?: () => void;
         /** Hook to refresh the lang-menu active state. */
@@ -25,7 +23,5 @@ declare global {
         __refreshIdlePrompt?: () => void;
         /** Hook to mark the active input as gamepad. */
         __markGamepad?: () => void;
-        /** Hook to refresh any dynamic i18n text after a language switch. */
-        __refreshDynamicI18n?: () => void;
     }
 }

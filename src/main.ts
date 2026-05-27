@@ -118,6 +118,12 @@ const COLORS_STR = ['#ff3333', '#2266ff', '#22ee22', '#ffaa00', '#dd55ff'];
 
 let snake, direction, nextDirection, beans, shedSkin, score, beansEaten;
 let gameOver, paused, speed, baseSpeed;
+interface GameOverInfo {
+    score: number;
+    isNew: boolean;
+    hi: number;
+}
+let gameOverInfo: GameOverInfo | null = null;
 const combo = createComboCounter();
 const boost = createBoostTimer();
 let goldBeans, growthPending;
@@ -502,7 +508,7 @@ function initGame() {
     hiScore = hiScoreStore.load();
     beansEaten = 0;
     gameOver = false;
-    window.__gameOverInfo = null;
+    gameOverInfo = null;
     paused = false;
     baseSpeed = 150;
     speed = baseSpeed;
@@ -777,7 +783,7 @@ const gameStep = createGameStep({
     triggerMagic,
     updateUI,
     setGameOverInfo: (info) => {
-        window.__gameOverInfo = info;
+        gameOverInfo = info;
     },
 });
 const gameUpdate = gameStep.gameUpdate;
@@ -992,8 +998,8 @@ function refreshIdlePrompt() {
 }
 function refreshDynamicI18n() {
     // Re-render visible message based on game state
-    if (gameOver && window.__gameOverInfo) {
-        const { score, isNew, hi } = window.__gameOverInfo;
+    if (gameOver && gameOverInfo) {
+        const { score, isNew, hi } = gameOverInfo;
         const msg = isNew ? t('over.new', { score }) : t('over.normal', { score, hi });
         showMessage(msg);
     } else if (paused) {
@@ -1015,7 +1021,6 @@ function refreshDynamicI18n() {
         if (typeof window.__refreshRestartBtnLabel === 'function') window.__refreshRestartBtnLabel();
     } catch (_) {}
 }
-window.__refreshDynamicI18n = refreshDynamicI18n;
 // Update prompt dynamically if first interaction reveals a different modality
 window.addEventListener(
     'touchstart',
