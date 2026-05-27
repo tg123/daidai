@@ -32,6 +32,7 @@ export interface TouchControlsDeps {
     hasTouchEnv: boolean;
     hasFineKeyboardEnv: boolean;
     onResize: () => void;
+    refreshIdlePrompt: () => void;
 }
 
 export interface TouchControlsApi {
@@ -66,6 +67,7 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
         hasTouchEnv,
         hasFineKeyboardEnv,
         onResize,
+        refreshIdlePrompt,
     } = deps;
 
     let sx = 0,
@@ -240,7 +242,7 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
         const firstTime = !getHasGamepad();
         setHasGamepad(true);
         if (!firstTime) return;
-        if (typeof window.__refreshIdlePrompt === 'function') window.__refreshIdlePrompt();
+        refreshIdlePrompt();
         applyGamepadGlyphs();
     }
     // Log first-seen gamepad id once so unknown pads can be added to the PS regex
@@ -261,8 +263,7 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
             // If we just discovered it's a PS pad after first marking, re-apply glyphs
             if (!wasPS && getIsPSGamepad()) {
                 applyGamepadGlyphs();
-                if (getPaused() && !getGameOver() && typeof window.__refreshIdlePrompt === 'function')
-                    window.__refreshIdlePrompt();
+                if (getPaused() && !getGameOver()) refreshIdlePrompt();
             }
             // Direction: D-pad (buttons 12-15) or left stick (axes 0,1)
             let dx = 0,

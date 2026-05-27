@@ -883,6 +883,7 @@ const touchApi = installTouchControls({
         applyCanvasSize();
         fitCameraToPond();
     },
+    refreshIdlePrompt: () => refreshIdlePrompt(),
 });
 
 // Resize
@@ -1036,7 +1037,6 @@ window.addEventListener(
     },
     { once: true },
 );
-window.__refreshIdlePrompt = refreshIdlePrompt;
 document.addEventListener('keydown', function startHandler(e) {
     const dirs = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'];
     if (dirs.includes(e.key)) {

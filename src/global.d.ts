@@ -12,8 +12,5 @@ declare global {
         eruda?: { init: () => void };
         /** Test-only handles exposed by main.ts for E2E inspection. */
         __test?: Record<string, unknown>;
-
-        /** Hook to redraw the idle/paused prompt. */
-        __refreshIdlePrompt?: () => void;
     }
 }
