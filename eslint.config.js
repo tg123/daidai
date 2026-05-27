@@ -9,7 +9,7 @@ import prettier from 'eslint-config-prettier';
 
 export default [
     {
-        ignores: ['dist/**', 'node_modules/**', 'gh-pages/**', 'public/**'],
+        ignores: ['dist/**', 'node_modules/**', 'gh-pages/**', 'public/**', 'src-tauri/**'],
     },
     js.configs.recommended,
     ...tseslint.configs.recommended,

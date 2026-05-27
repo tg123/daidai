@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { keyToDirection, combineHeldDir, classifyDelta, isOppositeDir } from '../../src/input/direction';
+import {
+    keyToDirection,
+    combineHeldDir,
+    classifyDelta,
+    isOppositeDir,
+    canStartFromDirection,
+} from '../../src/input/direction';
 
 describe('keyToDirection', () => {
     it('maps arrow keys', () => {
@@ -81,5 +87,31 @@ describe('isOppositeDir', () => {
         expect(isOppositeDir({ x: 1, y: 0 }, { x: -1, y: 1 })).toBe(false);
         expect(isOppositeDir(null, { x: 1, y: 0 })).toBe(false);
         expect(isOppositeDir({ x: 1, y: 0 }, null)).toBe(false);
+    });
+});
+
+describe('canStartFromDirection (cross-platform start policy)', () => {
+    // The intent: gamepad sticks/d-pads and touch swipes may IMPLICITLY start
+    // the game from the initial idle screen, but must NEVER unpause after the
+    // player has explicitly paused mid-run. Keyboard arrows never unpause at
+    // all (enforced separately in keyboard.ts). These tests pin the policy so
+    // gamepad + touch stay in sync.
+    const idle = { paused: true, gameOver: false, started: false };
+
+    it('allows starting from the initial idle screen', () => {
+        expect(canStartFromDirection(idle)).toBe(true);
+    });
+    it('does not unpause when the game is running (not paused)', () => {
+        expect(canStartFromDirection({ ...idle, paused: false })).toBe(false);
+    });
+    it('does not unpause after a mid-run pause (started=true)', () => {
+        // This is the critical case: player started the game, then paused.
+        // Score / snake length are irrelevant — even pausing immediately
+        // after starting (before eating anything) must require A/Start.
+        expect(canStartFromDirection({ ...idle, started: true })).toBe(false);
+    });
+    it('does not start when the game is over', () => {
+        expect(canStartFromDirection({ ...idle, gameOver: true })).toBe(false);
+        expect(canStartFromDirection({ ...idle, gameOver: true, started: true })).toBe(false);
     });
 });

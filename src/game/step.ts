@@ -57,6 +57,9 @@ export interface GameStepDeps {
     setBaseSpeed: (s: number) => void;
     setSpeed: (s: number) => void;
 
+    /** Pause-aware game clock in ms (does not advance while paused / pre-start). */
+    getGameClock: () => number;
+
     incBeansEaten: () => void;
     getGrowthPending: () => number;
     setGrowthPending: (n: number) => void;
@@ -121,6 +124,7 @@ export function createGameStep(deps: GameStepDeps): GameStep {
         getBaseSpeed,
         setBaseSpeed,
         setSpeed,
+        getGameClock,
         incBeansEaten,
         getGrowthPending,
         setGrowthPending,
@@ -235,8 +239,8 @@ export function createGameStep(deps: GameStepDeps): GameStep {
     function gameUpdate() {
         if (getGameOver() || getPaused()) return;
 
-        // Expire red boost
-        if (boost.isExpired(performance.now())) {
+        // Expire red boost (game-clock, so a long pause doesn't burn the boost)
+        if (boost.isExpired(getGameClock())) {
             endBoost();
         }
 

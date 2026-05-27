@@ -58,6 +58,7 @@ export interface TestApiDeps {
     setShedSkin: (s: ShedSkin[]) => void;
     pushShedSkin: (s: ShedSkin) => void;
     setPaused: (p: boolean) => void;
+    setHasStarted: (s: boolean) => void;
     setGameOver: (g: boolean) => void;
     setGodMode: (g: boolean) => void;
     setGrowthPending: (n: number) => void;
@@ -134,6 +135,9 @@ export function installTestApi(deps: TestApiDeps): void {
         },
         setPaused: (p: boolean) => {
             deps.setPaused(!!p);
+        },
+        setHasStarted: (s: boolean) => {
+            deps.setHasStarted(!!s);
         },
         setGameOver: (g: boolean) => {
             deps.setGameOver(!!g);

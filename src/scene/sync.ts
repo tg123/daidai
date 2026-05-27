@@ -123,6 +123,8 @@ export interface SceneSyncDeps {
     getGameOver: () => boolean;
     getSpeed: () => number;
     getGameAccumulator: () => number;
+    /** Pause-aware game clock in ms (does not advance while paused / pre-start). */
+    getGameClock: () => number;
     boost: BoostLike;
     eatenColors: EatenColorsLike;
 
@@ -274,7 +276,7 @@ export function createSceneSync(deps: SceneSyncDeps): SceneSyncApi {
             }
         }
         if (boost.active && boostEl) {
-            const remain = boost.remaining(performance.now()) / 1000;
+            const remain = boost.remaining(deps.getGameClock()) / 1000;
             boostEl.style.display = '';
             boostEl.textContent = `🔥 ×${boost.multiplier}  ${remain.toFixed(1)}s`;
         }

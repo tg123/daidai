@@ -14,6 +14,14 @@ export function applyI18nDOM(t: TFn): void {
         const k = el.getAttribute('data-i18n-title');
         if (k) (el as HTMLElement).title = t(k);
     });
+    // Sync the document title with the localized game name. Browsers update
+    // the tab title; the Tauri webview does NOT auto-mirror document.title to
+    // the OS window, so we also call the window API when available.
+    const localized = t('title');
+    document.title = localized;
+    if (typeof (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== 'undefined') {
+        import('@tauri-apps/api/window').then((m) => m.getCurrentWindow().setTitle(localized)).catch(() => {});
+    }
     document.body.classList.add('i18n-ready');
 }
 
@@ -46,14 +54,22 @@ export function installLangMenu(opts: LangMenuOpts): (() => void) | undefined {
     const badge = document.createElement('span');
     badge.className = 'gp-badge';
     badge.id = 'btn-lang-badge';
+    // Decorative gamepad-hint glyph; hide from screen readers.
+    badge.setAttribute('aria-hidden', 'true');
+    badge.setAttribute('role', 'presentation');
     btn.appendChild(badge);
     const LANG = opts.getLang();
     menu.querySelectorAll('button[data-lang]').forEach((b) => {
         b.classList.toggle('active', b.getAttribute('data-lang') === LANG);
     });
+    let lastVisible: boolean | null = null;
     function updateBtnState() {
-        btn!.style.display = opts.canSwitch() ? 'flex' : 'none';
-        if (!opts.canSwitch()) menu!.classList.remove('open');
+        const visible = opts.canSwitch();
+        if (visible !== lastVisible) {
+            btn!.style.display = visible ? 'flex' : 'none';
+            lastVisible = visible;
+        }
+        if (!visible) menu!.classList.remove('open');
     }
     const onBtnClick = (e: Event) => {
         e.preventDefault();
@@ -82,9 +98,14 @@ export function installLangMenu(opts: LangMenuOpts): (() => void) | undefined {
     menu.addEventListener('click', onMenuClick);
     document.addEventListener('click', onDocClick);
     updateBtnState();
-    const timer = setInterval(updateBtnState, 250);
+    // Event-driven refresh: `body.playing` is toggled by the main loop on
+    // every paused/gameOver transition, so a MutationObserver on it is the
+    // cheapest way to keep the lang button in sync without a second 60fps
+    // rAF parallel to the game loop.
+    const bodyObserver = new MutationObserver(updateBtnState);
+    bodyObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     btn.__langMenuCleanup = () => {
-        clearInterval(timer);
+        bodyObserver.disconnect();
         btn.removeEventListener('click', onBtnClick);
         menu.removeEventListener('click', onMenuClick);
         document.removeEventListener('click', onDocClick);

@@ -85,7 +85,7 @@ export function installKeyboardControls(deps: KeyboardDeps): KeyboardControls {
             e.preventDefault();
             return;
         }
-        // Backdoor: 1-5 trigger magic; 6 grows body — only when devtools is open (or localhost)
+        // Backdoor: 1-5 trigger magic; 6 grows body — only when devtools is open
         if (!deps.getGameOver() && deps.isDevtoolsOpen()) {
             if ('12345'.includes(e.key)) {
                 deps.triggerMagic(parseInt(e.key) - 1);
