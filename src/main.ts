@@ -177,11 +177,15 @@ function saveHiScore() {
 }
 
 // ============ EASTER EGG STATE ============
-// Backdoor (cheats: 1/2/3/etc) only unlocks once the console is actually
-// open — verified by the probe + window-size heuristic below. Previously
-// localhost auto-enabled it, but that meant the dev build (and any local
-// preview/serve) shipped cheats to anyone who hit a number key without
-// opening devtools.
+// Cheat backdoor (keys 1-6) is gated by `__INCLUDE_CHEATS__` — true in
+// `vite dev` and PR-preview builds (DAIDAI_INCLUDE_CHEATS=1), false in
+// production main-branch builds. The flag is statically replaced by Vite,
+// so the announce-help / detection-probe block and the keyboard handler
+// that consumes `devtoolsOpen` are both tree-shaken from shipped builds.
+// Previous attempts to gate by runtime devtools-detection were brittle
+// (window-size heuristic gave false positives on browsers with tall chrome;
+// the toString-getter probe is not reliably triggered across browsers), so we
+// just drop the whole cheat surface from shipped builds.
 let devtoolsOpen = false;
 let godMode = false; // Konami: rainbow + invincible + 10x score
 const tributeState = { tributeActive: false, tributeTriggeredThisLoad: false };
@@ -193,43 +197,36 @@ const heartMatcher = createHeartMatcher(HEART_SEQUENCE);
 // displays `'dev'` via the startsWith('__') check below.
 const BUILD_SHA = '__DAIDAI_BUILD_SHA__';
 
-function announceDebugHelp() {
-    const big = 'color:#c08000;font-size:18px;font-weight:bold;padding:4px 0';
-    const sub = 'color:#4060c0;font-size:13px;font-weight:bold';
-    const mono = 'color:#444;font-family:Consolas,monospace;font-size:12px;line-height:1.6;padding:2px 0';
-    const tag = 'color:#666;font-family:Consolas,monospace;font-size:11px';
-    console.log('%c🐛 DaiDai DEBUG mode active', big);
-    console.log('%cbuild: ' + (BUILD_SHA.startsWith('__') ? 'dev' : BUILD_SHA), tag);
-    console.log('%cPress 1-6 to trigger the matching magic (no 5-bean combo required):', sub);
-    console.log(
-        '%c  1  🔴 speed boost\n  2  🔵 rain\n  3  🟢 shed → beans\n  4  🟠 gold laser\n  5  🟣 halve length\n  6  ➕ length +1',
-        mono,
-    );
+if (__INCLUDE_CHEATS__) {
+    const announceDebugHelp = () => {
+        const big = 'color:#c08000;font-size:18px;font-weight:bold;padding:4px 0';
+        const sub = 'color:#4060c0;font-size:13px;font-weight:bold';
+        const mono = 'color:#444;font-family:Consolas,monospace;font-size:12px;line-height:1.6;padding:2px 0';
+        const tag = 'color:#666;font-family:Consolas,monospace;font-size:11px';
+        console.log('%c🐛 DaiDai DEBUG mode active', big);
+        console.log('%cbuild: ' + (BUILD_SHA.startsWith('__') ? 'dev' : BUILD_SHA), tag);
+        console.log('%cPress 1-6 to trigger the matching magic (no 5-bean combo required):', sub);
+        console.log(
+            '%c  1  🔴 speed boost\n  2  🔵 rain\n  3  🟢 shed → beans\n  4  🟠 gold laser\n  5  🟣 halve length\n  6  ➕ length +1',
+            mono,
+        );
+    };
+    // Best-effort devtools-open detector via console.debug + toString-getter.
+    // Not 100% reliable across browsers; that's fine — this only gates a
+    // dev-time convenience banner, the cheats themselves are gated by
+    // __INCLUDE_CHEATS__ at compile time.
+    const _ddProbe = function () {};
+    _ddProbe.toString = function () {
+        if (!devtoolsOpen) {
+            devtoolsOpen = true;
+            announceDebugHelp();
+        }
+        return '';
+    };
+    setInterval(() => {
+        if (!devtoolsOpen) console.debug('%c', '', _ddProbe);
+    }, 1500);
 }
-function detectDevtools() {
-    const threshold = 160;
-    const opened =
-        window.outerWidth - window.innerWidth > threshold ||
-        window.outerHeight - window.innerHeight > threshold ||
-        window.devicePixelRatio < 0.5;
-    if (opened && !devtoolsOpen) {
-        devtoolsOpen = true;
-        announceDebugHelp();
-    }
-}
-setInterval(detectDevtools, 1000);
-// Getter probe — fires when devtools renders the object (works even when undocked)
-const _ddProbe = function () {};
-_ddProbe.toString = function () {
-    if (!devtoolsOpen) {
-        devtoolsOpen = true;
-        announceDebugHelp();
-    }
-    return '';
-};
-setInterval(() => {
-    if (!devtoolsOpen) console.debug('%c', '', _ddProbe);
-}, 1500);
 
 // ============ THREE.JS SETUP ============
 const scene = new THREE.Scene();

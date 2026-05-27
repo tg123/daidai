@@ -39,30 +39,40 @@ function injectBuildSha() {
     };
 }
 
-export default defineConfig({
-    plugins: [injectBuildSha(), viteSingleFile()],
-    // Use relative asset URLs so the site works under any subpath
-    // (GitHub Pages project page, PR previews under /pr-preview/..., etc.)
-    base: './',
-    build: {
-        target: 'es2020',
-        outDir: 'dist',
-        emptyOutDir: true,
-        assetsInlineLimit: 100000000, // inline everything
-        cssCodeSplit: false,
-        rollupOptions: {
-            output: { inlineDynamicImports: true },
+export default defineConfig(({ mode }) => {
+    // Compile-time gate for the 1-6 keyboard cheat backdoor (and its
+    // announce-debug-help console banner). Enabled in `vite dev` and any
+    // build that opts in via `DAIDAI_INCLUDE_CHEATS=1` (PR previews); off in
+    // production main-branch deploys so the cheat code is tree-shaken out.
+    const includeCheats = mode === 'development' || process.env.DAIDAI_INCLUDE_CHEATS === '1';
+    return {
+        plugins: [injectBuildSha(), viteSingleFile()],
+        define: {
+            __INCLUDE_CHEATS__: JSON.stringify(includeCheats),
         },
-    },
-    server: {
-        port: 8080,
-        strictPort: true,
-        host: '127.0.0.1',
-        watch: {
-            // src-tauri/target is rewritten constantly by cargo during `tauri dev`.
-            // Watching it makes Vite throw EBUSY on the Rust output DLL.
-            ignored: ['**/src-tauri/**'],
+        // Use relative asset URLs so the site works under any subpath
+        // (GitHub Pages project page, PR previews under /pr-preview/..., etc.)
+        base: './',
+        build: {
+            target: 'es2020',
+            outDir: 'dist',
+            emptyOutDir: true,
+            assetsInlineLimit: 100000000, // inline everything
+            cssCodeSplit: false,
+            rollupOptions: {
+                output: { inlineDynamicImports: true },
+            },
         },
-    },
-    preview: { port: 8080, strictPort: true, host: '127.0.0.1' },
+        server: {
+            port: 8080,
+            strictPort: true,
+            host: '127.0.0.1',
+            watch: {
+                // src-tauri/target is rewritten constantly by cargo during `tauri dev`.
+                // Watching it makes Vite throw EBUSY on the Rust output DLL.
+                ignored: ['**/src-tauri/**'],
+            },
+        },
+        preview: { port: 8080, strictPort: true, host: '127.0.0.1' },
+    };
 });
