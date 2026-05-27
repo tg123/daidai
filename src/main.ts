@@ -179,10 +179,9 @@ const heartMatcher = createHeartMatcher(HEART_SEQUENCE);
 const BUILD_SHA = '__DAIDAI_BUILD_SHA__';
 
 function announceDebugHelp() {
-    const big = 'background:#222;color:#ffd700;font-size:18px;font-weight:bold;padding:4px 10px;border-radius:4px';
+    const big = 'color:#c08000;font-size:18px;font-weight:bold;padding:4px 0';
     const sub = 'color:#4060c0;font-size:13px;font-weight:bold';
-    const mono =
-        'background:#222;color:#eee;font-family:Consolas,monospace;font-size:12px;line-height:1.6;padding:6px 10px;border-radius:4px';
+    const mono = 'color:#444;font-family:Consolas,monospace;font-size:12px;line-height:1.6;padding:2px 0';
     const tag = 'color:#666;font-family:Consolas,monospace;font-size:11px';
     console.log('%c🐛 DaiDai DEBUG mode active', big);
     console.log('%cbuild: ' + (BUILD_SHA.startsWith('__') ? 'dev' : BUILD_SHA), tag);
