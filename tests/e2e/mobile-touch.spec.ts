@@ -107,6 +107,7 @@ test.describe('mobile tap-to-start guard', () => {
                 { x: 4, y: 10 },
             ]);
             T.setDirection(1, 0);
+            T.setHasStarted(true);
             T.setPaused(true);
         });
         const before = await getState(page);

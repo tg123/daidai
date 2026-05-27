@@ -975,6 +975,9 @@ installTestApi({
         shedSkin.push(s);
     },
     setPaused: setPausedShared,
+    setHasStarted: (s) => {
+        hasStarted = s;
+    },
     setGameOver: (g) => {
         gameOver = g;
     },
