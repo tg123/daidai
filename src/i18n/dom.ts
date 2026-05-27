@@ -49,7 +49,7 @@ export function installLangMenu(opts: LangMenuOpts): (() => void) | undefined {
     btn.appendChild(badge);
     const LANG = opts.getLang();
     menu.querySelectorAll('button[data-lang]').forEach((b) => {
-        if (b.getAttribute('data-lang') === LANG) b.classList.add('active');
+        b.classList.toggle('active', b.getAttribute('data-lang') === LANG);
     });
     function updateBtnState() {
         btn!.style.display = opts.canSwitch() ? 'flex' : 'none';
