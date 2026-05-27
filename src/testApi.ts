@@ -161,7 +161,9 @@ export function installTestApi(deps: TestApiDeps): void {
             deps.triggerMagic(c);
         },
         stepProjectiles: (n: number) => {
-            const steps = Math.max(0, Math.floor(Number(n)) || 0);
+            const raw = Number(n);
+            const STEP_CAP = 10000;
+            const steps = Number.isFinite(raw) ? Math.min(STEP_CAP, Math.max(0, Math.floor(raw))) : 0;
             for (let i = 0; i < steps; i++) deps.updateGoldenProjectiles();
         },
         dismissTribute: () => {
