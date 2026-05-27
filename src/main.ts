@@ -1070,9 +1070,11 @@ if (isTauri) {
     });
 }
 
-// Swallow browser-style reload shortcuts (F5, Ctrl+R, Ctrl+Shift+R).
-// On the web this is just polish; in the Tauri desktop port the webview
-// would otherwise reload the whole game mid-run.
+// Swallow browser-style reload shortcuts (F5 and Ctrl/⌘+R without Shift).
+// Ctrl+Shift+R is intentionally kept as an explicit escape hatch (matches
+// the browser "hard reload" intent — useful during Tauri dev when the
+// webview gets into a bad state). On the web this is polish; in the Tauri
+// desktop port the webview would otherwise reload the whole game mid-run.
 window.addEventListener(
     'keydown',
     (e) => {
