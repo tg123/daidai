@@ -15,14 +15,12 @@ export function installAudioBootstrap(audio: AudioEngine): void {
     };
     primeEvents.forEach((ev) => window.addEventListener(ev, primeHandler, true));
 
-    const refresh = () => {
-        if (audio.initialized && !audio.muted) audio._ensureSilentVideo();
-    };
+    const refresh = () => audio.keepAlive();
     ['touchend', 'click', 'keydown'].forEach((ev) => window.addEventListener(ev, refresh, true));
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && audio.initialized) {
-            if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume().catch(() => {});
-            if (!audio.muted) audio._ensureSilentVideo();
+        if (!document.hidden) {
+            audio.resumeIfSuspended();
+            audio.keepAlive();
         }
     });
     window.addEventListener('focus', refresh);

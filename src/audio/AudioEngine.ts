@@ -167,6 +167,18 @@ export class AudioEngine {
                 }
             } catch(e) { console.warn('[audio] silent-video fail:', e); }
         }
+        /** Public no-op-if-not-ready hook for page lifecycle code: keep the
+         *  silent-video heartbeat alive on user gestures / visibility / focus. */
+        keepAlive() {
+            if (this.initialized && !this.muted) this._ensureSilentVideo();
+        }
+        /** Public hook: if the AudioContext was suspended (e.g. tab backgrounded
+         *  on mobile Safari), bring it back. Safe to call anytime. */
+        resumeIfSuspended() {
+            if (this.initialized && this.ctx && this.ctx.state === 'suspended') {
+                this.ctx.resume().catch(() => {});
+            }
+        }
         _flushQueue() {
             if (!this._pendingPlays || this._pendingPlays.length === 0) return;
             const q = this._pendingPlays.splice(0);
