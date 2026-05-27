@@ -1,6 +1,6 @@
-(function (g: any) {
-    g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.registerLocale('pt-br', {
+import { registerLocale } from './index';
+
+registerLocale('pt-br', {
         title: 'Verme DaiDai do Lago DouDou',
         'loading.title': 'Verme DaiDai do Lago DouDou',
         'loading.sub': 'Carregando…',
@@ -43,4 +43,3 @@
         'fx.lenPlus': '➕ Comprimento +1',
         subtitle: '❤️  Para Fan Yipeng — obrigado pela nossa infância  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

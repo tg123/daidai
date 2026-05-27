@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/eatenColors.ts';
-
-const { createEatenColorsQueue } = globalThis.DAIDAI;
+import { createEatenColorsQueue } from '../../src/eatenColors';
 
 describe('createEatenColorsQueue', () => {
     it('starts empty by default', () => {

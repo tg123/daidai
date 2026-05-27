@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/gameRules.ts';
-
-const { wrapPosition, eatScore, isCellOccupied, findFreeCell } = globalThis.DAIDAI;
+import { wrapPosition, eatScore, isCellOccupied, findFreeCell } from '../../src/gameRules';
 
 describe('wrapPosition', () => {
     it('passes through in-bounds positions', () => {

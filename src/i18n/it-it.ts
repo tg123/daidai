@@ -1,6 +1,6 @@
-(function (g: any) {
-    g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.registerLocale('it-it', {
+import { registerLocale } from './index';
+
+registerLocale('it-it', {
         title: 'Verme DaiDai dello stagno DouDou',
         'loading.title': 'Verme DaiDai dello stagno DouDou',
         'loading.sub': 'Caricamento…',
@@ -43,4 +43,3 @@
         'fx.lenPlus': '➕ Lunghezza +1',
         subtitle: '❤️  Per Fan Yipeng — grazie per la nostra infanzia  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

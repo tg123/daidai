@@ -1,6 +1,6 @@
-(function (g: any) {
-    g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.registerLocale('ru-ru', {
+import { registerLocale } from './index';
+
+registerLocale('ru-ru', {
         title: 'Червяк ДайДай из пруда ДоуДоу',
         'loading.title': 'Червяк ДайДай из пруда ДоуДоу',
         'loading.sub': 'Загрузка…',
@@ -43,4 +43,3 @@
         'fx.lenPlus': '➕ Длина +1',
         subtitle: '❤️  Для Фань Ипэна — спасибо за наше детство  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

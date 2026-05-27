@@ -1,6 +1,6 @@
-(function (g: any) {
-    g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.registerLocale('ar-sa', {
+import { registerLocale } from './index';
+
+registerLocale('ar-sa', {
         title: 'دودة دايداي في بركة دوودوو',
         'loading.title': 'دودة دايداي في بركة دوودوو',
         'loading.sub': 'جارٍ التحميل…',
@@ -43,4 +43,3 @@
         'fx.lenPlus': '➕ الطول +1',
         subtitle: '❤️  إلى فان يي بنغ — شكرًا لطفولتنا  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

@@ -1,6 +1,6 @@
-(function (g: any) {
-    g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.registerLocale('de-de', {
+import { registerLocale } from './index';
+
+registerLocale('de-de', {
         title: '„DaiDai“-Wurm vom DouDou-Teich',
         'loading.title': '„DaiDai“-Wurm vom DouDou-Teich',
         'loading.sub': 'Lädt…',
@@ -43,4 +43,3 @@
         'fx.lenPlus': '➕ Länge +1',
         subtitle: '❤️  Für Fan Yipeng — danke für unsere Kindheit  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

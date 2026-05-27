@@ -1,6 +1,6 @@
-(function (g: any) {
-    g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.registerLocale('fr-fr', {
+import { registerLocale } from './index';
+
+registerLocale('fr-fr', {
         title: 'Ver DaiDai de l’étang DouDou',
         'loading.title': 'Ver DaiDai de l’étang DouDou',
         'loading.sub': 'Chargement…',
@@ -43,4 +43,3 @@
         'fx.lenPlus': '➕ Longueur +1',
         subtitle: '❤️  Pour Fan Yipeng — merci pour notre enfance  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

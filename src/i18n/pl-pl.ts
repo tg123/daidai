@@ -1,6 +1,6 @@
-(function (g: any) {
-    g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.registerLocale('pl-pl', {
+import { registerLocale } from './index';
+
+registerLocale('pl-pl', {
         title: 'Robak DaiDai ze Stawu DouDou',
         'loading.title': 'Robak DaiDai ze Stawu DouDou',
         'loading.sub': 'Ładowanie…',
@@ -43,4 +43,3 @@
         'fx.lenPlus': '➕ Długość +1',
         subtitle: '❤️  Dla Fan Yipeng — dziękujemy za nasze dzieciństwo  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));

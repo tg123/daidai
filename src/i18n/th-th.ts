@@ -1,6 +1,6 @@
-(function (g: any) {
-    g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.registerLocale('th-th', {
+import { registerLocale } from './index';
+
+registerLocale('th-th', {
         title: 'หนอนไต่ไต่แห่งบ่อโต้วโต้ว',
         'loading.title': 'หนอนไต่ไต่แห่งบ่อโต้วโต้ว',
         'loading.sub': 'กำลังโหลด…',
@@ -43,4 +43,3 @@
         'fx.lenPlus': '➕ ความยาว +1',
         subtitle: '❤️  เพื่อฟ่านอี้เผิง — ขอบคุณสำหรับวัยเด็กของพวกเรา  ❤️',
     });
-})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));
