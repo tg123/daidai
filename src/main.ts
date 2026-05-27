@@ -177,10 +177,12 @@ function saveHiScore() {
 }
 
 // ============ EASTER EGG STATE ============
-// Cheat backdoor (keys 1-6) is dev-only. In production builds `import.meta.env.DEV`
-// is constant-folded to `false`, so the announce-help / detection-probe block
-// and the keyboard handler that consumes `devtoolsOpen` are both tree-shaken
-// away. Previous attempts to gate by runtime devtools-detection were brittle
+// Cheat backdoor (keys 1-6) is gated by `__INCLUDE_CHEATS__` — true in
+// `vite dev` and PR-preview builds (DAIDAI_INCLUDE_CHEATS=1), false in
+// production main-branch builds. The flag is statically replaced by Vite,
+// so the announce-help / detection-probe block and the keyboard handler
+// that consumes `devtoolsOpen` are both tree-shaken from shipped builds.
+// Previous attempts to gate by runtime devtools-detection were brittle
 // (window-size heuristic gave false positives on browsers with tall chrome;
 // the toString-getter probe is not reliably triggered across browsers), so we
 // just drop the whole cheat surface from shipped builds.
@@ -195,7 +197,7 @@ const heartMatcher = createHeartMatcher(HEART_SEQUENCE);
 // displays `'dev'` via the startsWith('__') check below.
 const BUILD_SHA = '__DAIDAI_BUILD_SHA__';
 
-if (import.meta.env.DEV) {
+if (__INCLUDE_CHEATS__) {
     const announceDebugHelp = () => {
         const big = 'color:#c08000;font-size:18px;font-weight:bold;padding:4px 0';
         const sub = 'color:#4060c0;font-size:13px;font-weight:bold';
@@ -212,7 +214,7 @@ if (import.meta.env.DEV) {
     // Best-effort devtools-open detector via console.debug + toString-getter.
     // Not 100% reliable across browsers; that's fine — this only gates a
     // dev-time convenience banner, the cheats themselves are gated by
-    // import.meta.env.DEV at compile time.
+    // __INCLUDE_CHEATS__ at compile time.
     const _ddProbe = function () {};
     _ddProbe.toString = function () {
         if (!devtoolsOpen) {
