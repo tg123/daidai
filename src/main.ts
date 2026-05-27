@@ -553,7 +553,7 @@ function triggerMagic(colorIdx) {
         case 0:
             audio.play('magic_red');
             speed = Math.max(50, baseSpeed - 50);
-            boost.trigger(performance.now(), 15000); // refresh 15s window, doubles multiplier
+            boost.trigger(accumulatedPlayMs, 15000); // refresh 15s window, doubles multiplier
             if (snake.length > 0) {
                 spawnParticles3D(snake[0].x * CELL, snake[0].y * CELL, 0xff4444, 15);
             }
@@ -651,7 +651,7 @@ function updateUI() {
     }
     const boostEl = document.getElementById('boost-timer');
     if (boost.active) {
-        const remain = boost.remaining(performance.now()) / 1000;
+        const remain = boost.remaining(accumulatedPlayMs) / 1000;
         boostEl.style.display = '';
         boostEl.textContent = `🔥 ×${boost.multiplier}  ${remain.toFixed(1)}s`;
     } else {
@@ -707,6 +707,7 @@ const sceneSync = createSceneSync({
     getGameOver: () => gameOver,
     getSpeed: () => speed,
     getGameAccumulator: () => gameAccumulator,
+    getGameClock: () => accumulatedPlayMs,
     boost,
     eatenColors,
     spawnBean,
@@ -775,6 +776,7 @@ const gameStep = createGameStep({
     setSpeed: (s) => {
         speed = s;
     },
+    getGameClock: () => accumulatedPlayMs,
     incBeansEaten: () => {
         beansEaten++;
     },

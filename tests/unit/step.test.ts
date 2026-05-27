@@ -125,6 +125,7 @@ function makeHarness(overrides: Partial<State> = {}) {
         setSpeed: (v) => {
             s.speed = v;
         },
+        getGameClock: () => 0,
         incBeansEaten: () => {
             s.beansEaten++;
         },
