@@ -23,8 +23,9 @@ import './i18n/en-us';
 import './i18n/ja-jp';
 import './i18n/ko-kr';
 import './i18n/es-es';
-import { classifyDelta, combineHeldDir as combineHeldDirImpl, isOppositeDir, keyToDirection } from './input/direction';
+import { classifyDelta, isOppositeDir } from './input/direction';
 import { detectConnectedGamepad, glyphForButton } from './input/gamepad';
+import { installKeyboardControls } from './input/keyboard';
 import { getRestartLabel, getStartPrompt as getStartPromptImpl } from './input/promptStrings';
 import { createKonamiMatcher } from './konami';
 import { computeCameraFit, computeGridDims } from './layout';
@@ -162,7 +163,6 @@ let devtoolsOpen = isLocalhost; // on localhost: backdoor enabled by default
 let godMode = false; // Konami: rainbow + invincible + 10x score
 const tributeState = { tributeActive: false, tributeTriggeredThisLoad: false };
 const konamiMatcher = createKonamiMatcher();
-let typedBuf = '';
 const heartMatcher = createHeartMatcher(HEART_SEQUENCE);
 
 // Replaced at build time with the git short SHA. Stays as the literal
@@ -489,7 +489,7 @@ function initGame() {
     boost.reset();
     konamiMatcher.reset();
     heartMatcher.reset();
-    typedBuf = '';
+    keyboardControls.resetTypedBuf();
     direction = { x: 1, y: 0 };
     nextDirection = { x: 1, y: 0 };
     beans = [];
@@ -890,88 +890,33 @@ function mainLoop(timestamp) {
     requestAnimationFrame(mainLoop);
 }
 
-// ============ INPUT ============
-document.addEventListener('keydown', (e) => {
-    audio.init(); // Init audio on first interaction
-
-    // ----- Easter eggs (always-on capture) -----
-    // 1) Konami code → 樊一鹏模式
-    if (konamiMatcher.push(e.key)) {
-        activateGodMode();
-    }
-    // 2) Type "daidai" → meteor shower
-    if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
-        typedBuf = (typedBuf + e.key.toLowerCase()).slice(-6);
-        if (typedBuf === 'daidai') {
-            typedBuf = '';
-            spawnMeteorShower();
-        }
-    }
-    // 5) Heart pattern → tribute
-    const arrowOnly = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-    if (arrowOnly.includes(e.key)) {
-        if (heartMatcher.push(e.key)) {
-            activateTribute();
-        }
-    }
-
-    if (e.key === 'Enter' && (gameOver || paused)) {
-        audio.init();
-        initGame();
-        paused = false;
-        showMessage('');
-        const bp = document.getElementById('btn-pause');
-        if (bp) bp.textContent = '⏸';
-        return;
-    }
-    if (e.key === ' ') {
-        // Pause is meaningless when the run already ended — leave the
-        // game-over screen intact so the player can read their score
-        // and choose to restart.
-        if (gameOver) {
-            e.preventDefault();
-            return;
-        }
-        paused = !paused;
-        showMessage(paused ? t('paused') : '');
-        const bp = document.getElementById('btn-pause');
-        if (bp) bp.textContent = paused ? '▶' : '⏸';
-        e.preventDefault();
-        return;
-    }
-    // Backdoor: 1-5 trigger magic; 6 grows body — only when devtools is open (or localhost)
-    if (!gameOver && devtoolsOpen) {
-        if ('12345'.includes(e.key)) {
-            triggerMagic(parseInt(e.key) - 1);
-            e.preventDefault();
-            return;
-        }
-        if (e.key === '6') {
-            growthPending++;
-            showEffect(t('fx.lenPlus'));
-            e.preventDefault();
-            return;
-        }
-    }
-    const newDir = keyToDirection(e.key);
-    if (newDir) {
-        heldDirKeys.add(e.key);
-        const combined = combineHeldDir();
-        if (combined && !isOppositeDir(direction, combined)) {
-            nextDirection = combined;
-        }
-        e.preventDefault();
-    }
+// ============ INPUT (keyboard extracted to src/input/keyboard.ts) ============
+const keyboardControls = installKeyboardControls({
+    audio,
+    t,
+    showMessage,
+    showEffect,
+    konamiMatcher,
+    heartMatcher,
+    activateGodMode,
+    spawnMeteorShower,
+    activateTribute,
+    triggerMagic,
+    initGame,
+    getGameOver: () => gameOver,
+    getPaused: () => paused,
+    setPaused: (p) => {
+        paused = p;
+    },
+    isDevtoolsOpen: () => devtoolsOpen,
+    getDirection: () => direction,
+    setNextDirection: (d) => {
+        nextDirection = d;
+    },
+    incrementGrowthPending: () => {
+        growthPending++;
+    },
 });
-// ============ DIAGONAL MOVEMENT (held-key tracking) ============
-const heldDirKeys = new Set<string>();
-function combineHeldDir() {
-    return combineHeldDirImpl(heldDirKeys);
-}
-window.addEventListener('keyup', (e) => {
-    heldDirKeys.delete(e.key);
-});
-window.addEventListener('blur', () => heldDirKeys.clear());
 
 // ============ TOUCH / SWIPE CONTROLS ============
 (function () {
