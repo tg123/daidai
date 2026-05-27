@@ -13,16 +13,17 @@ identifiers, and no device identifiers.
 
 ## What we transmit
 
-**Nothing**, after the initial download. The Game runs entirely on
-your device. There are no servers, no accounts, no online features,
-no in-app purchases, no third-party SDKs, and no advertising networks.
+**Nothing** after the initial download. The Game runs entirely on your
+device. There are no servers, no accounts, no online features, no
+in-app purchases, no third-party SDKs, and no advertising networks.
 
 ## What we store
 
 All game state (high scores, settings, language preference) is stored
 **locally on your device only**, in the application's own sandboxed
-storage area (browser `localStorage` for the web version,
-`%LOCALAPPDATA%` for the Microsoft Store version).
+storage area (browser `localStorage` for the web version, the app's
+private packaged-app data folder under `%LOCALAPPDATA%\Packages\` for
+the Microsoft Store version).
 
 This data never leaves your device. Uninstalling the Game (or clearing
 site data, for the web version) removes all stored data permanently.
