@@ -7,3 +7,7 @@ node_modules/
 dist/
 test-results/
 playwright-report/
+
+# itch.io artifacts
+cover-630x500.png
+daidai-web.zip
