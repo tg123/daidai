@@ -69,24 +69,49 @@ jobs:
     concurrency:
       group: itch-publish
       cancel-in-progress: false
+    env:
+      # Pin butler to a specific version + checksum so deployments are
+      # reproducible and we don't silently pick up upstream changes.
+      # SHA256 was verified once locally against broth.itch.zone before
+      # being committed here; update both lines together when bumping.
+      BUTLER_VERSION: '15.27.0'
+      BUTLER_SHA256: 'b9f0d6eef33036031cafaf59939d9f3bc724e2b674c510d4a9cf8a9f1008e299'
     steps:
-      - uses: actions/download-artifact@v4.1.3
+      - name: Check BUTLER_API_KEY is configured
+        id: gate
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          if [ -z "$BUTLER_API_KEY" ]; then
+            echo "::notice::BUTLER_API_KEY secret is not set; skipping itch.io publish. Add the secret at https://github.com/${{ github.repository }}/settings/secrets/actions to enable."
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=0" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.gate.outputs.skip != '1'
+        uses: actions/download-artifact@v4.1.3
         with:
           name: dist-deploy
           path: dist
-      - name: Install butler
+      - name: Install butler (pinned + SHA256 verified)
+        if: steps.gate.outputs.skip != '1'
         run: |
-          curl -fsSL -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
-          unzip -q butler.zip -d "$RUNNER_TEMP/butler"
-          chmod +x "$RUNNER_TEMP/butler/butler"
-          "$RUNNER_TEMP/butler/butler" -V
+          cd "$RUNNER_TEMP"
+          curl --retry 5 --retry-delay 5 --retry-all-errors -fsSL \
+            -o butler.zip \
+            "https://broth.itch.zone/butler/linux-amd64/${BUTLER_VERSION}/archive/default"
+          echo "${BUTLER_SHA256}  butler.zip" | sha256sum --check --status
+          unzip -q butler.zip -d butler
+          chmod +x butler/butler
+          butler/butler -V
       - name: Push dist to farmer1992/daidai:html
+        if: steps.gate.outputs.skip != '1'
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
         run: |
           "$RUNNER_TEMP/butler/butler" push \
             dist farmer1992/daidai:html \
-            --userversion "$(echo "${{ github.sha }}" | cut -c1-12)"
+            --userversion "$(echo '${{ github.sha }}' | cut -c1-12)"
 
   pr-preview:
     name: deploy PR preview
