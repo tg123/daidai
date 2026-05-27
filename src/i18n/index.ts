@@ -1,7 +1,20 @@
 // i18n core: dictionary registry, locale picker, and string formatter.
 // Pure data + functions, no DOM.
 
-export type LocaleCode = 'zh-cn' | 'zh-tw' | 'en-us' | 'ja-jp' | 'ko-kr' | 'es-es';
+export type LocaleCode =
+    | 'zh-cn'
+    | 'zh-tw'
+    | 'en-us'
+    | 'ja-jp'
+    | 'ko-kr'
+    | 'es-es'
+    | 'fr-fr'
+    | 'it-it'
+    | 'de-de'
+    | 'pt-br'
+    | 'pl-pl'
+    | 'ru-ru'
+    | 'th-th';
 export type LocaleDict = Record<string, string>;
 
 export interface PickLangOpts {
@@ -44,6 +57,13 @@ export function pickLang(opts?: PickLangOpts): LocaleCode {
         if (lc.startsWith('ja')) return 'ja-jp';
         if (lc.startsWith('ko')) return 'ko-kr';
         if (lc.startsWith('es')) return 'es-es';
+        if (lc.startsWith('fr')) return 'fr-fr';
+        if (lc.startsWith('it')) return 'it-it';
+        if (lc.startsWith('de')) return 'de-de';
+        if (lc.startsWith('pt')) return 'pt-br';
+        if (lc.startsWith('pl')) return 'pl-pl';
+        if (lc.startsWith('ru')) return 'ru-ru';
+        if (lc.startsWith('th')) return 'th-th';
     }
     return 'zh-cn';
 }

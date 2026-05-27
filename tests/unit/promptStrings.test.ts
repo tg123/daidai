@@ -5,10 +5,31 @@ import '../../src/i18n/zh-tw';
 import '../../src/i18n/ja-jp';
 import '../../src/i18n/ko-kr';
 import '../../src/i18n/es-es';
+import '../../src/i18n/fr-fr';
+import '../../src/i18n/it-it';
+import '../../src/i18n/de-de';
+import '../../src/i18n/pt-br';
+import '../../src/i18n/pl-pl';
+import '../../src/i18n/ru-ru';
+import '../../src/i18n/th-th';
 import { createT } from '../../src/i18n/index';
 import { getStartPrompt, getRestartLabel } from '../../src/input/promptStrings';
 
-const LANGS = ['en-us', 'zh-cn', 'zh-tw', 'ja-jp', 'ko-kr', 'es-es'] as const;
+const LANGS = [
+    'en-us',
+    'zh-cn',
+    'zh-tw',
+    'ja-jp',
+    'ko-kr',
+    'es-es',
+    'fr-fr',
+    'it-it',
+    'de-de',
+    'pt-br',
+    'pl-pl',
+    'ru-ru',
+    'th-th',
+] as const;
 
 function makeT(lang: string) {
     return createT(() => lang);

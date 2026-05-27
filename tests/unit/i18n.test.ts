@@ -7,11 +7,34 @@ import '../../src/i18n/en-us';
 import '../../src/i18n/ja-jp';
 import '../../src/i18n/ko-kr';
 import '../../src/i18n/es-es';
+import '../../src/i18n/fr-fr';
+import '../../src/i18n/it-it';
+import '../../src/i18n/de-de';
+import '../../src/i18n/pt-br';
+import '../../src/i18n/pl-pl';
+import '../../src/i18n/ru-ru';
+import '../../src/i18n/th-th';
 import { I18N_DICT, pickLang, createT, locales } from '../../src/i18n/index';
 
 describe('i18n', () => {
-    it('registers all 6 locales', () => {
-        expect(locales().sort()).toEqual(['en-us', 'es-es', 'ja-jp', 'ko-kr', 'zh-cn', 'zh-tw']);
+    it('registers all 13 locales', () => {
+        expect(locales().sort()).toEqual(
+            [
+                'de-de',
+                'en-us',
+                'es-es',
+                'fr-fr',
+                'it-it',
+                'ja-jp',
+                'ko-kr',
+                'pl-pl',
+                'pt-br',
+                'ru-ru',
+                'th-th',
+                'zh-cn',
+                'zh-tw',
+            ].sort(),
+        );
     });
 
     it('every locale defines the same set of keys', () => {
@@ -42,11 +65,29 @@ describe('i18n', () => {
             expect(pickLang({ navigator: ['zh-CN'] })).toBe('zh-cn');
             expect(pickLang({ navigator: ['zh'] })).toBe('zh-cn');
         });
-        it('matches en/ja/ko/es by prefix', () => {
+        it('matches en/ja/ko by prefix', () => {
             expect(pickLang({ navigator: ['en-US'] })).toBe('en-us');
             expect(pickLang({ navigator: ['ja-JP'] })).toBe('ja-jp');
             expect(pickLang({ navigator: ['ko-KR'] })).toBe('ko-kr');
+        });
+        it('matches all Spanish variants to es-es', () => {
+            expect(pickLang({ navigator: ['es-ES'] })).toBe('es-es');
+            expect(pickLang({ navigator: ['es'] })).toBe('es-es');
             expect(pickLang({ navigator: ['es-MX'] })).toBe('es-es');
+            expect(pickLang({ navigator: ['es-AR'] })).toBe('es-es');
+            expect(pickLang({ navigator: ['es-419'] })).toBe('es-es');
+        });
+        it('matches the newly added European/Asian locales by prefix', () => {
+            expect(pickLang({ navigator: ['fr-FR'] })).toBe('fr-fr');
+            expect(pickLang({ navigator: ['fr-CA'] })).toBe('fr-fr');
+            expect(pickLang({ navigator: ['it-IT'] })).toBe('it-it');
+            expect(pickLang({ navigator: ['de-DE'] })).toBe('de-de');
+            expect(pickLang({ navigator: ['de-AT'] })).toBe('de-de');
+            expect(pickLang({ navigator: ['pt-BR'] })).toBe('pt-br');
+            expect(pickLang({ navigator: ['pt-PT'] })).toBe('pt-br');
+            expect(pickLang({ navigator: ['pl-PL'] })).toBe('pl-pl');
+            expect(pickLang({ navigator: ['ru-RU'] })).toBe('ru-ru');
+            expect(pickLang({ navigator: ['th-TH'] })).toBe('th-th');
         });
         it('accepts legacy 2-letter codes from old localStorage values', () => {
             expect(pickLang({ stored: 'zh' })).toBe('zh-cn');
@@ -54,6 +95,13 @@ describe('i18n', () => {
             expect(pickLang({ stored: 'ja' })).toBe('ja-jp');
             expect(pickLang({ stored: 'ko' })).toBe('ko-kr');
             expect(pickLang({ stored: 'es' })).toBe('es-es');
+            expect(pickLang({ stored: 'fr' })).toBe('fr-fr');
+            expect(pickLang({ stored: 'it' })).toBe('it-it');
+            expect(pickLang({ stored: 'de' })).toBe('de-de');
+            expect(pickLang({ stored: 'pt' })).toBe('pt-br');
+            expect(pickLang({ stored: 'pl' })).toBe('pl-pl');
+            expect(pickLang({ stored: 'ru' })).toBe('ru-ru');
+            expect(pickLang({ stored: 'th' })).toBe('th-th');
         });
         it('skips null/undefined candidates', () => {
             expect(pickLang({ url: null, stored: null, navigator: [null, undefined, 'en'] })).toBe('en-us');
