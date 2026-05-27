@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/game/boost.ts';
-
-const { createBoostTimer } = globalThis.DAIDAI;
+import { createBoostTimer } from '../../src/game/boost';
 
 describe('createBoostTimer', () => {
     it('starts inactive with multiplier=1', () => {

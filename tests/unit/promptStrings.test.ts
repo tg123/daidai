@@ -1,14 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/input/promptStrings.ts';
-import '../../src/i18n/index.ts';
-import '../../src/i18n/en-us.ts';
-import '../../src/i18n/zh-cn.ts';
-import '../../src/i18n/zh-tw.ts';
-import '../../src/i18n/ja-jp.ts';
-import '../../src/i18n/ko-kr.ts';
-import '../../src/i18n/es-es.ts';
-
-const { getStartPrompt, getRestartLabel, createT } = globalThis.DAIDAI;
+import '../../src/i18n/en-us';
+import '../../src/i18n/zh-cn';
+import '../../src/i18n/zh-tw';
+import '../../src/i18n/ja-jp';
+import '../../src/i18n/ko-kr';
+import '../../src/i18n/es-es';
+import { createT } from '../../src/i18n/index';
+import { getStartPrompt, getRestartLabel } from '../../src/input/promptStrings';
 
 const LANGS = ['en-us', 'zh-cn', 'zh-tw', 'ja-jp', 'ko-kr', 'es-es'] as const;
 

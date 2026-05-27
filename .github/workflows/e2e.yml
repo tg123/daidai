@@ -8,13 +8,9 @@ on:
 
 jobs:
   test:
-    name: ${{ matrix.target }}
+    name: dist
     timeout-minutes: 15
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [src, dist]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,20 +19,19 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - name: Build (dist target only)
-        if: matrix.target == 'dist'
+      - name: Build
         # See ci.yml `build` step for rationale on DAIDAI_BUILD_SHA.
         env:
           DAIDAI_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: npm run build
       - name: Test
         env:
-          TEST_DIST_SKIP_BUILD: ${{ matrix.target == 'dist' && '1' || '' }}
-        run: ${{ matrix.target == 'dist' && 'npm run test:dist' || 'npm test' }}
+          TEST_DIST_SKIP_BUILD: '1'
+        run: npm run test:dist
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report-${{ matrix.target }}
+          name: playwright-report-dist
           path: |
             playwright-report/
             test-results/

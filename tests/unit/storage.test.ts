@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/storage.ts';
-
-const { createHiScoreStorage, HI_SCORE_KEY } = globalThis.DAIDAI;
+import { createHiScoreStorage, HI_SCORE_KEY } from '../../src/storage';
 
 function memStorage(initial: Record<string, string> = {}): Storage {
     const data = { ...initial };

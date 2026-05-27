@@ -43,52 +43,44 @@ export interface CameraFit {
     centerZ: number;
 }
 
-(function (g: any) {
-    'use strict';
+export function computeGridDims(opts: GridOptions): GridDims {
+    const winW = Math.max(1, opts.winW | 0);
+    const winH = Math.max(1, opts.winH | 0);
+    const reservedTop = opts.isMobile ? 38 : 42;
+    const minHeight = opts.minHeight ?? 200;
+    const SHORT = opts.shortSide ?? 22;
+    const MAX = opts.maxSide ?? 60;
+    const h = Math.max(minHeight, winH - reservedTop);
+    const aspect = winW / h;
 
-    function computeGridDims(opts: GridOptions): GridDims {
-        const winW = Math.max(1, opts.winW | 0);
-        const winH = Math.max(1, opts.winH | 0);
-        const reservedTop = opts.isMobile ? 38 : 42;
-        const minHeight = opts.minHeight ?? 200;
-        const SHORT = opts.shortSide ?? 22;
-        const MAX = opts.maxSide ?? 60;
-        const h = Math.max(minHeight, winH - reservedTop);
-        const aspect = winW / h;
-
-        let cols: number;
-        let rows: number;
-        if (aspect >= 1) {
-            rows = SHORT;
-            cols = Math.max(SHORT, Math.round(SHORT * aspect));
-        } else {
-            cols = SHORT;
-            rows = Math.max(SHORT, Math.round(SHORT / aspect));
-        }
-        cols = Math.min(MAX, cols);
-        rows = Math.min(MAX, rows);
-        return { cols, rows };
+    let cols: number;
+    let rows: number;
+    if (aspect >= 1) {
+        rows = SHORT;
+        cols = Math.max(SHORT, Math.round(SHORT * aspect));
+    } else {
+        cols = SHORT;
+        rows = Math.max(SHORT, Math.round(SHORT / aspect));
     }
+    cols = Math.min(MAX, cols);
+    rows = Math.min(MAX, rows);
+    return { cols, rows };
+}
 
-    function computeCameraFit(opts: CameraFitOptions): CameraFit {
-        const cell = opts.cell ?? 1.0;
-        const margin = opts.margin ?? 1.02;
-        const rim = opts.rim ?? 0;
-        const vFov = (opts.vFovDeg * Math.PI) / 180;
-        const tanHalf = Math.tan(vFov / 2);
-        const W = (opts.cols * cell + rim * 2) * margin;
-        const H = (opts.rows * cell + rim * 2) * margin;
-        const distForH = H / 2 / tanHalf;
-        const distForW = W / 2 / (tanHalf * opts.aspect);
-        const distance = Math.max(distForH, distForW);
-        return {
-            distance,
-            centerX: ((opts.cols - 1) * cell) / 2,
-            centerZ: ((opts.rows - 1) * cell) / 2,
-        };
-    }
-
-    g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.computeGridDims = computeGridDims;
-    g.DAIDAI.computeCameraFit = computeCameraFit;
-})(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : (this as any));
+export function computeCameraFit(opts: CameraFitOptions): CameraFit {
+    const cell = opts.cell ?? 1.0;
+    const margin = opts.margin ?? 1.02;
+    const rim = opts.rim ?? 0;
+    const vFov = (opts.vFovDeg * Math.PI) / 180;
+    const tanHalf = Math.tan(vFov / 2);
+    const W = (opts.cols * cell + rim * 2) * margin;
+    const H = (opts.rows * cell + rim * 2) * margin;
+    const distForH = H / 2 / tanHalf;
+    const distForW = W / 2 / (tanHalf * opts.aspect);
+    const distance = Math.max(distForH, distForW);
+    return {
+        distance,
+        centerX: ((opts.cols - 1) * cell) / 2,
+        centerZ: ((opts.rows - 1) * cell) / 2,
+    };
+}

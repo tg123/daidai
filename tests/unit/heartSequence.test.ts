@@ -1,12 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/heartSequence.ts';
-
-const { createHeartMatcher, HEART_SEQUENCE } = globalThis.DAIDAI;
+import { createHeartMatcher, HEART_SEQUENCE } from '../../src/heartSequence';
 
 describe('createHeartMatcher', () => {
     it('throws on empty/invalid sequences', () => {
         expect(() => createHeartMatcher()).toThrow();
         expect(() => createHeartMatcher([])).toThrow();
+        // @ts-expect-error - exercising the runtime guard against non-array input
         expect(() => createHeartMatcher('abc')).toThrow();
     });
 

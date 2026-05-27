@@ -1,10 +1,7 @@
 // AudioEngine: tiny Web Audio + decoded buffer cache, with iOS unlock helpers.
-// Exposed as DAIDAI.AudioEngine. Browser-only — Web Audio APIs are not stubbed
-// for Vitest, so no unit tests; the class is exercised by E2E.
-(function (g: any) {
-    'use strict';
-
-    class AudioEngine {
+// Browser-only — Web Audio APIs are not stubbed for Vitest, so no unit tests;
+// the class is exercised by E2E.
+export class AudioEngine {
         ctx: any;
         initialized: boolean;
         buffers: Record<string, AudioBuffer>;
@@ -170,6 +167,18 @@
                 }
             } catch(e) { console.warn('[audio] silent-video fail:', e); }
         }
+        /** Public no-op-if-not-ready hook for page lifecycle code: keep the
+         *  silent-video heartbeat alive on user gestures / visibility / focus. */
+        keepAlive() {
+            if (this.initialized && !this.muted) this._ensureSilentVideo();
+        }
+        /** Public hook: if the AudioContext was suspended (e.g. tab backgrounded
+         *  on mobile Safari), bring it back. Safe to call anytime. */
+        resumeIfSuspended() {
+            if (this.initialized && this.ctx && this.ctx.state === 'suspended') {
+                this.ctx.resume().catch(() => {});
+            }
+        }
         _flushQueue() {
             if (!this._pendingPlays || this._pendingPlays.length === 0) return;
             const q = this._pendingPlays.splice(0);
@@ -262,6 +271,3 @@
         }
     }
 
-    g.DAIDAI = g.DAIDAI || {};
-    g.DAIDAI.AudioEngine = AudioEngine;
-})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (this as any)));

@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../../src/heartSequence.ts';
-import '../../src/konami.ts';
-
-const { createKonamiMatcher, KONAMI_SEQUENCE } = globalThis.DAIDAI;
+import { createKonamiMatcher, KONAMI_SEQUENCE } from '../../src/konami';
 
 describe('createKonamiMatcher', () => {
     it('exposes the canonical Konami sequence', () => {
