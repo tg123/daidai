@@ -54,6 +54,10 @@ function injectBuildSha() {
 // switches `<link rel="manifest">` href accordingly (see public/ logic
 // duplicated below for parity with src/i18n/index.ts pickLang).
 const MANIFEST_BASE = {
+    // Stable identifier — keeps install identity intact even if start_url
+    // changes (PWABuilder/Store best practice). Use a URL-style ID that
+    // matches the production origin.
+    id: 'https://tg123.github.io/daidai/',
     start_url: './',
     scope: './',
     display: 'fullscreen',
@@ -63,11 +67,33 @@ const MANIFEST_BASE = {
     theme_color: '#02101c',
     categories: ['games', 'entertainment'],
     icons: [
-        // Browsers downscale 512px for the 192 slot — adequate for
-        // PWA installability checks without bundling a second PNG.
-        { src: 'logo-512.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        // Real PNGs at each declared size — Microsoft Store / PWABuilder
+        // reject manifests where the file dimensions don't match the
+        // declared `sizes` attribute. logo-{96,144,192,512}.png are all
+        // generated from the 512px master in public/.
+        { src: 'logo-96.png', sizes: '96x96', type: 'image/png', purpose: 'any' },
+        { src: 'logo-144.png', sizes: '144x144', type: 'image/png', purpose: 'any' },
+        { src: 'logo-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
         { src: 'logo-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
         { src: 'logo-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+    // Store listing previews (Microsoft Store / Chrome install dialog
+    // both honor these). Wide for desktop, narrow for mobile.
+    screenshots: [
+        {
+            src: 'screenshots/desktop-1280x800.png',
+            sizes: '1280x800',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: 'DaiDai Worm — idle screen on desktop',
+        },
+        {
+            src: 'screenshots/mobile-720x1280.png',
+            sizes: '720x1280',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: 'DaiDai Worm — idle screen on mobile',
+        },
     ],
 };
 
