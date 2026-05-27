@@ -31,11 +31,17 @@ export interface LangMenuOpts {
  * Wire the #btn-lang dropdown menu (#lang-menu). Returns the
  * updateBtnState fn used to refresh the visible-state on a tick so that
  * mid-run → paused transitions show/hide the button correctly.
+ *
+ * Idempotent: a previous interval bound to the same #btn-lang element is
+ * cleared before a new one is started, so dev-server HMR or accidental
+ * double-install cannot stack multiple intervals.
  */
 export function installLangMenu(opts: LangMenuOpts): (() => void) | undefined {
     const btn = document.getElementById('btn-lang');
     const menu = document.getElementById('lang-menu');
     if (!btn || !menu) return undefined;
+    const prev = (btn as HTMLElement & { __langMenuTimer?: ReturnType<typeof setInterval> }).__langMenuTimer;
+    if (prev !== undefined) clearInterval(prev);
     const badge = document.createElement('span');
     badge.className = 'gp-badge';
     badge.id = 'btn-lang-badge';
@@ -72,6 +78,7 @@ export function installLangMenu(opts: LangMenuOpts): (() => void) | undefined {
         menu.classList.remove('open');
     });
     updateBtnState();
-    setInterval(updateBtnState, 250);
+    const timer = setInterval(updateBtnState, 250);
+    (btn as HTMLElement & { __langMenuTimer?: ReturnType<typeof setInterval> }).__langMenuTimer = timer;
     return updateBtnState;
 }

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createBoostTimer } from '../../src/game/boost';
 import { createComboCounter } from '../../src/combo';
 import { createEatenColorsQueue } from '../../src/eatenColors';
@@ -166,6 +166,12 @@ describe('createGameStep.gameUpdate', () => {
     beforeEach(() => {
         // Stabilise Math.random for any branches that consume it
         vi.spyOn(Math, 'random').mockReturnValue(0);
+    });
+
+    afterEach(() => {
+        // Restore Math.random (and any other spies) so this test file does
+        // not leak global mocks into later vitest files.
+        vi.restoreAllMocks();
     });
 
     it('basic move advances head and pops tail; length unchanged', () => {

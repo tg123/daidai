@@ -240,7 +240,6 @@ export function installTouchControls(deps: TouchControlsDeps): void {
             applyGamepadGlyphs();
         }
         window.__markGamepad = markGamepad;
-        window.__applyGamepadGlyphs = applyGamepadGlyphs;
         // Log first-seen gamepad id once so unknown pads can be added to the PS regex
         let loggedPad = false;
         function poll() {

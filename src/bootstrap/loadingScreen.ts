@@ -63,9 +63,17 @@ export function installLoadingScreen({ audio, fastBoot, t }: LoadingScreenOpts):
             });
         }
     }, 5000);
+    function cleanup() {
+        // Stop the pending-files poll and detach the progress callback so we
+        // do not keep ticking (or holding references to detached DOM nodes)
+        // after the loading screen is removed. Important under HMR.
+        clearInterval(pendingTimer);
+        audio.onProgress = null;
+    }
     audio
         .preload()
         .then(() => {
+            cleanup();
             if (subEl) subEl.textContent = t('loading.ready');
             if (barInner) barInner.style.width = '100%';
             if (pctEl) pctEl.textContent = '100%';
@@ -75,6 +83,7 @@ export function installLoadingScreen({ audio, fastBoot, t }: LoadingScreenOpts):
             }, 250);
         })
         .catch((err) => {
+            cleanup();
             console.warn('Preload error:', err);
             if (subEl) subEl.textContent = t('loading.failed');
             setTimeout(() => screen.classList.add('hidden'), 500);

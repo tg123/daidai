@@ -5,7 +5,8 @@ describe('createHeartMatcher', () => {
     it('throws on empty/invalid sequences', () => {
         expect(() => createHeartMatcher()).toThrow();
         expect(() => createHeartMatcher([])).toThrow();
-        expect(() => createHeartMatcher('abc' as unknown as readonly string[])).toThrow();
+        // @ts-expect-error - exercising the runtime guard against non-array input
+        expect(() => createHeartMatcher('abc')).toThrow();
     });
 
     it('returns false until the full sequence is buffered', () => {
