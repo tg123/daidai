@@ -15,8 +15,6 @@ declare global {
 
         /** Hook to re-render the restart button label after locale or input changes. */
         __refreshRestartBtnLabel?: () => void;
-        /** Hook to refresh the lang-menu active state. */
-        __updateLangBtnState?: () => void;
         /** Hook to repaint gamepad-aware hints in the HUD. */
         __applyGamepadGlyphs?: () => void;
         /** Hook to redraw the idle/paused prompt. */

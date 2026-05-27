@@ -192,15 +192,16 @@ export function installTouchControls(deps: TouchControlsDeps): void {
         refreshMuteUI();
     });
     refreshMuteUI();
-    // Language switcher (extracted to src/i18n/dom.ts)
-    const updateLangBtnState = installLangMenu({
+    // Language switcher (extracted to src/i18n/dom.ts). The returned
+    // updateBtnState ticks itself on a setInterval inside installLangMenu, so
+    // we don't need to thread it back out — no external caller reads it.
+    installLangMenu({
         getLang,
         setLang,
         t,
         canSwitch: () => getPaused() && !getGameOver(),
         showEffect,
     });
-    if (updateLangBtnState) window.__updateLangBtnState = updateLangBtnState;
     // ============ GAMEPAD CONTROLLER SUPPORT ============
     (function setupGamepad() {
         const prevButtons: boolean[][] = [];
