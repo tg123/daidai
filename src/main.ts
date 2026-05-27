@@ -12,7 +12,8 @@ import { createComboCounter } from './combo';
 import { createEatenColorsQueue } from './eatenColors';
 import { createEasterEggs, showEffect, showMessage } from './effects/easterEggs';
 import { createBoostTimer } from './game/boost';
-import { eatScore, findFreeCell, isCellOccupied, wrapPosition } from './gameRules';
+import { createGameStep } from './game/step';
+import { findFreeCell, isCellOccupied } from './gameRules';
 import { createHeartMatcher, HEART_SEQUENCE } from './heartSequence';
 import { installTestApi } from './testApi';
 import { applyI18nDOM as applyI18nDOMImpl } from './i18n/dom';
@@ -118,6 +119,7 @@ const COLORS_STR = ['#ff3333', '#2266ff', '#22ee22', '#ffaa00', '#dd55ff'];
 let snake, direction, nextDirection, beans, shedSkin, score, beansEaten;
 let gameOver, paused, speed, baseSpeed;
 const combo = createComboCounter();
+const boost = createBoostTimer();
 let goldBeans, growthPending;
 const eatenColors = createEatenColorsQueue(); // queue of bean colors behind the head
 let hasGamepad = false;
@@ -524,162 +526,6 @@ function isOccupied(x, y) {
     return isCellOccupied(x, y, [snake, beans, shedSkin, goldBeans]);
 }
 
-function gameUpdate() {
-    if (gameOver || paused) return;
-
-    // Expire red boost
-    if (boost.isExpired(performance.now())) {
-        endBoost();
-    }
-
-    direction = nextDirection;
-    const head = wrapPosition(snake[0].x + direction.x, snake[0].y + direction.y, COLS, ROWS);
-
-    if (
-        !godMode &&
-        (snake.some((s) => s.x === head.x && s.y === head.y) || shedSkin.some((s) => s.x === head.x && s.y === head.y))
-    ) {
-        gameOver = true;
-        // Show dead "X" eyes on the head
-        if (snakeMeshes[0] && snakeMeshes[0].userData && snakeMeshes[0].userData.deadRefs) {
-            for (const r of snakeMeshes[0].userData.deadRefs) {
-                r.deadX.visible = true;
-                r.pupil.visible = false;
-                r.hl.visible = false;
-            }
-        }
-        const isNew = score > hiScore;
-        saveHiScore();
-        updateUI();
-        audio.play('heartbeat_stop');
-        audio.play('die');
-        window.__gameOverInfo = { score, isNew, hi: hiScore };
-        const msg = isNew ? `${t('over.new', { score })}` : `${t('over.normal', { score, hi: hiScore })}`;
-        showMessage(msg);
-        return;
-    }
-
-    snake.unshift(head);
-    // Water ripple at head position
-    spawnRipple(head.x * CELL, head.y * CELL);
-
-    const beanIdx = beans.findIndex((b) => b.x === head.x && b.y === head.y);
-    if (beanIdx !== -1) {
-        const bean = beans[beanIdx];
-        beans.splice(beanIdx, 1);
-        // Remove the corresponding mesh so the next spawned bean gets a fresh drop-in animation
-        if (beanMeshes[beanIdx]) {
-            scene.remove(beanMeshes[beanIdx]);
-            beanMeshes.splice(beanIdx, 1);
-        }
-        // Newest eaten color goes to front of queue → displayed directly behind head
-        eatenColors.recordEaten(bean.color);
-        eatBean(bean);
-        spawnBean();
-    }
-
-    const goldIdx = goldBeans.findIndex((b) => b.x === head.x && b.y === head.y);
-    if (goldIdx !== -1) {
-        goldBeans.splice(goldIdx, 1);
-        if (goldMeshes[goldIdx]) {
-            scene.remove(goldMeshes[goldIdx]);
-            goldMeshes.splice(goldIdx, 1);
-        }
-        score += 30;
-        audio.play('gold');
-        spawnParticles3D(head.x * CELL, head.y * CELL, 0xffd700, 12);
-        spawnBean();
-    }
-
-    if (growthPending > 0) {
-        growthPending--;
-    } else {
-        snake.pop();
-    }
-
-    // Decay
-    shedSkin.forEach((s) => s.life--);
-    shedSkin = shedSkin.filter((s) => s.life > 0);
-    goldBeans.forEach((b) => b.life--);
-    goldBeans = goldBeans.filter((b) => b.life > 0);
-
-    updateUI();
-}
-
-function eatBean(bean) {
-    beansEaten++;
-    const basePoints = eatScore({
-        isRaining,
-        isBoosted: boost.active,
-        boostMultiplier: boost.multiplier,
-        godMode,
-    });
-    score += basePoints;
-    growthPending++;
-    audio.play('eat');
-    spawnParticles3D(bean.x * CELL, bean.y * CELL, COLORS_HEX[bean.color], 8);
-    // Trigger eat animation (chomp + alternate which hand "tosses")
-    if (snakeMeshes[0] && snakeMeshes[0].userData) {
-        const ud = snakeMeshes[0].userData;
-        ud.eatTimer = 220;
-        ud.handTimer = ud.handTimerMax;
-        ud.handThrowSide = -ud.handThrowSide;
-        // Spawn the visible tossed bean at the active hand's palm.
-        if (ud.tossBean) {
-            ud.tossBean.material.color.setHex(COLORS_HEX[bean.color]);
-            ud.tossBean.material.emissive.setHex(COLORS_HEX[bean.color]);
-            // Approximate hand palm local position (matches makeHand layout).
-            const side = ud.handThrowSide;
-            ud.tossFrom.set(side * 0.5, 0.45 - 0.5, 0.1); // shoulder + arm hang
-            ud.tossBean.position.copy(ud.tossFrom);
-            ud.tossBean.visible = true;
-        }
-    }
-
-    if (combo.recordEat(bean.color)) {
-        triggerMagic(bean.color);
-    }
-
-    // Anticipated length after growthPending applied
-    const projectedLen = snake.length + growthPending;
-    // Heart beat begins at length 20, gets louder until shed at 25
-    if (projectedLen >= 20 && projectedLen < 25) {
-        audio.play('heartbeat_start');
-        // Ramp volume from 0.25 at len=20 to 1.0 at len=24
-        const t = (projectedLen - 20) / 4; // 0..1
-        const vol = 0.25 + t * 0.85;
-        audio.setLoopVolume('beat', vol, 0.2);
-    }
-    if (projectedLen >= 25) {
-        audio.play('heartbeat_stop');
-        audio.play('freeze');
-        // Shed: drop all segments beyond init length (5) as gray beans (original: keep 5)
-        const initLen = 5;
-        while (snake.length > initLen) {
-            const tail = snake.pop();
-            shedSkin.push({ x: tail.x, y: tail.y, life: 600 });
-        }
-        // Keep most recent 4 eaten colors visible on body[1..4] after shed
-        eatenColors.trimAfterShed(initLen);
-        // Prevent the trailing snake.pop() in gameUpdate from shrinking us to 4
-        growthPending = 1;
-        showEffect(t('fx.shed'));
-        baseSpeed = Math.max(80, baseSpeed - 5);
-        speed = baseSpeed;
-    }
-    updateUI();
-}
-
-const boost = createBoostTimer();
-
-function endBoost() {
-    if (!boost.active) return;
-    boost.reset();
-    speed = baseSpeed;
-    audio.play('speed_end');
-    showEffect(t('fx.boostEnd'));
-}
-
 function triggerMagic(colorIdx) {
     audio.play('combo');
     switch (colorIdx) {
@@ -859,6 +705,82 @@ const sceneSync = createSceneSync({
 });
 const updateGoldenProjectiles = sceneSync.updateGoldenProjectiles;
 const syncScene = sceneSync.syncFrame;
+
+// ============ GAME STEP (extracted to src/game/step.ts) ============
+const gameStep = createGameStep({
+    audio,
+    t,
+    showMessage,
+    showEffect,
+    cell: CELL,
+    cols: COLS,
+    rows: ROWS,
+    colorsHex: COLORS_HEX,
+    boost,
+    combo,
+    eatenColors,
+    getSnake: () => snake,
+    getDirection: () => direction,
+    setDirection: (d) => {
+        direction = d;
+    },
+    getNextDirection: () => nextDirection,
+    getBeans: () => beans,
+    getShedSkin: () => shedSkin,
+    setShedSkin: (s) => {
+        shedSkin = s;
+    },
+    getGoldBeans: () => goldBeans,
+    setGoldBeans: (g) => {
+        goldBeans = g;
+    },
+    getGodMode: () => godMode,
+    getGameOver: () => gameOver,
+    setGameOver: (v) => {
+        gameOver = v;
+    },
+    getPaused: () => paused,
+    getIsRaining: () => isRaining,
+    getScore: () => score,
+    addScore: (n) => {
+        score += n;
+    },
+    getHiScore: () => hiScore,
+    saveHiScore,
+    getBaseSpeed: () => baseSpeed,
+    setBaseSpeed: (s) => {
+        baseSpeed = s;
+    },
+    setSpeed: (s) => {
+        speed = s;
+    },
+    incBeansEaten: () => {
+        beansEaten++;
+    },
+    getGrowthPending: () => growthPending,
+    setGrowthPending: (n) => {
+        growthPending = n;
+    },
+    incGrowthPending: () => {
+        growthPending++;
+    },
+    decGrowthPending: () => {
+        growthPending--;
+    },
+    getSnakeMeshes: () => snakeMeshes,
+    getBeanMeshes: () => beanMeshes,
+    getGoldMeshes: () => goldMeshes,
+    removeMesh: (m) => scene.remove(m as THREE.Object3D),
+    spawnRipple,
+    spawnParticles3D,
+    spawnBean,
+    triggerMagic,
+    updateUI,
+    setGameOverInfo: (info) => {
+        window.__gameOverInfo = info;
+    },
+});
+const gameUpdate = gameStep.gameUpdate;
 
 // ============ GAME LOOP ============
 
