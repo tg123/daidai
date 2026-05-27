@@ -246,6 +246,10 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
         applyGamepadGlyphs();
     }
     // Log first-seen gamepad id once so unknown pads can be added to the PS regex
+    // (gated behind `?debug` / `#debug` to avoid noisy console output in production).
+    const debugLog =
+        typeof location !== 'undefined' &&
+        ((location.search || '').includes('debug') || (location.hash || '').includes('debug'));
     let loggedPad = false;
     function poll() {
         const pads = navigator.getGamepads ? navigator.getGamepads() : [];
@@ -254,7 +258,7 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
             const idLower = (pad.id || '').trim().toLowerCase();
             if (!idLower) continue;
             if (!loggedPad) {
-                console.log('[gamepad] detected:', pad.id, 'mapping:', pad.mapping);
+                if (debugLog) console.log('[gamepad] detected:', pad.id, 'mapping:', pad.mapping);
                 loggedPad = true;
             }
             const wasPS = getIsPSGamepad();
@@ -342,14 +346,29 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
     function startPoll() {
         if (pollStarted) return;
         pollStarted = true;
+        if (probeInterval !== null) {
+            clearInterval(probeInterval);
+            probeInterval = null;
+        }
         requestAnimationFrame(poll);
     }
     window.addEventListener('gamepadconnected', () => {
         markGamepad();
         startPoll();
     });
-    // Some browsers (Chrome) need an active poll loop even without an event
-    startPoll();
+    // Some browsers (Chrome) need an active poll loop even without an event.
+    // Use a low-frequency interval probe to detect a connected pad without
+    // burning a permanent rAF when no gamepad is present.
+    let probeInterval: ReturnType<typeof setInterval> | null = setInterval(() => {
+        if (pollStarted) return;
+        const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+        for (const pad of pads) {
+            if (pad && pad.connected !== false && (pad.id || '').trim()) {
+                startPoll();
+                return;
+            }
+        }
+    }, 1000);
     // More menu toggle
     const moreMenu = document.getElementById('more-menu') as HTMLElement;
     const morePopup = document.getElementById('more-popup') as HTMLElement;

@@ -3,13 +3,16 @@ import type { AudioEngine } from '../audio/AudioEngine';
 export type TFn = (key: string, vars?: Record<string, unknown>) => string;
 export type Cell = { x: number; y: number };
 
+let effectTimer: ReturnType<typeof setTimeout> | null = null;
 export function showEffect(text: string): void {
     const el = document.getElementById('effect-text');
     if (!el) return;
     el.textContent = text;
     el.style.opacity = '1';
-    setTimeout(() => {
+    if (effectTimer !== null) clearTimeout(effectTimer);
+    effectTimer = setTimeout(() => {
         el.style.opacity = '0';
+        effectTimer = null;
     }, 2000);
 }
 
