@@ -1054,7 +1054,7 @@ const isTauri = typeof (window as unknown as { __TAURI_INTERNALS__?: unknown }).
 // Tauri desktop port polish:
 //   - Disable the right-click context menu (no native "Inspect / Reload").
 //   - Mark <body> so CSS can show/hide HUD chrome (e.g. mute button).
-//   - Forward http(s) link clicks to the system browser via the opener
+//   - Forward https link clicks to the system browser via the opener
 //     plugin; the webview ignores `target="_blank"` by default.
 // Browsers keep all of the native behavior above.
 if (isTauri) {
@@ -1064,7 +1064,7 @@ if (isTauri) {
         const anchor = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
         if (!anchor) return;
         const href = anchor.getAttribute('href') || '';
-        if (!/^https?:/i.test(href)) return;
+        if (!/^https:/i.test(href)) return;
         e.preventDefault();
         import('@tauri-apps/plugin-opener').then((m) => m.openUrl(href)).catch(() => {});
     });
