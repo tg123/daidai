@@ -14,7 +14,7 @@ A nostalgic 3D remake of _"DAIDAI" Worm_, built with Three.js and runs in your b
 
 [![Play on itch.io](https://static.itch.io/images/badge-color.svg)](https://farmer1992.itch.io/daidai)
 
-📖 [中文说明](Readme.md)
+📖 [中文说明](README.md)
 
 ## How to Play
 
