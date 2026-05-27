@@ -61,6 +61,33 @@ jobs:
           clean-exclude: pr-preview/
           force: false
 
+  itch:
+    name: publish to itch.io
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: itch-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4.1.3
+        with:
+          name: dist-deploy
+          path: dist
+      - name: Install butler
+        run: |
+          curl -fsSL -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
+          unzip -q butler.zip -d "$RUNNER_TEMP/butler"
+          chmod +x "$RUNNER_TEMP/butler/butler"
+          "$RUNNER_TEMP/butler/butler" -V
+      - name: Push dist to farmer1992/daidai:html
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          "$RUNNER_TEMP/butler/butler" push \
+            dist farmer1992/daidai:html \
+            --userversion "$(echo "${{ github.sha }}" | cut -c1-12)"
+
   pr-preview:
     name: deploy PR preview
     needs: build
