@@ -14,7 +14,6 @@ const expectedTitles: Record<string, string> = {
     'pt-br': 'Verme DaiDai do Lago DouDou',
     'pl-pl': 'Robak DaiDai ze Stawu DouDou',
     'ru-ru': 'Червяк ДайДай из пруда ДоуДоу',
-    'ar-sa': 'دودة دايداي في بركة دوودوو',
     'th-th': 'หนอนไต่ไต่แห่งบ่อโต้วโต้ว',
 };
 

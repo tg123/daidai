@@ -14,7 +14,6 @@ export type LocaleCode =
     | 'pt-br'
     | 'pl-pl'
     | 'ru-ru'
-    | 'ar-sa'
     | 'th-th';
 export type LocaleDict = Record<string, string>;
 
@@ -64,7 +63,6 @@ export function pickLang(opts?: PickLangOpts): LocaleCode {
         if (lc.startsWith('pt')) return 'pt-br';
         if (lc.startsWith('pl')) return 'pl-pl';
         if (lc.startsWith('ru')) return 'ru-ru';
-        if (lc.startsWith('ar')) return 'ar-sa';
         if (lc.startsWith('th')) return 'th-th';
     }
     return 'zh-cn';

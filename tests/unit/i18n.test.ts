@@ -13,15 +13,13 @@ import '../../src/i18n/de-de';
 import '../../src/i18n/pt-br';
 import '../../src/i18n/pl-pl';
 import '../../src/i18n/ru-ru';
-import '../../src/i18n/ar-sa';
 import '../../src/i18n/th-th';
 import { I18N_DICT, pickLang, createT, locales } from '../../src/i18n/index';
 
 describe('i18n', () => {
-    it('registers all 14 locales', () => {
+    it('registers all 13 locales', () => {
         expect(locales().sort()).toEqual(
             [
-                'ar-sa',
                 'de-de',
                 'en-us',
                 'es-es',
@@ -89,8 +87,6 @@ describe('i18n', () => {
             expect(pickLang({ navigator: ['pt-PT'] })).toBe('pt-br');
             expect(pickLang({ navigator: ['pl-PL'] })).toBe('pl-pl');
             expect(pickLang({ navigator: ['ru-RU'] })).toBe('ru-ru');
-            expect(pickLang({ navigator: ['ar-SA'] })).toBe('ar-sa');
-            expect(pickLang({ navigator: ['ar-EG'] })).toBe('ar-sa');
             expect(pickLang({ navigator: ['th-TH'] })).toBe('th-th');
         });
         it('accepts legacy 2-letter codes from old localStorage values', () => {
@@ -105,7 +101,6 @@ describe('i18n', () => {
             expect(pickLang({ stored: 'pt' })).toBe('pt-br');
             expect(pickLang({ stored: 'pl' })).toBe('pl-pl');
             expect(pickLang({ stored: 'ru' })).toBe('ru-ru');
-            expect(pickLang({ stored: 'ar' })).toBe('ar-sa');
             expect(pickLang({ stored: 'th' })).toBe('th-th');
         });
         it('skips null/undefined candidates', () => {

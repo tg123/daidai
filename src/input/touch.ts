@@ -343,7 +343,6 @@ export function installTouchControls(deps: TouchControlsDeps): TouchControlsApi 
                             'pt-br',
                             'pl-pl',
                             'ru-ru',
-                            'ar-sa',
                             'th-th',
                         ];
                         const idx = langs.indexOf(getLang());

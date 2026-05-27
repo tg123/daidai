@@ -30,7 +30,6 @@ import './i18n/de-de';
 import './i18n/pt-br';
 import './i18n/pl-pl';
 import './i18n/ru-ru';
-import './i18n/ar-sa';
 import './i18n/th-th';
 import { detectConnectedGamepad, glyphForButton } from './input/gamepad';
 import { installKeyboardControls } from './input/keyboard';
@@ -93,11 +92,8 @@ let LANG = pickLang({
 });
 const t = createT(() => LANG);
 installLoadingScreen({ audio, fastBoot: __FAST_BOOT, t });
-// Right-to-left scripts: keep the list small and explicit.
-const RTL_LANGS = new Set(['ar-sa']);
 try {
     document.documentElement.lang = LANG;
-    document.documentElement.dir = RTL_LANGS.has(LANG) ? 'rtl' : 'ltr';
     document.title = t('title');
 } catch (_e) {
     /* document may be missing in headless edge cases */
@@ -113,7 +109,6 @@ function setLang(lang) {
     } catch (_) {}
     try {
         document.documentElement.lang = lang;
-        document.documentElement.dir = RTL_LANGS.has(lang) ? 'rtl' : 'ltr';
         document.title = t('title');
     } catch (_) {}
     applyI18nDOM();

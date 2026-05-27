@@ -11,7 +11,6 @@ import '../../src/i18n/de-de';
 import '../../src/i18n/pt-br';
 import '../../src/i18n/pl-pl';
 import '../../src/i18n/ru-ru';
-import '../../src/i18n/ar-sa';
 import '../../src/i18n/th-th';
 import { createT } from '../../src/i18n/index';
 import { getStartPrompt, getRestartLabel } from '../../src/input/promptStrings';
@@ -29,7 +28,6 @@ const LANGS = [
     'pt-br',
     'pl-pl',
     'ru-ru',
-    'ar-sa',
     'th-th',
 ] as const;
 
