@@ -85,8 +85,10 @@ export function installKeyboardControls(deps: KeyboardDeps): KeyboardControls {
             e.preventDefault();
             return;
         }
-        // Backdoor: 1-5 trigger magic; 6 grows body — only when devtools is open
-        if (!deps.getGameOver() && deps.isDevtoolsOpen()) {
+        // Cheat backdoor (1-5 magic, 6 grow body) is dev-only. In production
+        // builds `import.meta.env.DEV` is constant-folded to `false` and the
+        // whole branch is tree-shaken.
+        if (import.meta.env.DEV && !deps.getGameOver() && deps.isDevtoolsOpen()) {
             if ('12345'.includes(e.key)) {
                 deps.triggerMagic(parseInt(e.key) - 1);
                 e.preventDefault();
