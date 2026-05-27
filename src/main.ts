@@ -847,7 +847,7 @@ const keyboardControls = installKeyboardControls({
 });
 
 // ============ TOUCH / SWIPE CONTROLS (extracted to src/input/touch.ts) ============
-installTouchControls({
+const touchApi = installTouchControls({
     canvas: renderer.domElement,
     audio,
     t,
@@ -979,15 +979,15 @@ installTestApi({
 // ============ START ============
 initGame();
 // Check for already-connected gamepad and prefer its prompts
-if (detectGamepadNow() && typeof window.__markGamepad === 'function') {
-    window.__markGamepad();
+if (detectGamepadNow()) {
+    touchApi.markGamepad();
 }
 showMessage(getStartPrompt());
 paused = true;
 // Re-check shortly after load — some browsers expose gamepads asynchronously
 setTimeout(() => {
-    if (detectGamepadNow() && typeof window.__markGamepad === 'function') {
-        window.__markGamepad();
+    if (detectGamepadNow()) {
+        touchApi.markGamepad();
         if (paused && !gameOver) showMessage(getStartPrompt());
     }
 }, 500);
@@ -1014,11 +1014,11 @@ function refreshDynamicI18n() {
     }
     // Gamepad glyphs (also updates btn-mute/btn-lang titles)
     try {
-        if (typeof window.__applyGamepadGlyphs === 'function') window.__applyGamepadGlyphs();
+        touchApi.applyGamepadGlyphs();
     } catch (_) {}
     // Refresh the consolidated restart button label after locale change
     try {
-        if (typeof window.__refreshRestartBtnLabel === 'function') window.__refreshRestartBtnLabel();
+        touchApi.refreshRestartBtnLabel();
     } catch (_) {}
 }
 // Update prompt dynamically if first interaction reveals a different modality
