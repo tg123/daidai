@@ -177,8 +177,12 @@ function saveHiScore() {
 }
 
 // ============ EASTER EGG STATE ============
-const isLocalhost = ['localhost', '127.0.0.1', '::1', ''].includes(location.hostname);
-let devtoolsOpen = isLocalhost; // on localhost: backdoor enabled by default
+// Backdoor (cheats: 1/2/3/etc) only unlocks once the console is actually
+// open — verified by the probe + window-size heuristic below. Previously
+// localhost auto-enabled it, but that meant the dev build (and any local
+// preview/serve) shipped cheats to anyone who hit a number key without
+// opening devtools.
+let devtoolsOpen = false;
 let godMode = false; // Konami: rainbow + invincible + 10x score
 const tributeState = { tributeActive: false, tributeTriggeredThisLoad: false };
 const konamiMatcher = createKonamiMatcher();
