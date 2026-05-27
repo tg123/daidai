@@ -111,6 +111,10 @@ function setLang(lang) {
         document.documentElement.lang = lang;
         document.title = t('title');
     } catch (_) {}
+    try {
+        const manifestLink = document.getElementById('daidai-manifest') as HTMLLinkElement | null;
+        if (manifestLink) manifestLink.href = `./manifest.${lang}.webmanifest`;
+    } catch (_) {}
     applyI18nDOM();
     document.querySelectorAll('#lang-menu button[data-lang]').forEach((b) => {
         b.classList.toggle('active', b.getAttribute('data-lang') === lang);
