@@ -57,8 +57,13 @@ jobs:
         include:
           - platform: macos-latest
             target: universal-apple-darwin
+            arch: universal
           - platform: windows-latest
-            target: ''
+            target: x86_64-pc-windows-msvc
+            arch: x64
+          - platform: windows-latest
+            target: aarch64-pc-windows-msvc
+            arch: arm64
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 60
     steps:
@@ -72,7 +77,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.target }}
 
       - name: Cache cargo registry + build
         uses: Swatinem/rust-cache@v2
@@ -109,11 +114,13 @@ jobs:
       # The resulting executable depends only on the system-provided
       # WebView2 runtime (preinstalled on Windows 11 and on Windows 10
       # via Edge updates), so it ships as a true single-file download.
+      # We build x64 + arm64 in separate matrix jobs so Surface / Copilot+
+      # PC users get a native binary instead of x64-on-arm emulation.
       - name: Build Windows .exe
         if: matrix.platform == 'windows-latest'
         env:
           DAIDAI_BUILD_SHA: ${{ github.sha }}
-        run: npm run tauri -- build --bundles none
+        run: npm run tauri -- build --target ${{ matrix.target }} --bundles none
 
       - name: Upload Windows .exe
         if: matrix.platform == 'windows-latest'
@@ -121,10 +128,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $exe = Get-ChildItem src-tauri\target\release -Filter *.exe -File |
+          $exe = Get-ChildItem "src-tauri\target\${{ matrix.target }}\release" -Filter *.exe -File |
             Where-Object { $_.Name -notlike '*deps*' -and $_.Name -notlike '*build_script*' } |
             Select-Object -First 1
-          if (-not $exe) { throw 'No Tauri .exe found in src-tauri/target/release' }
-          $out = "DaiDai-windows-x64.exe"
+          if (-not $exe) { throw "No Tauri .exe found in src-tauri/target/${{ matrix.target }}/release" }
+          $out = "DaiDai-windows-${{ matrix.arch }}.exe"
           Copy-Item $exe.FullName $out
           gh release upload "${{ github.event.release.tag_name }}" $out --clobber
