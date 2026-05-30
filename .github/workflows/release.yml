@@ -94,16 +94,21 @@ jobs:
         if: matrix.platform == 'macos-latest'
         env:
           DAIDAI_BUILD_SHA: ${{ github.sha }}
-        run: npm run tauri -- build --target universal-apple-darwin --bundles app
+        run: npm run tauri -- build --target ${{ matrix.target }} --bundles app
 
       - name: Zip and upload macOS .app
         if: matrix.platform == 'macos-latest'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd src-tauri/target/universal-apple-darwin/release/bundle/macos
-          app=$(ls -d *.app | head -1)
-          out="DaiDai-macos-universal.zip"
+          cd "src-tauri/target/${{ matrix.target }}/release/bundle/macos"
+          # productName in src-tauri/tauri.conf.json -> DaiDai.app
+          app="DaiDai.app"
+          if [ ! -d "$app" ]; then
+            echo "::error::Expected $app in $(pwd); got: $(ls)"
+            exit 1
+          fi
+          out="DaiDai-macos-${{ matrix.arch }}.zip"
           # ditto preserves macOS metadata (resource forks, code signatures)
           # that plain `zip` would strip, so the extracted .app launches
           # cleanly without "is damaged" Gatekeeper errors.
@@ -128,10 +133,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $exe = Get-ChildItem "src-tauri\target\${{ matrix.target }}\release" -Filter *.exe -File |
-            Where-Object { $_.Name -notlike '*deps*' -and $_.Name -notlike '*build_script*' } |
-            Select-Object -First 1
-          if (-not $exe) { throw "No Tauri .exe found in src-tauri/target/${{ matrix.target }}/release" }
+          # mainBinaryName in src-tauri/tauri.conf.json -> daidai.exe
+          $src = "src-tauri\target\${{ matrix.target }}\release\daidai.exe"
+          if (-not (Test-Path $src)) { throw "Expected $src to exist after tauri build" }
           $out = "DaiDai-windows-${{ matrix.arch }}.exe"
-          Copy-Item $exe.FullName $out
+          Copy-Item $src $out
           gh release upload "${{ github.event.release.tag_name }}" $out --clobber
