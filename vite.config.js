@@ -189,6 +189,14 @@ export default defineConfig(({ mode }) => {
                     globPatterns: ['**/*.{html,ico,png,webmanifest,ogg,mp3,mp4}'],
                     globIgnores: ['**/music.ogg'],
                     navigateFallback: 'index.html',
+                    // Don't hijack standalone HTML pages (privacy policy,
+                    // future about/credits pages, etc.) — they need to be
+                    // served as their own documents, not fall back to the
+                    // game shell. Without this denylist, Workbox treats
+                    // every navigation as the SPA entry and serves
+                    // index.html, which breaks the Microsoft Store privacy
+                    // policy URL.
+                    navigateFallbackDenylist: [/\/privacy\.html$/i],
                     // The inlined HTML can exceed Workbox's default 2 MiB cap;
                     // bump generously so future asset additions don't silently
                     // drop the main entry from the precache.
