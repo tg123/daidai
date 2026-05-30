@@ -7,8 +7,10 @@ name: Release
 #      is never auto-published; you click "Publish release" in the GitHub UI
 #      when you're ready.
 #   2. on release published  →  `build` job runs `tauri build` on a
-#      win/mac/linux matrix and uploads the bundles (.msi/.exe, .dmg/.app,
-#      .deb/.AppImage) to that release as binary assets.
+#      win/mac matrix and uploads ONLY the raw, no-installer executables:
+#        - Windows:  DaiDai-windows-x64.exe   (single .exe, no MSI/NSIS)
+#        - macOS:    DaiDai-macos-universal.zip (zipped .app, no DMG)
+#      Linux is intentionally not built.
 
 on:
   push:
@@ -54,11 +56,14 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
-            args: '--target universal-apple-darwin'
-          - platform: ubuntu-latest
-            args: ''
+            target: universal-apple-darwin
+            arch: universal
           - platform: windows-latest
-            args: ''
+            target: x86_64-pc-windows-msvc
+            arch: x64
+          - platform: windows-latest
+            target: aarch64-pc-windows-msvc
+            arch: arm64
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 60
     steps:
@@ -72,33 +77,65 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.target }}
 
       - name: Cache cargo registry + build
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
 
-      - name: Install Linux build deps
-        if: matrix.platform == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf
-
       - name: Install npm deps
         run: npm ci
 
-      - name: Build & upload Tauri bundle
-        uses: tauri-apps/tauri-action@v0
+      # macOS: build a universal .app (no DMG installer). The .app is a
+      # bundle directory; zip it so users get a single download that
+      # extracts to a drag-to-Applications artifact.
+      - name: Build macOS .app
+        if: matrix.platform == 'macos-latest'
+        env:
+          DAIDAI_BUILD_SHA: ${{ github.sha }}
+        run: npm run tauri -- build --target ${{ matrix.target }} --bundles app
+
+      - name: Zip and upload macOS .app
+        if: matrix.platform == 'macos-latest'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd "src-tauri/target/${{ matrix.target }}/release/bundle/macos"
+          # productName in src-tauri/tauri.conf.json -> DaiDai.app
+          app="DaiDai.app"
+          if [ ! -d "$app" ]; then
+            echo "::error::Expected $app in $(pwd); got: $(ls)"
+            exit 1
+          fi
+          out="DaiDai-macos-${{ matrix.arch }}.zip"
+          # ditto preserves macOS metadata (resource forks, code signatures)
+          # that plain `zip` would strip, so the extracted .app launches
+          # cleanly without "is damaged" Gatekeeper errors.
+          ditto -c -k --sequesterRsrc --keepParent "$app" "$out"
+          gh release upload "${{ github.event.release.tag_name }}" "$out" --clobber
+
+      # Windows: build the raw .exe only (--bundles none skips NSIS/MSI).
+      # The resulting executable depends only on the system-provided
+      # WebView2 runtime (preinstalled on Windows 11 and on Windows 10
+      # via Edge updates), so it ships as a true single-file download.
+      # We build x64 + arm64 in separate matrix jobs so Surface / Copilot+
+      # PC users get a native binary instead of x64-on-arm emulation.
+      - name: Build Windows .exe
+        if: matrix.platform == 'windows-latest'
+        env:
           DAIDAI_BUILD_SHA: ${{ github.sha }}
-        with:
-          # Attach the produced bundle artifacts to the release that
-          # triggered this workflow run (the one you just published).
-          releaseId: ${{ github.event.release.id }}
-          args: ${{ matrix.args }}
+        run: npm run tauri -- build --target ${{ matrix.target }} --bundles none
+
+      - name: Upload Windows .exe
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # mainBinaryName in src-tauri/tauri.conf.json -> daidai.exe
+          $src = "src-tauri\target\${{ matrix.target }}\release\daidai.exe"
+          if (-not (Test-Path $src)) { throw "Expected $src to exist after tauri build" }
+          $out = "DaiDai-windows-${{ matrix.arch }}.exe"
+          Copy-Item $src $out
+          gh release upload "${{ github.event.release.tag_name }}" $out --clobber
