@@ -128,4 +128,3 @@ jobs:
           $out = "DaiDai-windows-x64.exe"
           Copy-Item $exe.FullName $out
           gh release upload "${{ github.event.release.tag_name }}" $out --clobber
-
