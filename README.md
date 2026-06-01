@@ -14,8 +14,8 @@
 
 🎮 **在线试玩：** <https://tg123.github.io/daidai/> · <https://farmer1992.itch.io/daidai>
 
-<a href="https://apps.microsoft.com/detail/9MV7XJPTM52D?hl=zh-cn&gl=cn"><img src="https://get.microsoft.com/images/zh-cn%20dark.svg" alt="从 Microsoft 获取" height="52"></a>
-<a href="https://farmer1992.itch.io/daidai"><img src="https://static.itch.io/images/badge-color.svg" alt="Play on itch.io" height="52"></a>
+<a href="https://apps.microsoft.com/detail/9MV7XJPTM52D?hl=zh-cn&gl=cn"><img src="https://get.microsoft.com/images/zh-cn%20dark.svg" alt="从 Microsoft 获取" width="190" height="52"></a>
+<a href="https://farmer1992.itch.io/daidai"><img src="https://static.itch.io/images/badge-color.svg" alt="Play on itch.io" width="169" height="52"></a>
 
 ## 玩法
 
