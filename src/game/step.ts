@@ -334,8 +334,8 @@ export function createGameStep(deps: GameStepDeps): GameStep {
             snake.pop();
         }
 
-        // Decay — shed skin is permanent (matches 1999 original: FoodXY=0xFE
-        // never decays). Only green magic / gold light can clear it.
+        // Shed skin is permanent (matches 1999 original: FoodXY=0xFE never
+        // expires; cleared only by the orange laser or by green magic).
         const gb = getGoldBeans();
         gb.forEach((b) => b.life--);
         setGoldBeans(gb.filter((b) => b.life > 0));

@@ -47,7 +47,7 @@ The remake keeps the core 1999 gameplay intact, with some extensions and modern 
 - **🔵 Blue rain** — Screen enters a heavy-rain mode; all beans grant +10 bonus during it.
 - **🟣 Purple shrink** — Length is halved (rounded up); use it to save yourself.
 - **🌧️ Rain of beans** — Replaces the original "delete a random bean every 60s" rule. Starting 60–120s in, 0–3 beans drop from the sky at random times (at most once every 60s), complete with splash ripples.
-- **🐍 Molting** — Every 20 beans you molt; shed skin stays on the map permanently and kills you on contact (same as the original). What's new in this version: green magic converts shed back into beans, and the orange laser converts shed into gold beans — two emergency escape routes the original didn't have.
+- **🐍 Molting** — Every 20 beans you molt; shed skin stays on the map permanently and kills you on contact (same as the original). The orange laser converting shed into gold beans is also original behavior. The main remake difference: the original game periodically auto-converted random shed segments back into beans; this version binds that conversion explicitly to the green bean (player-controlled instead of timer-driven), and the orange beam is rendered as a directed laser rather than a radial aura.
 - **🎵 Audio / music** — Fully rebuilt with WebAudio, Opus-compressed; mobile has special handling to bypass the iOS silent switch.
 - **🎮 Multi-input** — Keyboard / touch swipe / Xbox & PlayStation gamepads all supported, with automatic detection and matching on-screen prompts.
 
