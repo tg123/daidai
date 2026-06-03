@@ -334,9 +334,8 @@ export function createGameStep(deps: GameStepDeps): GameStep {
             snake.pop();
         }
 
-        // Decay
-        shedSkin.forEach((s) => s.life--);
-        setShedSkin(shedSkin.filter((s) => s.life > 0));
+        // Shed skin is permanent (matches 1999 original: FoodXY=0xFE never
+        // expires; cleared only by the orange laser or by green magic).
         const gb = getGoldBeans();
         gb.forEach((b) => b.life--);
         setGoldBeans(gb.filter((b) => b.life > 0));
