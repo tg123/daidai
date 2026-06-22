@@ -41,6 +41,10 @@
                 max-width: 720px;
                 margin: 0 auto;
                 padding: 32px 20px 80px;
+                padding-left: max(20px, env(safe-area-inset-left));
+                padding-right: max(20px, env(safe-area-inset-right));
+                display: flex;
+                flex-direction: column;
             }
             h1 {
                 font-size: 28px;
@@ -87,9 +91,10 @@
                 margin-bottom: 4px;
             }
             .lang-switch {
-                position: fixed;
-                top: 16px;
-                right: 16px;
+                position: sticky;
+                top: max(12px, env(safe-area-inset-top));
+                align-self: flex-end;
+                margin-bottom: 4px;
                 background: #0a66c2;
                 color: #fff;
                 border: none;
@@ -109,8 +114,87 @@
         </style>
     </head>
     <body>
-        <select class="lang-switch" id="langSwitch" aria-label="Language"></select>
-        <main id="content"></main>
+        <select class="lang-switch" id="langSwitch" aria-label="Language" hidden></select>
+        <main id="content">
+            <h1>Privacy Policy — DaiDai Worm</h1>
+            <p class="updated">Last updated: 2026-06-22</p>
+            <p class="master-note">
+                This English version is the authoritative original.
+                Translations in other languages are provided for convenience
+                only; in case of any discrepancy, this English version prevails.
+            </p>
+            <p>
+                <strong>DaiDai Worm</strong> (呆呆虫之豆豆潭, package name:
+                <code>io.github.tg123.daidai</code>, “the Game”) is a
+                single-player offline arcade game developed and published by
+                <strong>farmer1992</strong> on Google Play and the Microsoft
+                Store. This policy describes the data the Game does (and does
+                not) collect.
+            </p>
+            <h2>What we collect</h2>
+            <p>
+                <strong>Nothing.</strong> The Game collects no personal
+                information, no usage data, no telemetry, no analytics, no crash
+                reports, no advertising identifiers, and no device identifiers.
+            </p>
+            <h2>What we transmit</h2>
+            <p>
+                <strong>Nothing</strong> after the initial download. The Game
+                runs entirely on your device. There are no servers, no accounts,
+                no online features, no in-app purchases, no third-party SDKs, and
+                no advertising networks.
+            </p>
+            <h2>What we store</h2>
+            <p>
+                All game state (high scores, settings, language preference) is
+                stored <strong>locally on your device only</strong>, in the
+                application’s own sandboxed storage area — browser
+                <code>localStorage</code> for the web version, the app’s private
+                data directory for the Android version, and the app’s private
+                packaged-app data folder for the Microsoft Store version.
+            </p>
+            <p>
+                This data never leaves your device. Uninstalling the Game (or
+                clearing site data) removes all stored data permanently.
+            </p>
+            <h2>Children’s privacy</h2>
+            <p>
+                The Game does not collect any data from anyone, including
+                children under 13. It is safe for all ages.
+            </p>
+            <h2>Third parties</h2>
+            <p>
+                The Game uses no third-party services, SDKs, analytics, ad
+                networks, or trackers of any kind.
+            </p>
+            <h2>Open source</h2>
+            <p>
+                The Game is fully open source under the MIT license. You can
+                audit exactly what it does (and doesn’t do) at
+                <a href="https://github.com/tg123/daidai"
+                    >https://github.com/tg123/daidai</a
+                >.
+            </p>
+            <h2>Changes to this policy</h2>
+            <p>
+                If this policy ever changes, the updated version will be
+                published at the same URL with a new “Last updated” date.
+            </p>
+            <h2>Contact</h2>
+            <p>
+                For any privacy-related questions, please open an issue at
+                <a href="https://github.com/tg123/daidai/issues"
+                    >https://github.com/tg123/daidai/issues</a
+                >
+                or contact the developer <strong>farmer1992</strong> at the
+                email address listed on its
+                <a
+                    href="https://play.google.com/store/apps/details?id=io.github.tg123.daidai"
+                    >Google Play</a
+                >
+                or Microsoft Store listing.
+            </p>
+        </main>
 
         <script>
             var DEV = '<strong>farmer1992</strong>';
@@ -864,6 +948,7 @@
                 }
                 var initial = pickLang();
                 sel.value = initial;
+                sel.hidden = false;
                 render(initial);
                 sel.addEventListener('change', function () {
                     render(sel.value);
