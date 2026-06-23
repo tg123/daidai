@@ -3,7 +3,7 @@
   "productName": "DaiDai",
   "mainBinaryName": "daidai",
   "version": "0.1.0",
-  "identifier": "com.tg123.daidai",
+  "identifier": "io.github.tg123.daidai",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:8080",
