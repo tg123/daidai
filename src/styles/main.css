@@ -220,11 +220,21 @@ canvas {
     margin: 0 2px;
     border: 1px solid rgba(255, 255, 255, 0.3);
 }
-.color-hint-red { background: #ff4444; }
-.color-hint-blue { background: #4488ff; }
-.color-hint-green { background: #44cc44; }
-.color-hint-orange { background: #ff8800; }
-.color-hint-purple { background: #cc44ff; }
+.color-hint-red {
+    background: #ff4444;
+}
+.color-hint-blue {
+    background: #4488ff;
+}
+.color-hint-green {
+    background: #44cc44;
+}
+.color-hint-orange {
+    background: #ff8800;
+}
+.color-hint-purple {
+    background: #cc44ff;
+}
 
 /* Mobile on-screen controls — only shown on touch devices */
 #touch-controls {
