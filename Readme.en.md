@@ -13,8 +13,8 @@ A nostalgic 3D remake of _"DAIDAI" Worm_, built with Three.js and runs in your b
 🎮 **Play online:** <https://tg123.github.io/daidai/> · <https://farmer1992.itch.io/daidai>
 
 <a href="https://play.google.com/store/apps/details?id=io.github.tg123.daidai"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" width="134" height="52"></a>
-<a href="https://apps.microsoft.com/detail/9MV7XJPTM52D"><img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get it from Microsoft" height="35"></a>
-<a href="https://farmer1992.itch.io/daidai"><img src="https://static.itch.io/images/badge-color.svg" alt="Play on itch.io" height="35"></a>
+<a href="https://apps.microsoft.com/detail/9MV7XJPTM52D"><img src="assets/badges/msstore-en.svg" alt="Get it from Microsoft" height="52"></a>
+<a href="https://farmer1992.itch.io/daidai"><img src="assets/badges/itch.svg" alt="Play on itch.io" height="52"></a>
 
 📖 [中文说明](README.md)
 
