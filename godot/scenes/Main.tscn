@@ -1,46 +1,56 @@
-[gd_scene load_steps=8 format=3 uid="uid://b8daidaimain00"]
+[gd_scene load_steps=10 format=3 uid="uid://b8daidaimain00"]
 
-[ext_resource type="Script" path="res://scripts/snake.gd" id="1_snake"]
-[ext_resource type="Script" path="res://scripts/pond.gd" id="2_pond"]
+[ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
+[ext_resource type="Script" path="res://scripts/snake.gd" id="2_snake"]
 [ext_resource type="Script" path="res://scripts/bean_spawner.gd" id="3_beans"]
+[ext_resource type="Script" path="res://scripts/effects.gd" id="4_effects"]
+[ext_resource type="Script" path="res://scripts/audio_manager.gd" id="5_audio"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="6_hud"]
 
-[sub_resource type="PlaneMesh" id="PlaneMesh_pond"]
-size = Vector2(40, 30)
-
-[sub_resource type="StandardMaterial3D" id="Mat_pond"]
-albedo_color = Color(0.16, 0.42, 0.28, 1)
-roughness = 0.85
-
-[sub_resource type="ProceduralSkyMaterial" id="Sky_main"]
-sky_top_color = Color(0.35, 0.55, 0.78, 1)
-sky_horizon_color = Color(0.7, 0.78, 0.7, 1)
-ground_horizon_color = Color(0.5, 0.55, 0.4, 1)
-ground_bottom_color = Color(0.2, 0.25, 0.15, 1)
-
-[sub_resource type="Sky" id="Sky_env"]
-sky_material = SubResource("Sky_main")
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 1
+background_color = Color(0.164706, 0.219608, 0.0941176, 1)
+ambient_light_source = 3
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 0.8
+fog_enabled = true
+fog_light_color = Color(0.239216, 0.333333, 0.12549, 1)
+fog_density = 0.016
 
 [node name="Main" type="Node3D"]
-
-[node name="Pond" type="MeshInstance3D" parent="."]
-mesh = SubResource("PlaneMesh_pond")
-surface_material_override/0 = SubResource("Mat_pond")
-script = ExtResource("2_pond")
+script = ExtResource("1_game")
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.5, 0.866, 0, -0.866, 0.5, 0, 22, 14)
+position = Vector3(19.5, 36, 15)
 fov = 50.0
+current = true
 
-[node name="Sun" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.866, -0.25, 0.433, 0, 0.866, 0.5, -0.5, -0.433, 0.75, 0, 12, 0)
-light_energy = 1.2
+[node name="MainLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-55, -25, 0)
+light_energy = 1.884
 shadow_enabled = true
+directional_shadow_max_distance = 60.0
+
+[node name="FillLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-45, 145, 0)
+light_color = Color(0.8, 0.866667, 0.8, 1)
+light_energy = 1.256
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("Sky_env")
+environment = SubResource("Environment_main")
+
+[node name="Effects" type="Node3D" parent="."]
+script = ExtResource("4_effects")
 
 [node name="Snake" type="Node3D" parent="."]
-script = ExtResource("1_snake")
+script = ExtResource("2_snake")
 
 [node name="BeanSpawner" type="Node3D" parent="."]
 script = ExtResource("3_beans")
+
+[node name="Audio" type="Node" parent="."]
+script = ExtResource("5_audio")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+layer = 20
+script = ExtResource("6_hud")

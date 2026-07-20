@@ -1,67 +1,92 @@
-# DaiDai — Godot 4 port (experiment)
+# DaiDai — Godot 4 port
 
-> ⚠️ **This is an experimental branch.** The canonical, shipping version of daidai lives on `main` and is built with TypeScript + Three.js. That version is what currently runs on https://tg123.github.io/daidai/, on itch.io, and in the Microsoft Store (`9MV7XJPTM52D`).
->
-> This branch exists to evaluate whether a Godot 4 rewrite could give us a **native Xbox build** (something the Three.js + WebView2 stack can't, because Xbox Edge ships a broken/limited WebGL2 implementation that white-screens our Three.js renderer).
+> The canonical web release remains the TypeScript + Three.js version in the repository root. This parallel Godot 4 implementation provides the same playable game through a native engine for desktop, mobile, and console export evaluation.
 
-## Why Godot?
+## Implemented parity
 
-Both Babylon.js and PlayCanvas still carry WebGL1 fallback paths in 2025, but the actual root cause of the Xbox white-screen is in the Edge-on-Xbox stack itself, not in our choice of WebGL library — so swapping to another web engine wouldn't reliably solve it. The only path that bypasses Xbox Edge entirely is a **native UWP / MSIX build**, and the cheapest open-source way to produce one for Xbox is Godot 4's UWP export.
+- Dynamic 22-cell-short-side pond layout, responsive orthographic oblique camera, 8-way movement, torus wrapping, self/skin collision, pause, restart, game over, timer, and persisted high score
+- Area-scaled free-cell bean density, canonical five-color palette, scoring, growth, body color queue, length-25 shedding, shed-skin lifetime/collision, and heartbeat
+- Five-bean combo magic: red boost/stacked multiplier, blue rain/bonus beans, green skin recovery, orange gold projectile, and purple length halving
+- Gold beans, falling beans, random sky drops, particles, ripples, rain, boost expiry, god mode, `daidai` meteor shower, Konami code, and heart-sequence tribute
+- Distinct animated head/body visuals with eyes, blinking, bean gaze, hands, toss/chew animation, death eyes, boost tint, and rainbow god mode
+- Advanced native 3D pond with smooth terrain, animated caustics, refraction, depth fog, curved ribbon-grass clusters, floating long leaves, notched pond leaves, flower buds, pebbles, bubbles, and underwater color grading
+- Keyboard, swipe/tap, Xbox/PlayStation gamepad controls and glyphs, responsive HUD, pause/restart/mute/language controls
+- All 13 web locales with the same fallback and placeholder rules
+- Original music and sound effects, with persisted mute state
 
-Trade-offs we accept by going this route:
+Gameplay constants and state-transition order match the TypeScript implementation. Visuals intentionally go beyond the web version to create a stronger native 3D underwater atmosphere rather than reproducing its pond pixel-for-pixel.
 
-| Aspect | Three.js (main) | Godot 4 (this branch) |
-|---|---|---|
-| Web bundle | ~500 KB | 30–50 MB (WASM + assets) |
-| Web first-paint | 1–2 s | 10–30 s |
-| GitHub Pages compatibility | ✅ works as-is | ⚠️ needs COOP/COEP headers (gh-pages doesn't allow); would have to migrate web hosting to Cloudflare Pages |
-| Inspectable / Ctrl-F searchable | ✅ DOM-based UI | ❌ everything in a canvas |
-| Xbox native | ❌ (Edge WebGL2 broken) | ✅ (UWP export) |
-| Mobile native | ⚠️ PWA only | ✅ true Android / iOS export |
-| Desktop native | ✅ via Tauri | ✅ native (no WebView dep) |
+## Project layout
 
-The web experience would degrade noticeably. This branch is only worth merging if Xbox + native mobile become higher priorities than the lightweight web experience.
-
-## What's here right now
-
-This is a minimal scaffold — not a port. Enough to open in the Godot editor, hit Play, and see a snake moving on a green plane. The TypeScript codebase in the parent directory is the source of truth for game logic and is referenced from the GDScript files.
-
-```
+```text
 godot/
-├── project.godot          # Godot 4 project file
-├── icon.svg               # Placeholder icon
-├── scenes/
-│   └── Main.tscn          # Main scene: camera, sun, pond, snake, beans
+├── project.godot
+├── scenes/Main.tscn
 ├── scripts/
-│   ├── snake.gd           # Grid-tick snake movement + body rendering
-│   ├── pond.gd            # Pond floor placeholder
-│   └── bean_spawner.gd    # Static bean placeholder
-└── assets/                # (empty; to be populated when porting visuals)
+│   ├── game.gd              # Canonical game loop and state transitions
+│   ├── game_rules.gd        # Pure wrapping, direction, and scoring rules
+│   ├── snake.gd             # Worm model and animated rendering
+│   ├── bean_spawner.gd      # Bean model, spawning, and rendering
+│   ├── effects.gd           # Pond environment and gameplay effects
+│   ├── hud.gd               # HUD, controls, locale menu, overlays
+│   ├── i18n.gd              # Locale selection and translation
+│   └── audio_manager.gd     # Music, SFX, loops, and mute state
+├── assets/
+│   ├── i18n.json
+│   └── audio/*.ogg
+└── tests/
+	├── rules_test.gd
+	├── gameplay_test.gd
+	└── integration_test.gd
 ```
 
-## How to open
+## Run
 
-1. Install **Godot 4.3+** (standard / GDScript version, not the .NET one): https://godotengine.org/download
-2. In Godot's project manager, click **Import** and pick `godot/project.godot`
-3. Press **F5** to run
+1. Install Godot 4.6 or newer.
+2. Import `godot/project.godot` in the project manager.
+3. Press **F5**.
 
-## What's NOT ported yet (rough TODO order)
+Controls match the web game:
 
-- [ ] Real worm visuals (banded body with the bean color queue from `src/snake/body.ts`)
-- [ ] Bean spawn/eat loop with audio
-- [ ] Pond water shader + lily pads
-- [ ] Splash / menu UI (port from `src/ui/*` and `src/i18n/*`)
-- [ ] Gamepad-friendly menu navigation
-- [ ] Audio (original game samples are in `public/audio/` and `public/sfx/` on main)
-- [ ] Cheats / easter eggs (gated behind `__INCLUDE_CHEATS__` on main)
-- [ ] Tauri-equivalent desktop wrapper (Godot exports natively, no wrapper needed)
-- [ ] PWA fallback web export (Cloudflare Pages, not gh-pages)
-- [ ] UWP / MSIX export for Microsoft Store + Xbox (the whole point of this branch)
+- Keyboard: arrows/WASD steer, including diagonals; Space pauses; Enter restarts
+- Touch: tap or swipe starts; swipes steer; on-screen buttons pause, mute, and change language
+- Gamepad: D-pad/left stick steer; A/Cross or Start pauses; B/Circle or Back restarts; X/Square mutes; Y/Triangle opens languages
 
-## Decision pending
+Debug builds also expose direct effect testing: `1`–`5` trigger the five color powers and `6` adds one growth unit. Release exports disable these shortcuts.
 
-This branch will either:
-- Get fleshed out into a full second implementation if the Xbox / native mobile story turns out to matter, **or**
-- Get deleted after we confirm the cost/benefit doesn't justify maintaining two codebases.
+## Xbox-first release path
 
-Discussion / decision tracked in branch description, not yet promoted to an issue or PR.
+The standard open-source Godot templates cannot create Xbox console packages. Xbox export modules use the NDA-protected Microsoft GDK and must remain private.
+
+1. Apply to [ID@Xbox](https://developer.microsoft.com/en-us/games/publish/id/welcome) and submit DaiDai for concept approval.
+2. After approval, obtain GDK and Xbox development-kit access.
+3. License [W4 Consoles](https://www.w4games.com/w4consoles) or engage another authorized Godot console-porting provider.
+4. Add the private Xbox template to an NDA-compliant self-hosted Windows runner; public GitHub-hosted CI continues to validate Windows native exports.
+5. Complete Xbox certification and Partner Center submission.
+
+Windows and Android remain fully native Godot targets and do not use a browser or WebView.
+
+## Tests
+
+From the repository root:
+
+```sh
+godot --headless --path godot --script res://tests/rules_test.gd
+godot --headless --path godot --script res://tests/gameplay_test.gd
+godot --headless --path godot --script res://tests/integration_test.gd
+godot --headless --path godot --quit-after 120
+```
+
+Regenerate the Godot locale bundle after changing `src/i18n/*.ts`:
+
+```sh
+node scripts/export_godot_i18n.mjs
+```
+
+The web audio files use Ogg Opus. Godot's native importer requires Ogg Vorbis, so the copies in `godot/assets/audio/` are transcoded to Vorbis while retaining the original sound content and filenames.
+
+## Remaining distribution work
+
+- [ ] Sign the Windows executable and add mobile export presets
+- [ ] Evaluate the licensed console export path and produce an Xbox package
+- [ ] Add a Godot web export only if a second web implementation is still desired

@@ -1,0 +1,89 @@
+name: Godot
+
+on:
+  pull_request:
+    paths:
+      - 'godot/**'
+      - 'scripts/export_godot_i18n.mjs'
+      - 'src/i18n/**'
+      - '.github/workflows/godot.yml'
+  push:
+    branches:
+      - main
+      - experiment/godot-port
+    paths:
+      - 'godot/**'
+      - 'scripts/export_godot_i18n.mjs'
+      - 'src/i18n/**'
+      - '.github/workflows/godot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-export:
+    name: Test and export Windows
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Set up Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.6.3
+          use-dotnet: false
+          include-templates: true
+
+      - name: Verify generated translations
+        shell: pwsh
+        run: |
+          node scripts/export_godot_i18n.mjs
+          git diff --exit-code -- godot/assets/i18n.json
+
+      - name: Import Godot resources
+        run: godot --headless --editor --path godot --quit
+
+      - name: Run rules tests
+        run: godot --headless --path godot --script res://tests/rules_test.gd
+
+      - name: Run gameplay tests
+        run: godot --headless --path godot --script res://tests/gameplay_test.gd
+
+      - name: Run integration tests
+        run: godot --headless --path godot --script res://tests/integration_test.gd
+
+      - name: Export Windows release
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force godot/exports | Out-Null
+          $output = Join-Path $PWD "godot/exports/DaiDai.exe"
+          godot --headless --path godot --export-release "Windows Desktop" $output
+
+      - name: Verify Windows artifact
+        shell: pwsh
+        run: |
+          $artifact = Get-Item godot/exports/DaiDai.exe
+          if ($artifact.Length -lt 1MB) {
+            throw "Exported executable is unexpectedly small."
+          }
+          Write-Host "DaiDai.exe: $($artifact.Length) bytes"
+
+      - name: Upload Windows release
+        uses: actions/upload-artifact@v4
+        with:
+          name: DaiDai-Windows-x86_64
+          path: godot/exports/DaiDai.exe
+          if-no-files-found: error
