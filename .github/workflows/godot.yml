@@ -67,15 +67,16 @@ jobs:
 
       - name: Export Windows release
         shell: pwsh
+        working-directory: godot
         run: |
-          New-Item -ItemType Directory -Force godot/exports | Out-Null
-          $output = Join-Path $PWD "godot/exports/DaiDai.exe"
-          godot --headless --path godot --export-release "Windows Desktop" $output
+          New-Item -ItemType Directory -Force exports | Out-Null
+          godot --headless --path . --export-release "Windows Desktop" "exports/DaiDai.exe"
 
       - name: Verify Windows artifact
         shell: pwsh
+        working-directory: godot
         run: |
-          $artifact = Get-Item godot/exports/DaiDai.exe
+          $artifact = Get-Item exports/DaiDai.exe
           if ($artifact.Length -lt 1MB) {
             throw "Exported executable is unexpectedly small."
           }

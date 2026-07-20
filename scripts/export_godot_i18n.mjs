@@ -13,6 +13,7 @@ import { createRequire } from 'module';
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import process from 'node:process';
 
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
