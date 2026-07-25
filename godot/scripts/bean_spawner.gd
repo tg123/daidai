@@ -4,6 +4,8 @@ class_name DaiDaiBeanSpawner
 signal bean_landed(cell: Vector2i)
 
 const MAX_SPAWN_ATTEMPTS := 100
+const DROP_PHASE_RATE := 2.1
+const DROP_BOUNCE_RATE := 3.6
 
 var beans: Array[Dictionary] = []
 var cols := 40
@@ -89,21 +91,21 @@ func has_cell(cell: Vector2i) -> bool:
 	return index_at(cell) >= 0
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	var now := Time.get_ticks_msec()
 	for bean in beans:
 		var node := bean["node"] as MeshInstance3D
 		var drop_phase := float(bean["drop_phase"])
 		var drop_bounce := float(bean["drop_bounce"])
 		if drop_phase > 0.0:
-			drop_phase = maxf(0.0, drop_phase - 0.035)
+			drop_phase = maxf(0.0, drop_phase - DROP_PHASE_RATE * delta)
 			bean["drop_phase"] = drop_phase
 			if drop_phase == 0.0:
 				drop_bounce = 1.0
 				bean["drop_bounce"] = drop_bounce
 				bean_landed.emit(Vector2i(int(bean["x"]), int(bean["y"])))
 		elif drop_bounce > 0.0:
-			drop_bounce = maxf(0.0, drop_bounce - 0.06)
+			drop_bounce = maxf(0.0, drop_bounce - DROP_BOUNCE_RATE * delta)
 			bean["drop_bounce"] = drop_bounce
 		var rest_y := 0.4 + sin(now * 0.004 + int(bean["x"]) + int(bean["y"])) * 0.15
 		node.position.y = rest_y + drop_phase * drop_phase * 22.0

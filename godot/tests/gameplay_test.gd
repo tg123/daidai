@@ -21,8 +21,7 @@ func _run() -> void:
 
 	var game := main as DaiDaiGame
 	game.set_process(false)
-	game.audio._muted = true
-	game.audio._apply_mute()
+	(game.audio as DaiDaiAudio).set_muted(true)
 	var snake := game.snake
 	var spawner := game.bean_spawner
 

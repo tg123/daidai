@@ -42,8 +42,9 @@ func _run() -> void:
 	root.add_child(main)
 	var game := main as DaiDaiGame
 	game.set_process(false)
-	game.audio._muted = true
-	game.audio._apply_mute()
+	game.bean_spawner.set_process(false)
+	var audio := game.audio as DaiDaiAudio
+	audio.set_muted(true)
 	await process_frame
 	_check(
 		ProjectSettings.get_setting("display/window/stretch/mode") == "disabled",
@@ -52,6 +53,7 @@ func _run() -> void:
 	_check(game.hud.hi_label != null, "HUD creates high-score label")
 	_check(game.hud.score_label != null, "HUD creates score label")
 	_check(game.hud.language_list.get_child_count() == 13, "HUD lists every locale")
+	_check(audio.is_muted(), "tests mute audio through its public API")
 	_check(
 		game.hud.instructions.autowrap_mode == TextServer.AUTOWRAP_WORD_SMART,
 		"paused combo hints wrap instead of clipping",
@@ -130,6 +132,14 @@ func _run() -> void:
 	_check(
 		game.effects.bubbles.size() == DaiDaiEffects.BUBBLE_COUNT,
 		"underwater bubbles are generated",
+	)
+	var animated_bean := game.bean_spawner.beans[0]
+	animated_bean["drop_phase"] = 1.0
+	animated_bean["drop_bounce"] = 0.0
+	game.bean_spawner._process(0.1)
+	_check(
+		is_equal_approx(float(animated_bean["drop_phase"]), 0.79),
+		"bean drop animation advances using elapsed time",
 	)
 	main.free()
 	packed_scene = null

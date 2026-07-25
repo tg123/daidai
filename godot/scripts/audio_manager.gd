@@ -188,7 +188,8 @@ func play(type: String) -> void:
 
 func set_muted(m: bool) -> void:
 	_muted = m
-	_save_persisted()
+	if OS.get_environment("DAIDAI_TEST") != "1":
+		_save_persisted()
 	_apply_mute()
 
 
