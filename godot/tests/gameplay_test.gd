@@ -27,6 +27,9 @@ func _run() -> void:
 
 	_check(game.paused, "game starts paused")
 	_check(not game.has_started, "initial run has not started")
+	game._toggle_pause_from_gamepad()
+	_check(not game.paused and game.has_started, "gamepad primary action starts the initial run")
+	game.reset_game(false)
 	var resize_generation_before_reset := game.resize_generation
 	game.reset_game(false)
 	_check(

@@ -369,7 +369,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				if game_over:
 					reset_game(true)
 				else:
-					toggle_pause()
+					_toggle_pause_from_gamepad()
 			JOY_BUTTON_B, JOY_BUTTON_BACK:
 				if paused or game_over:
 					reset_game(true)
@@ -401,6 +401,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				if next != Vector2i.ZERO and not DaiDaiRules.is_opposite(snake.direction, next):
 					snake.next_direction = next
 			touch_start = drag.position
+
+
+func _toggle_pause_from_gamepad() -> void:
+	var starting_initial_run := paused and not has_started
+	toggle_pause()
+	if starting_initial_run and not paused:
+		_play_audio("start")
 
 
 func _poll_direction() -> void:
