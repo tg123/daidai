@@ -20,9 +20,9 @@ const MAX_MOBILE_SCALE := 3.0
 
 @onready var snake: DaiDaiSnake = $Snake
 @onready var bean_spawner: DaiDaiBeanSpawner = $BeanSpawner
-@onready var effects: Node = $Effects
-@onready var audio: Node = $Audio
-@onready var hud: Node = $HUD
+@onready var effects: DaiDaiEffects = $Effects
+@onready var audio: DaiDaiAudio = $Audio
+@onready var hud: DaiDaiHUD = $HUD
 
 var cols := 40
 var rows := 30
@@ -86,10 +86,8 @@ func _ready() -> void:
 	_compute_grid()
 	hi_score = _load_hi_score()
 	bean_spawner.bean_landed.connect(_on_bean_landed)
-	if effects.has_signal("falling_bean_landed"):
-		effects.connect("falling_bean_landed", _on_falling_bean_landed)
-	if hud.has_method("bind_game"):
-		hud.call("bind_game", self)
+	effects.falling_bean_landed.connect(_on_falling_bean_landed)
+	hud.bind_game(self)
 	reset_game(false)
 	next_sky_drop_ms = Time.get_ticks_msec() + rng.randf_range(60000.0, 120000.0)
 
@@ -125,8 +123,7 @@ func reset_game(run_immediately: bool = false) -> void:
 	heart_buffer.clear()
 	_play_audio("heartbeat_stop")
 	snake.reset(cols, rows)
-	if effects.has_method("reset"):
-		effects.call("reset", cols, rows)
+	effects.reset(cols, rows)
 	bean_spawner.reset(cols, rows, _is_occupied)
 	_fit_camera()
 	_show_message("" if run_immediately else _start_prompt())
@@ -170,8 +167,7 @@ func _game_update() -> void:
 		return
 
 	snake.cells.push_front(head)
-	if effects.has_method("spawn_ripple"):
-		effects.call("spawn_ripple", snake.cell_to_world(head))
+	effects.spawn_ripple(snake.cell_to_world(head))
 
 	var bean := bean_spawner.consume_at(head)
 	if not bean.is_empty():
@@ -225,8 +221,7 @@ func _eat_bean(bean: Dictionary) -> void:
 	var projected_length := snake.cells.size() + growth_pending
 	if projected_length >= 20 and projected_length < SHED_LENGTH:
 		_play_audio("heartbeat_start")
-		if audio.has_method("set_loop_volume"):
-			audio.call("set_loop_volume", "beat", 0.25 + (projected_length - 20) / 4.0 * 0.75)
+		audio.set_loop_volume("beat", 0.25 + (projected_length - 20) / 4.0 * 0.75)
 	if projected_length >= SHED_LENGTH:
 		_play_audio("heartbeat_stop")
 		_play_audio("freeze")
@@ -254,8 +249,7 @@ func trigger_magic(color_index: int) -> void:
 		1:
 			_play_audio("magic_blue")
 			_start_heavy_rain()
-			if hud.has_method("play_rain_filter"):
-				hud.call("play_rain_filter")
+			hud.play_rain_filter()
 			_show_effect(_t("fx.rain"))
 		2:
 			_play_audio("magic_green")
@@ -308,8 +302,7 @@ func activate_tribute() -> void:
 		return
 	tribute_triggered = true
 	_play_audio("magic_orange")
-	if hud.has_method("show_tribute"):
-		hud.call("show_tribute", _t("subtitle"))
+	hud.show_tribute(_t("subtitle"))
 
 
 func set_paused(value: bool) -> void:
@@ -327,8 +320,7 @@ func toggle_pause() -> void:
 
 
 func toggle_mute() -> void:
-	if audio.has_method("toggle_muted"):
-		audio.call("toggle_muted")
+	audio.toggle_muted()
 	_refresh_ui()
 
 
@@ -336,16 +328,14 @@ func cycle_language() -> void:
 	if not paused or game_over:
 		_show_effect(_t("hint.langPauseFirst"))
 		return
-	if hud.has_method("toggle_language_menu"):
-		hud.call("toggle_language_menu")
+	hud.toggle_language_menu()
 
 
 func set_language(locale: String) -> void:
 	if not paused or game_over:
 		_show_effect(_t("hint.langPauseFirst"))
 		return
-	if hud.has_method("set_locale"):
-		hud.call("set_locale", locale)
+	hud.set_locale(locale)
 	_show_message(_start_prompt() if not has_started else _t("paused"))
 	_refresh_ui()
 
@@ -495,8 +485,7 @@ func _start_heavy_rain() -> void:
 	rain_generation += 1
 	var generation := rain_generation
 	is_raining = true
-	if effects.has_method("start_heavy_rain"):
-		effects.call("start_heavy_rain")
+	effects.start_heavy_rain()
 	_rain_bean_waves(generation)
 
 
@@ -517,9 +506,7 @@ func _rain_bean_waves(generation: int) -> void:
 func _spawn_projectile() -> void:
 	if snake.cells.is_empty():
 		return
-	var node: Node3D = null
-	if effects.has_method("create_projectile"):
-		node = effects.call("create_projectile", snake.cell_to_world(snake.cells[0])) as Node3D
+	var node := effects.create_projectile(snake.cell_to_world(snake.cells[0]))
 	golden_projectiles.append(
 		{
 			"x": float(snake.cells[0].x),
@@ -584,8 +571,7 @@ func _projectile_hits(projectile: Dictionary, cell: Vector2i) -> bool:
 
 
 func _sync_effect_entities() -> void:
-	if effects.has_method("sync_entities"):
-		effects.call("sync_entities", shed_skin, gold_beans)
+	effects.sync_entities(shed_skin, gold_beans)
 
 
 func _update_gaze() -> void:
@@ -669,8 +655,7 @@ func _fit_camera() -> void:
 	var required_width := max_view.x - min_view.x + 0.6
 	var required_height := max_view.y - min_view.y + 0.6
 	camera.size = maxf(required_height, required_width / aspect) * 1.01
-	if effects.has_method("configure_environment"):
-		effects.call("configure_environment", cols, rows, camera.size)
+	effects.configure_environment(cols, rows, camera.size)
 
 
 func _reserved_top(size: Vector2) -> float:
@@ -710,15 +695,11 @@ func _find_free_cell(max_attempts: int) -> Vector2i:
 
 
 func _spawn_particles(cell: Vector2i, color: Color, count: int) -> void:
-	if effects.has_method("spawn_particles"):
-		effects.call("spawn_particles", snake.cell_to_world(cell), color, count)
+	effects.spawn_particles(snake.cell_to_world(cell), color, count)
 
 
 func _spawn_falling_bean(cell: Vector2i, color_index: int) -> void:
-	if effects.has_method("spawn_falling_bean"):
-		effects.call("spawn_falling_bean", cell, color_index)
-	else:
-		bean_spawner.add_bean(cell, color_index)
+	effects.spawn_falling_bean(cell, color_index)
 
 
 func _spawn_delayed_falling_bean(delay: float) -> void:
@@ -736,8 +717,7 @@ func _on_falling_bean_landed(cell: Vector2i, color_index: int) -> void:
 
 func _on_bean_landed(cell: Vector2i) -> void:
 	_play_audio("plop")
-	if effects.has_method("spawn_ripple"):
-		effects.call("spawn_ripple", snake.cell_to_world(cell))
+	effects.spawn_ripple(snake.cell_to_world(cell))
 
 
 func _update_sky_drop() -> void:
@@ -788,45 +768,38 @@ func _start_prompt() -> String:
 
 
 func _play_audio(name: String) -> void:
-	if audio.has_method("play"):
-		audio.call("play", name)
+	audio.play(name)
 
 
 func _t(key: String, params: Dictionary = {}) -> String:
-	if hud.has_method("translate"):
-		return str(hud.call("translate", key, params))
-	return key
+	return hud.translate(key, params)
 
 
 func _show_message(text: String) -> void:
-	if hud.has_method("show_message"):
-		hud.call("show_message", text)
+	hud.show_message(text)
 
 
 func _show_effect(text: String) -> void:
-	if hud.has_method("show_effect"):
-		hud.call("show_effect", text)
+	hud.show_effect(text)
 
 
 func _refresh_ui() -> void:
-	if hud.has_method("update_state"):
-		hud.call(
-			"update_state",
-			{
-				"score": score,
-				"hi_score": hi_score,
-				"elapsed_seconds": elapsed_seconds,
-				"length": snake.cells.size(),
-				"combo_color": combo_color,
-				"combo_count": combo_count,
-				"boost_active": boost_active,
-				"boost_multiplier": boost_multiplier,
-				"boost_remaining": maxf(0.0, boost_deadline_ms - game_clock_ms) / 1000.0,
-				"paused": paused,
-				"game_over": game_over,
-				"muted": audio.call("is_muted") if audio.has_method("is_muted") else false,
-			},
-		)
+	hud.update_state(
+		{
+			"score": score,
+			"hi_score": hi_score,
+			"elapsed_seconds": elapsed_seconds,
+			"length": snake.cells.size(),
+			"combo_color": combo_color,
+			"combo_count": combo_count,
+			"boost_active": boost_active,
+			"boost_multiplier": boost_multiplier,
+			"boost_remaining": maxf(0.0, boost_deadline_ms - game_clock_ms) / 1000.0,
+			"paused": paused,
+			"game_over": game_over,
+			"muted": audio.is_muted(),
+		},
+	)
 
 
 func _load_hi_score() -> int:

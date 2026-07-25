@@ -17,7 +17,7 @@ const LANGUAGE_LABELS := {
 	"th-th": "🇹🇭 ไทย",
 }
 
-var game: DaiDaiGame
+var game: Node
 var i18n: DaiDaiI18n
 var hi_label: Label
 var score_label: Label
@@ -47,12 +47,12 @@ func _ready() -> void:
 	_apply_responsive_layout()
 
 
-func bind_game(value: DaiDaiGame) -> void:
+func bind_game(value: Node) -> void:
 	game = value
-	restart_button.pressed.connect(func() -> void: game.reset_game(true))
-	pause_button.pressed.connect(game.toggle_pause)
-	mute_button.pressed.connect(game.toggle_mute)
-	language_button.pressed.connect(game.cycle_language)
+	restart_button.pressed.connect(func() -> void: game.call("reset_game", true))
+	pause_button.pressed.connect(func() -> void: game.call("toggle_pause"))
+	mute_button.pressed.connect(func() -> void: game.call("toggle_mute"))
+	language_button.pressed.connect(func() -> void: game.call("cycle_language"))
 	_refresh_static_text()
 
 
@@ -343,7 +343,7 @@ func _rebuild_language_menu() -> void:
 		button.pressed.connect(
 			func() -> void:
 				if game != null:
-					game.set_language(locale)
+					game.call("set_language", locale)
 				_close_language_menu()
 		)
 		language_list.add_child(button)
