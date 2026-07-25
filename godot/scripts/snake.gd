@@ -93,14 +93,18 @@ func interpolate_visuals(alpha: float) -> void:
 		var previous := previous_cells[i] if i < previous_cells.size() else target
 		var delta_x := target.x - previous.x
 		var delta_z := target.y - previous.y
-		if absi(delta_x) > cols / 2:
-			delta_x = 0
-		if absi(delta_z) > rows / 2:
-			delta_z = 0
+		if delta_x > cols / 2:
+			delta_x -= cols
+		elif delta_x < -cols / 2:
+			delta_x += cols
+		if delta_z > rows / 2:
+			delta_z -= rows
+		elif delta_z < -rows / 2:
+			delta_z += rows
 		var position := Vector3(
-			previous.x + delta_x * clamped_alpha,
+			fposmod(previous.x + delta_x * clamped_alpha, float(cols)),
 			0.4,
-			previous.y + delta_z * clamped_alpha,
+			fposmod(previous.y + delta_z * clamped_alpha, float(rows)),
 		)
 		if i == 0:
 			head_node.position.x = position.x

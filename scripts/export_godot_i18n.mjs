@@ -66,6 +66,7 @@ function extractLocale(filePath) {
 
     /** Depth-first visitor */
     function visit(node) {
+        if (dict !== null) return;
         if (
             ts.isCallExpression(node) &&
             ts.isIdentifier(node.expression) &&
@@ -93,7 +94,6 @@ function extractLocale(filePath) {
                 }
                 dict[key] = val;
             }
-            // Stop searching once we found the call
             return;
         }
         ts.forEachChild(node, visit);
@@ -117,7 +117,8 @@ for (const name of LOCALE_NAMES) {
     try {
         parsed = extractLocale(filePath);
     } catch (err) {
-        errors.push(`${name}: ${err.message}`);
+        const message = err instanceof Error ? err.message : String(err);
+        errors.push(`${name}: ${message}`);
         continue;
     }
 

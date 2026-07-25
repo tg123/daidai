@@ -18,27 +18,6 @@ const CONFIG_PATH := "user://daidai.cfg"
 const CONFIG_SECTION := "audio"
 const CONFIG_KEY_MUTED := "muted"
 
-# Linear volumes matching AudioEngine._playBuffer() call-sites
-const _ONESHOT_VOL: Dictionary = {
-	"eat":        0.70,
-	"die":        0.90,
-	"drop_move":  0.15,   # play("move")
-	"drop_plop":  0.35,   # play("plop")
-	"freeze":     0.90,
-	"laser":      0.80,
-	"warp":       0.70,
-	"thunder1":   0.90,
-	"thunder2":   0.70,
-	"rainloop":   0.60,   # one-shot use in magic_blue
-	"speedup":    0.80,
-	"speedown":   0.70,
-	"beat_combo": 0.80,   # one-shot use in combo
-	"fade":       0.70,
-	"popo":       0.70,
-	"start":      0.80,
-	"select":     0.80,
-}
-
 # Streams loaded at _ready (non-looping, shared)
 var _streams: Dictionary = {}
 

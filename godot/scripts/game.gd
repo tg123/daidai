@@ -10,6 +10,9 @@ const BOOST_DURATION_MS := 15000.0
 const SWIPE_THRESHOLD := 24.0
 const CAMERA_VIEW_DIRECTION := Vector3(0.0, 0.72, 1.0)
 const CAMERA_DEPTH_PROJECTION := 0.5843
+const MOBILE_WIDTH := 720.0
+const MOBILE_RESERVED_TOP := 38.0
+const DESKTOP_RESERVED_TOP := 42.0
 
 @onready var snake: DaiDaiSnake = $Snake
 @onready var bean_spawner: DaiDaiBeanSpawner = $BeanSpawner
@@ -615,9 +618,7 @@ func _finish_game() -> void:
 
 func _compute_grid() -> void:
 	var size := get_viewport().get_visible_rect().size
-	var mobile := DisplayServer.is_touchscreen_available() or size.x <= 720.0
-	var reserved_top := 38.0 if mobile else 42.0
-	var available_height := maxf(200.0, size.y - reserved_top)
+	var available_height := maxf(200.0, size.y - _reserved_top(size))
 	var aspect := maxf(1.0, size.x) / available_height
 	if aspect >= 1.0:
 		rows = int(round(22.0 / CAMERA_DEPTH_PROJECTION))
@@ -632,7 +633,7 @@ func _compute_grid() -> void:
 func _fit_camera() -> void:
 	var camera := $Camera3D as Camera3D
 	var size := get_viewport().get_visible_rect().size
-	var aspect := maxf(0.01, size.x / maxf(1.0, size.y - 42.0))
+	var aspect := maxf(0.01, size.x / maxf(1.0, size.y - _reserved_top(size)))
 	var center := Vector3((cols - 1) / 2.0, 0.35, (rows - 1) / 2.0)
 	var view_direction := CAMERA_VIEW_DIRECTION.normalized()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -656,6 +657,11 @@ func _fit_camera() -> void:
 	camera.size = maxf(required_height, required_width / aspect) * 1.01
 	if effects.has_method("configure_environment"):
 		effects.call("configure_environment", cols, rows, camera.size)
+
+
+func _reserved_top(size: Vector2) -> float:
+	var mobile := DisplayServer.is_touchscreen_available() or size.x <= MOBILE_WIDTH
+	return MOBILE_RESERVED_TOP if mobile else DESKTOP_RESERVED_TOP
 
 
 func _is_occupied(cell: Vector2i) -> bool:

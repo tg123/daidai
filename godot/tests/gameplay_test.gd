@@ -53,6 +53,22 @@ func _run() -> void:
 	)
 	snake.reset(game.cols, game.rows)
 
+	snake.previous_cells = snake.cells.duplicate()
+	snake.previous_cells[0] = Vector2i(0, 0)
+	snake.cells[0] = Vector2i(game.cols - 1, 0)
+	snake.sync_visuals()
+	snake.interpolate_visuals(0.5)
+	_check(
+		is_equal_approx(snake.head_node.position.x, game.cols - 0.5),
+		"worm interpolation follows the shortest wrapped step",
+	)
+	snake.interpolate_visuals(1.0)
+	_check(
+		is_equal_approx(snake.head_node.position.x, game.cols - 1.0),
+		"wrapped interpolation reaches the target cell",
+	)
+	snake.reset(game.cols, game.rows)
+
 	var target := DaiDaiRules.wrap_position(snake.cells[0] + snake.direction, game.cols, game.rows)
 	while spawner.has_cell(target):
 		spawner.remove_at(spawner.index_at(target))
