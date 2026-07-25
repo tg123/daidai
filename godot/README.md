@@ -61,8 +61,16 @@ Publishing a GitHub Release builds and uploads:
 - `DaiDai-windows-x64.exe`
 - `DaiDai-windows-arm64.exe`
 - `DaiDai-macos-arm64.zip` — Apple Silicon only
+- `DaiDai-android-arm64.apk`
+- `DaiDai-android-arm64.aab` — Google Play upload
 
 The workflow thins Godot's universal template to ARM64 and then ad-hoc signs the app. It is not Apple-notarized.
+
+Signed Android releases require these repository secrets:
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_ALIAS`
+- `ANDROID_KEYSTORE_PASSWORD`
 
 ## Xbox-first release path
 

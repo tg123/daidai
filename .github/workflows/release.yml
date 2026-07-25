@@ -122,3 +122,95 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "${{ github.event.release.tag_name }}" "${{ matrix.artifact }}" --clobber
+
+  android:
+    if: github.event_name == 'release'
+    name: Godot Android ARM64
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager --install \
+            "platform-tools" \
+            "build-tools;35.0.1" \
+            "platforms;android-35" \
+            "cmdline-tools;latest" \
+            "cmake;3.10.2.4988404" \
+            "ndk;28.1.13356709"
+
+      - name: Set up Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.6.3
+          use-dotnet: false
+          include-templates: true
+
+      - name: Restore Android release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [[ -z "$ANDROID_KEYSTORE_BASE64" || -z "$ANDROID_KEYSTORE_ALIAS" || -z "$ANDROID_KEYSTORE_PASSWORD" ]]; then
+            echo "::error::Configure ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_ALIAS, and ANDROID_KEYSTORE_PASSWORD secrets."
+            exit 1
+          fi
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/android-release.keystore"
+
+      - name: Configure Godot Android SDK
+        run: |
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.6.tres" <<EOF
+          [gd_resource format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          EOF
+
+      - name: Set Android release version
+        run: |
+          version_name="${GITHUB_REF_NAME#v}"
+          sed -i "s|^version/code=.*|version/code=$GITHUB_RUN_NUMBER|" godot/export_presets.cfg
+          sed -i "s|^version/name=.*|version/name=\"$version_name\"|" godot/export_presets.cfg
+
+      - name: Import Godot resources
+        run: '"$GODOT" --headless --editor --path godot --quit'
+
+      - name: Export signed Android APK and AAB
+        env:
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ runner.temp }}/android-release.keystore
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          "$GODOT" --headless --path godot --export-release "Android APK" "$PWD/DaiDai-android-arm64.apk"
+          "$GODOT" --headless --path godot --install-android-build-template --export-release "Android AAB" "$PWD/DaiDai-android-arm64.aab"
+
+      - name: Verify Android artifacts
+        run: |
+          test -s DaiDai-android-arm64.apk
+          test -s DaiDai-android-arm64.aab
+          unzip -l DaiDai-android-arm64.apk | grep -q 'lib/arm64-v8a/'
+          unzip -l DaiDai-android-arm64.aab | grep -q 'base/lib/arm64-v8a/'
+
+      - name: Upload Android release artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            DaiDai-android-arm64.apk \
+            DaiDai-android-arm64.aab \
+            --clobber
