@@ -1,8 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ $# -ne 2 ]]; then
+    echo "Usage: $0 <universal-app.zip> <arm64-app.zip>" >&2
+    exit 64
+fi
+
 source_zip=$1
 output_zip=$2
+if [[ ! -f "$source_zip" ]]; then
+    echo "::error::Universal macOS export not found: $source_zip" >&2
+    exit 1
+fi
+if [[ ! -d "$(dirname "$output_zip")" ]]; then
+    echo "::error::Output directory does not exist: $(dirname "$output_zip")" >&2
+    exit 1
+fi
+
 work_dir=$(mktemp -d)
 trap 'rm -rf "$work_dir"' EXIT
 
