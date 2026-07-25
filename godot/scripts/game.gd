@@ -4,7 +4,7 @@ class_name DaiDaiGame
 const BASE_SPEED_MS := 150.0
 const MIN_SPEED_MS := 50.0
 const SHED_LENGTH := 25
-const SHED_LIFE := 600
+const SHED_VISUAL_LIFE := 600
 const GOLD_LIFE := 300
 const BOOST_DURATION_MS := 15000.0
 const SWIPE_THRESHOLD := 24.0
@@ -181,11 +181,6 @@ func _game_update() -> void:
 	else:
 		snake.cells.pop_back()
 
-	for skin in shed_skin:
-		skin["life"] = int(skin["life"]) - 1
-	for i in range(shed_skin.size() - 1, -1, -1):
-		if int(shed_skin[i]["life"]) <= 0:
-			shed_skin.remove_at(i)
 	for gold in gold_beans:
 		gold["life"] = int(gold["life"]) - 1
 	for i in range(gold_beans.size() - 1, -1, -1):
@@ -226,7 +221,7 @@ func _eat_bean(bean: Dictionary) -> void:
 		_play_audio("freeze")
 		while snake.cells.size() > DaiDaiRules.START_LENGTH:
 			var tail: Vector2i = snake.cells.pop_back()
-			shed_skin.append({"x": tail.x, "y": tail.y, "life": SHED_LIFE})
+			shed_skin.append({"x": tail.x, "y": tail.y, "life": SHED_VISUAL_LIFE})
 		snake.trim_colors(DaiDaiRules.START_LENGTH - 1)
 		growth_pending = 1
 		_show_effect(_t("fx.shed"))
@@ -464,7 +459,7 @@ func _try_debug_cheat(keycode: Key) -> bool:
 				for _i in range(5):
 					var cell := _find_free_cell(30)
 					if cell.x >= 0:
-						shed_skin.append({"x": cell.x, "y": cell.y, "life": SHED_LIFE})
+						shed_skin.append({"x": cell.x, "y": cell.y, "life": SHED_VISUAL_LIFE})
 			trigger_magic(2)
 		KEY_4:
 			trigger_magic(3)

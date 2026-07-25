@@ -124,6 +124,21 @@ func _run() -> void:
 
 	game.reset_game(false)
 	game.set_process(false)
+	game.shed_skin = [
+		{"x": 0, "y": 0, "life": 1},
+		{"x": 0, "y": 1, "life": 1},
+		{"x": 0, "y": 2, "life": 1},
+	]
+	for _i in range(10):
+		game._game_update()
+	_check(game.shed_skin.size() == 3, "shed skin persists across game ticks")
+	_check(
+		game.shed_skin.all(func(skin: Dictionary) -> bool: return int(skin["life"]) == 1),
+		"permanent shed skin is not decremented",
+	)
+
+	game.reset_game(false)
+	game.set_process(false)
 	snake.cells = [
 		Vector2i(5, 5),
 		Vector2i(6, 5),
