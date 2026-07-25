@@ -93,10 +93,14 @@ jobs:
         shell: pwsh
         run: |
           $output = Join-Path $PWD "${{ matrix.artifact }}"
-          $preset = '"${{ matrix.preset }}"'
-          $process = Start-Process -FilePath $env:GODOT `
-            -ArgumentList @("--headless", "--path", "godot", "--export-release", $preset, $output) `
-            -NoNewWindow -Wait -PassThru
+          $startInfo = [Diagnostics.ProcessStartInfo]::new()
+          $startInfo.FileName = $env:GODOT
+          $startInfo.UseShellExecute = $false
+          foreach ($argument in @("--headless", "--path", "godot", "--export-release", "${{ matrix.preset }}", $output)) {
+            [void] $startInfo.ArgumentList.Add($argument)
+          }
+          $process = [Diagnostics.Process]::Start($startInfo)
+          $process.WaitForExit()
           if ($process.ExitCode -ne 0) {
             throw "Godot export failed with exit code $($process.ExitCode)."
           }

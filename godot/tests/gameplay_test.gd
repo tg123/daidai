@@ -205,6 +205,13 @@ func _run() -> void:
 		spawner.remove_at(spawner.index_at(projectile_target))
 	spawner.add_bean(projectile_target, 3, false)
 	game.trigger_magic(3)
+	var paused_projectile_x := float(game.golden_projectiles[0]["x"])
+	game._process(0.1)
+	_check(
+		is_equal_approx(float(game.golden_projectiles[0]["x"]), paused_projectile_x),
+		"orange projectiles do not advance while paused",
+	)
+	game.set_paused(false)
 	game._update_projectiles()
 	_check(game.gold_beans.size() == 1, "orange projectile converts a bean to gold")
 

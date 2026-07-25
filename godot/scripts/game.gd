@@ -152,7 +152,8 @@ func _process(delta: float) -> void:
 			_refresh_ui()
 		_update_sky_drop()
 	snake.interpolate_visuals(game_accumulator_ms / speed_ms)
-	_update_projectiles()
+	if not paused and not game_over:
+		_update_projectiles()
 	_update_gaze()
 	snake.set_visual_state(boost_active, god_mode, game_over)
 
