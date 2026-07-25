@@ -88,7 +88,7 @@ func _run() -> void:
 		"gamepad hint uses a layout-independent badge",
 	)
 	_check(
-		game.hud.pause_button.text == "▶",
+		game.hud.pause_button.text == ">",
 		"gamepad hint does not stretch utility button text",
 	)
 	var space_press := InputEventKey.new()

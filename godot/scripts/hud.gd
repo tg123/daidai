@@ -104,7 +104,7 @@ func update_state(state: Dictionary) -> void:
 	var is_game_over := bool(state["game_over"])
 	restart_button.visible = is_game_over
 	instructions.visible = is_paused or is_game_over
-	var pause_icon := "▶" if is_paused else "⏸"
+	var pause_icon := ">" if is_paused else "II"
 	_set_utility_button(pause_button, pause_icon, "A")
 	pause_button.disabled = is_game_over
 	var mute_icon := "×" if bool(state["muted"]) else "♪"
@@ -465,15 +465,15 @@ func _utility_button(text: String) -> Button:
 	button.add_theme_font_size_override("font_size", 20)
 	button.add_theme_stylebox_override(
 		"normal",
-		_round_style(Color(0.03, 0.18, 0.17, 0.86), 22, Color(0.72, 1.0, 0.9, 0.5)),
+		_round_style(Color(0.1, 0.42, 0.37, 0.94), 22, Color(0.82, 1.0, 0.94, 0.9), 2),
 	)
 	button.add_theme_stylebox_override(
 		"hover",
-		_round_style(Color(0.08, 0.3, 0.28, 0.92), 22, Color(0.65, 1.0, 0.9, 0.75), 2),
+		_round_style(Color(0.16, 0.55, 0.47, 0.98), 22, Color(0.9, 1.0, 0.97, 1.0), 2),
 	)
 	button.add_theme_stylebox_override(
 		"pressed",
-		_round_style(Color(0.025, 0.14, 0.13, 0.96), 22, Color(0.45, 0.9, 0.78, 0.8), 2),
+		_round_style(Color(0.06, 0.28, 0.25, 0.98), 22, Color(0.72, 1.0, 0.9, 0.95), 2),
 	)
 	button.add_theme_stylebox_override(
 		"disabled",
