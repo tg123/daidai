@@ -35,9 +35,10 @@ godot/
 │   ├── i18n.json
 │   └── audio/*.ogg
 └── tests/
-	├── rules_test.gd
-	├── gameplay_test.gd
-	└── integration_test.gd
+    ├── rules_test.gd
+    ├── gameplay_test.gd
+    ├── integration_test.gd
+    └── performance_test.gd
 ```
 
 ## Run
@@ -92,6 +93,7 @@ From the repository root:
 godot --headless --path godot --script res://tests/rules_test.gd
 godot --headless --path godot --script res://tests/gameplay_test.gd
 godot --headless --path godot --script res://tests/integration_test.gd
+godot --headless --path godot --script res://tests/performance_test.gd
 godot --headless --path godot --quit-after 120
 ```
 
