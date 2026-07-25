@@ -1,0 +1,73 @@
+name: android
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  build:
+    name: build Android APK
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+          cache: 'npm'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        id: ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r27c
+          local-cache: true
+
+      - name: Install Rust toolchain (Android target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Cache cargo registry + build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install npm deps
+        run: npm ci
+
+      # src-tauri/gen/android is gitignored (it's generated, and holds the
+      # signing config locally), so regenerate the Gradle project in CI.
+      - name: Initialize Android project
+        env:
+          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: npm run tauri -- android init
+
+      # Debug build validates the full Rust + Gradle Android compile without
+      # needing the release keystore (which is never present in CI). Gradle
+      # auto-signs debug APKs with the generated debug key. Restrict to the
+      # primary arm64-v8a ABI to keep CI fast.
+      - name: Build debug APK (arm64-v8a)
+        env:
+          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+          DAIDAI_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: npm run tauri -- android build --debug --apk --target aarch64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-debug
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          retention-days: 7
+          if-no-files-found: error

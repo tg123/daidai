@@ -288,4 +288,28 @@ describe('createGameStep.gameUpdate', () => {
         expect(s.snake.length).toBeLessThanOrEqual(6);
         expect(s.shedSkin.length).toBeGreaterThan(0);
     });
+
+    it('shed skin is permanent: life=1 segments are not decremented or filtered across many ticks (matches 1999 original FoodXY=0xFE)', () => {
+        const { s, step } = makeHarness({
+            // Place shed segments well off the snake's path so the head
+            // doesn't run into them and end the game.
+            shedSkin: [
+                { x: 0, y: 0, life: 1 },
+                { x: 0, y: 1, life: 1 },
+                { x: 0, y: 2, life: 1 },
+            ],
+            snake: [
+                { x: 10, y: 10 },
+                { x: 9, y: 10 },
+                { x: 8, y: 10 },
+            ],
+            direction: { x: 1, y: 0 },
+            nextDirection: { x: 1, y: 0 },
+        });
+        for (let i = 0; i < 10; i++) step.gameUpdate();
+        expect(s.gameOver).toBe(false);
+        expect(s.shedSkin).toHaveLength(3);
+        // life is not decremented anymore (was 1, would have decayed instantly under old behavior)
+        expect(s.shedSkin.every((seg) => seg.life === 1)).toBe(true);
+    });
 });

@@ -12,8 +12,8 @@ A nostalgic 3D remake of _"DAIDAI" Worm_, built with Three.js and runs in your b
 
 🎮 **Play online:** <https://tg123.github.io/daidai/> · <https://farmer1992.itch.io/daidai>
 
-[![Get it from Microsoft](https://get.microsoft.com/images/en-us%20dark.svg)](https://apps.microsoft.com/detail/9MV7XJPTM52D)
-[![Play on itch.io](https://static.itch.io/images/badge-color.svg)](https://farmer1992.itch.io/daidai)
+<a href="https://apps.microsoft.com/detail/9MV7XJPTM52D"><img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get it from Microsoft" width="190" height="52"></a>
+<a href="https://farmer1992.itch.io/daidai"><img src="https://static.itch.io/images/badge-color.svg" alt="Play on itch.io" width="169" height="52"></a>
 
 📖 [中文说明](README.md)
 
@@ -47,7 +47,7 @@ The remake keeps the core 1999 gameplay intact, with some extensions and modern 
 - **🔵 Blue rain** — Screen enters a heavy-rain mode; all beans grant +10 bonus during it.
 - **🟣 Purple shrink** — Length is halved (rounded up); use it to save yourself.
 - **🌧️ Rain of beans** — Replaces the original "delete a random bean every 60s" rule. Starting 60–120s in, 0–3 beans drop from the sky at random times (at most once every 60s), complete with splash ripples.
-- **🐍 Molting** — Every 20 beans you molt (same as original); but here the shed skin stays on the map and kills you on contact (eat it, dodge it, or convert it with green magic).
+- **🐍 Molting** — Every 20 beans you molt; shed skin stays on the map permanently and kills you on contact (same as the original). The orange holy light/laser can convert shed into gold beans, and the green vitality magic can convert up to 5 random shed segments back into normal beans (both match the original).
 - **🎵 Audio / music** — Fully rebuilt with WebAudio, Opus-compressed; mobile has special handling to bypass the iOS silent switch.
 - **🎮 Multi-input** — Keyboard / touch swipe / Xbox & PlayStation gamepads all supported, with automatic detection and matching on-screen prompts.
 

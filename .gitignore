@@ -11,3 +11,9 @@ playwright-report/
 # itch.io artifacts
 cover-630x500.png
 daidai-web.zip
+
+# Android signing — NEVER commit
+*.jks
+*.keystore
+key.properties
+src-tauri/gen/
