@@ -11,8 +11,12 @@ const SWIPE_THRESHOLD := 24.0
 const CAMERA_VIEW_DIRECTION := Vector3(0.0, 0.72, 1.0)
 const CAMERA_DEPTH_PROJECTION := 0.5843
 const MOBILE_WIDTH := 720.0
+const MOBILE_SHORT_SIDE := 16
+const DESKTOP_SHORT_SIDE := 22
 const MOBILE_RESERVED_TOP := 38.0
 const DESKTOP_RESERVED_TOP := 42.0
+const MOBILE_BASE_DPI := 160.0
+const MAX_MOBILE_SCALE := 3.0
 
 @onready var snake: DaiDaiSnake = $Snake
 @onready var bean_spawner: DaiDaiBeanSpawner = $BeanSpawner
@@ -67,6 +71,12 @@ const HEART: Array[String] = [
 	"ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft",
 	"ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft",
 ]
+
+
+func _enter_tree() -> void:
+	if OS.has_feature("mobile"):
+		var dpi := maxf(MOBILE_BASE_DPI, DisplayServer.screen_get_dpi())
+		get_window().content_scale_factor = clampf(dpi / MOBILE_BASE_DPI, 1.0, MAX_MOBILE_SCALE)
 
 
 func _ready() -> void:
@@ -620,14 +630,15 @@ func _finish_game() -> void:
 
 func _compute_grid() -> void:
 	var size := get_viewport().get_visible_rect().size
+	var short_side := MOBILE_SHORT_SIDE if _is_mobile_view(size) else DESKTOP_SHORT_SIDE
 	var available_height := maxf(200.0, size.y - _reserved_top(size))
 	var aspect := maxf(1.0, size.x) / available_height
 	if aspect >= 1.0:
-		rows = int(round(22.0 / CAMERA_DEPTH_PROJECTION))
-		cols = maxi(22, int(round(22.0 * aspect)))
+		rows = int(round(short_side / CAMERA_DEPTH_PROJECTION))
+		cols = maxi(short_side, int(round(short_side * aspect)))
 	else:
-		cols = 22
-		rows = maxi(22, int(round(22.0 / (aspect * CAMERA_DEPTH_PROJECTION))))
+		cols = short_side
+		rows = maxi(short_side, int(round(short_side / (aspect * CAMERA_DEPTH_PROJECTION))))
 	cols = mini(cols, 120)
 	rows = mini(rows, 120)
 
@@ -662,8 +673,11 @@ func _fit_camera() -> void:
 
 
 func _reserved_top(size: Vector2) -> float:
-	var mobile := DisplayServer.is_touchscreen_available() or size.x <= MOBILE_WIDTH
-	return MOBILE_RESERVED_TOP if mobile else DESKTOP_RESERVED_TOP
+	return MOBILE_RESERVED_TOP if _is_mobile_view(size) else DESKTOP_RESERVED_TOP
+
+
+func _is_mobile_view(size: Vector2) -> bool:
+	return OS.has_feature("mobile") or DisplayServer.is_touchscreen_available() or size.x <= MOBILE_WIDTH
 
 
 func _is_occupied(cell: Vector2i) -> bool:

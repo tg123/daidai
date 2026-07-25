@@ -107,9 +107,9 @@ func update_state(state: Dictionary) -> void:
 	var pause_icon := "▶" if is_paused else "⏸"
 	_set_utility_button(pause_button, pause_icon, "A")
 	pause_button.disabled = is_game_over
-	var mute_icon := "🔇" if bool(state["muted"]) else "🔊"
+	var mute_icon := "×" if bool(state["muted"]) else "♪"
 	_set_utility_button(mute_button, mute_icon, "X")
-	_set_utility_button(language_button, "🌐", "Y")
+	_set_utility_button(language_button, "文", "Y")
 	if not is_paused:
 		_close_language_menu()
 
@@ -465,7 +465,7 @@ func _utility_button(text: String) -> Button:
 	button.add_theme_font_size_override("font_size", 20)
 	button.add_theme_stylebox_override(
 		"normal",
-		_round_style(Color(0.0, 0.0, 0.0, 0.62), 22, Color(1.0, 1.0, 1.0, 0.3)),
+		_round_style(Color(0.03, 0.18, 0.17, 0.86), 22, Color(0.72, 1.0, 0.9, 0.5)),
 	)
 	button.add_theme_stylebox_override(
 		"hover",
