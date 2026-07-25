@@ -99,7 +99,7 @@ jobs:
           New-Item -ItemType Directory -Force godot/exports | Out-Null
           $output = Join-Path $PWD "godot/exports/DaiDai.exe"
           $process = Start-Process -FilePath $env:GODOT `
-            -ArgumentList @("--headless", "--path", "godot", "--export-release", "Windows Desktop", $output) `
+            -ArgumentList @("--headless", "--path", "godot", "--export-release", '"Windows Desktop"', $output) `
             -NoNewWindow -Wait -PassThru
           if ($process.ExitCode -ne 0) {
             throw "Godot Windows export failed with exit code $($process.ExitCode)."
