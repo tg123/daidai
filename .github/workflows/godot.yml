@@ -29,10 +29,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -54,29 +54,61 @@ jobs:
           git diff --exit-code -- godot/assets/i18n.json
 
       - name: Import Godot resources
-        run: godot --headless --editor --path godot --quit
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath $env:GODOT `
+            -ArgumentList @("--headless", "--editor", "--path", "godot", "--quit") `
+            -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Godot resource import failed with exit code $($process.ExitCode)."
+          }
 
       - name: Run rules tests
-        run: godot --headless --path godot --script res://tests/rules_test.gd
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath $env:GODOT `
+            -ArgumentList @("--headless", "--path", "godot", "--script", "res://tests/rules_test.gd") `
+            -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Godot rules tests failed with exit code $($process.ExitCode)."
+          }
 
       - name: Run gameplay tests
-        run: godot --headless --path godot --script res://tests/gameplay_test.gd
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath $env:GODOT `
+            -ArgumentList @("--headless", "--path", "godot", "--script", "res://tests/gameplay_test.gd") `
+            -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Godot gameplay tests failed with exit code $($process.ExitCode)."
+          }
 
       - name: Run integration tests
-        run: godot --headless --path godot --script res://tests/integration_test.gd
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath $env:GODOT `
+            -ArgumentList @("--headless", "--path", "godot", "--script", "res://tests/integration_test.gd") `
+            -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Godot integration tests failed with exit code $($process.ExitCode)."
+          }
 
       - name: Export Windows release
         shell: pwsh
-        working-directory: godot
         run: |
-          New-Item -ItemType Directory -Force exports | Out-Null
-          godot --headless --path . --export-release "Windows Desktop" "exports/DaiDai.exe"
+          New-Item -ItemType Directory -Force godot/exports | Out-Null
+          $output = Join-Path $PWD "godot/exports/DaiDai.exe"
+          $process = Start-Process -FilePath $env:GODOT `
+            -ArgumentList @("--headless", "--path", "godot", "--export-release", "Windows Desktop", $output) `
+            -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Godot Windows export failed with exit code $($process.ExitCode)."
+          }
 
       - name: Verify Windows artifact
         shell: pwsh
-        working-directory: godot
         run: |
-          $artifact = Get-Item exports/DaiDai.exe
+          $artifact = Get-Item godot/exports/DaiDai.exe
           if ($artifact.Length -lt 1MB) {
             throw "Exported executable is unexpectedly small."
           }
