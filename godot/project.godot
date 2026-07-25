@@ -66,3 +66,4 @@ snake_right={
 
 environment/defaults/default_clear_color=Color(0.16, 0.32, 0.22, 1)
 lights_and_shadows/directional_shadow/size=2048
+textures/vram_compression/import_etc2_astc=true

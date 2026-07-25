@@ -54,6 +54,16 @@ Controls match the web game:
 
 Debug builds also expose direct effect testing: `1`–`5` trigger the five color powers and `6` adds one growth unit. Release exports disable these shortcuts.
 
+## Native release artifacts
+
+Publishing a GitHub Release builds and uploads:
+
+- `DaiDai-windows-x64.exe`
+- `DaiDai-windows-arm64.exe`
+- `DaiDai-macos-arm64.zip` — Apple Silicon only
+
+The workflow thins Godot's universal template to ARM64 and then ad-hoc signs the app. It is not Apple-notarized.
+
 ## Xbox-first release path
 
 The standard open-source Godot templates cannot create Xbox console packages. Xbox export modules use the NDA-protected Microsoft GDK and must remain private.
@@ -87,6 +97,6 @@ The web audio files use Ogg Opus. Godot's native importer requires Ogg Vorbis, s
 
 ## Remaining distribution work
 
-- [ ] Sign the Windows executable and add mobile export presets
+- [ ] Sign the Windows executables, notarize macOS, and add mobile export presets
 - [ ] Evaluate the licensed console export path and produce an Xbox package
 - [ ] Add a Godot web export only if a second web implementation is still desired

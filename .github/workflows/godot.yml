@@ -120,3 +120,69 @@ jobs:
           name: DaiDai-Windows-x86_64
           path: godot/exports/DaiDai.exe
           if-no-files-found: error
+
+  additional-exports:
+    name: Export ${{ matrix.label }}
+    needs: test-and-export
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Windows ARM64
+            platform: windows-latest
+            preset: Windows arm64
+            artifact: DaiDai-windows-arm64.exe
+          - label: macOS ARM64
+            platform: macos-latest
+            preset: macOS Universal
+            artifact: DaiDai-macos-arm64.zip
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.6.3
+          use-dotnet: false
+          include-templates: true
+
+      - name: Export Windows release
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $output = Join-Path $PWD "${{ matrix.artifact }}"
+          $preset = '"${{ matrix.preset }}"'
+          $process = Start-Process -FilePath $env:GODOT `
+            -ArgumentList @("--headless", "--path", "godot", "--export-release", $preset, $output) `
+            -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Godot export failed with exit code $($process.ExitCode)."
+          }
+
+      - name: Export macOS release
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          source_zip="$RUNNER_TEMP/DaiDai-macos-universal.zip"
+          "$GODOT" --headless --path godot --export-release "${{ matrix.preset }}" "$source_zip"
+          bash scripts/thin_macos_arm64.sh "$source_zip" "$PWD/${{ matrix.artifact }}"
+
+      - name: Verify artifact
+        shell: pwsh
+        run: |
+          $artifact = Get-Item "${{ matrix.artifact }}"
+          if ($artifact.Length -lt 1MB) {
+            throw "Exported artifact is unexpectedly small."
+          }
+          Write-Host "${{ matrix.artifact }}: $($artifact.Length) bytes"
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.label }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
