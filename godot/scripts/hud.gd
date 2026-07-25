@@ -382,7 +382,18 @@ func _build_screen_filters() -> void:
 	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var vignette_shader := Shader.new()
-	vignette_shader.code = """
+	if OS.has_feature("mobile"):
+		vignette_shader.code = """
+shader_type canvas_item;
+void fragment() {
+	vec2 centered = UV - vec2(0.5);
+	float edge = smoothstep(0.28, 0.72, length(centered));
+	vec3 tint = vec3(0.02, 0.18, 0.16);
+	COLOR = vec4(tint, 0.08 + edge * 0.28);
+}
+"""
+	else:
+		vignette_shader.code = """
 shader_type canvas_item;
 uniform sampler2D screen_texture : hint_screen_texture, filter_linear;
 void fragment() {
@@ -408,7 +419,16 @@ void fragment() {
 	rain_filter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	rain_filter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var rain_shader := Shader.new()
-	rain_shader.code = """
+	if OS.has_feature("mobile"):
+		rain_shader.code = """
+shader_type canvas_item;
+uniform float strength : hint_range(0.0, 1.0) = 0.0;
+void fragment() {
+	COLOR = vec4(0.05, 0.12, 0.18, strength * 0.38);
+}
+"""
+	else:
+		rain_shader.code = """
 shader_type canvas_item;
 uniform sampler2D screen_texture : hint_screen_texture, filter_linear_mipmap;
 uniform float strength : hint_range(0.0, 1.0) = 0.0;
