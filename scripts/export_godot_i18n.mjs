@@ -131,8 +131,8 @@ for (const name of LOCALE_NAMES) {
     const keyCount = Object.keys(dict).length;
 
     if (localeCode !== name) {
-        // Warn but still use the code declared in the file
-        console.warn(`  [warn] file name "${name}" doesn't match registered code "${localeCode}"`);
+        errors.push(`${name}: file name doesn't match registered code "${localeCode}"`);
+        continue;
     }
 
     result[localeCode] = dict;

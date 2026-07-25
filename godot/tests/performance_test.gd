@@ -84,6 +84,16 @@ func _run() -> void:
 	var output_path := OS.get_environment("DAIDAI_BENCHMARK_OUT")
 	if not output_path.is_empty():
 		var output := FileAccess.open(output_path, FileAccess.WRITE)
+		if output == null:
+			push_error(
+				"Cannot open benchmark output '%s' (error %d)."
+				% [output_path, FileAccess.get_open_error()],
+			)
+			main.free()
+			packed_scene = null
+			await process_frame
+			quit(1)
+			return
 		output.store_string(JSON.stringify(result, "  "))
 		output.close()
 	var screenshot_path := OS.get_environment("DAIDAI_SCREENSHOT_OUT")
