@@ -21,11 +21,11 @@ func _run() -> void:
 	_check(i18n.pick_lang("zh-Hant-HK") == "zh-tw", "Traditional Chinese tags resolve")
 	_check(i18n.pick_lang("zh_Hant_TW") == "zh-tw", "Godot underscore locales resolve")
 	_check(i18n.pick_lang("en-GB") == "en-us", "language prefixes resolve")
-	i18n._current = "en-us"
+	i18n.set_locale("en-us")
 	_check(i18n.t("ui.score") == "SCORE", "English translations load")
 	_check(i18n.t("fx.boost", {"mult": 4}).contains("4"), "translation parameters interpolate")
 	_check(i18n.t("missing.test.key") == "missing.test.key", "missing translations fall back to key")
-	i18n._current = original_locale
+	i18n.set_locale(original_locale)
 
 	var audio_names := [
 		"eat", "die", "drop", "freeze", "laser", "warp", "thunder1", "thunder2",

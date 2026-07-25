@@ -123,7 +123,8 @@ func pick_lang(raw: String) -> String:
 ## Set the active locale. Accepts a supported code or any BCP-47 tag.
 func set_locale(code: String) -> void:
 	_current = code if _dicts.has(code) else pick_lang(code)
-	_save_persisted()
+	if OS.get_environment("DAIDAI_TEST") != "1":
+		_save_persisted()
 
 
 ## Return the currently active locale code.
