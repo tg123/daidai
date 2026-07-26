@@ -23,7 +23,7 @@ trap 'rm -rf "$work_dir"' EXIT
 ditto -x -k "$source_zip" "$work_dir"
 app="$work_dir/DaiDai.app"
 if [[ ! -d "$app" ]]; then
-    echo "::error::Expected DaiDai.app in the Godot macOS export."
+    echo "::error::Expected DaiDai.app in the Godot macOS export." >&2
     exit 1
 fi
 
@@ -40,11 +40,11 @@ done < <(find "$app" -type f -print0)
 
 main_binary="$app/Contents/MacOS/DaiDai"
 if [[ ! -f "$main_binary" ]]; then
-    echo "::error::Expected $main_binary."
+    echo "::error::Expected $main_binary." >&2
     exit 1
 fi
 if [[ $(lipo -archs "$main_binary") != "arm64" ]]; then
-    echo "::error::DaiDai main executable is not ARM64-only."
+    echo "::error::DaiDai main executable is not ARM64-only." >&2
     exit 1
 fi
 
