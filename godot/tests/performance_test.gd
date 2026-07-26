@@ -13,6 +13,7 @@ func _run() -> void:
 	var packed_scene := load("res://scenes/Main.tscn") as PackedScene
 	var main := packed_scene.instantiate()
 	root.add_child(main)
+	await process_frame
 	var game := main as DaiDaiGame
 	if OS.get_environment("DAIDAI_KEEP_PAUSED") == "1":
 		game.set_process(false)
