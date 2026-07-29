@@ -94,7 +94,7 @@ def wait_for_game(driver: webdriver.Chrome) -> dict:
 
 def assert_export_links(driver: webdriver.Chrome) -> None:
     for selector in ('link[rel="icon"]', 'link[rel="apple-touch-icon"]'):
-        href = driver.find_element(By.CSS_SELECTOR, selector).get_attribute("href")
+        href = driver.find_element(By.CSS_SELECTOR, selector).get_dom_attribute("href")
         assert href
         with urllib.request.urlopen(urljoin(driver.current_url, href), timeout=30) as response:
             assert response.status == 200
