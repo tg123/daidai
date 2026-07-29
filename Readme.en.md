@@ -22,7 +22,7 @@ A nostalgic 3D remake of _"DAIDAI" Worm_, built with Godot 4 for browsers and na
 - Arrow keys / WASD — Move the worm (hold two direction keys at once to move diagonally)
 - Space — Pause
 - Enter — Restart
-- Mobile: swipe on screen to steer (diagonal swipes move diagonally); ⏸ / ⟳ / 🔊 buttons in the top-right
+- Mobile: swipe to steer (including diagonals); pause is always available, with mute and language controls shown while paused
 - Gamepad: left stick / D-pad to steer (full 8-way diagonal support); A pause/start; B restart
 
 Each bean eaten grows you by one segment and gives 5 points; every 20 beans you molt.
@@ -68,11 +68,10 @@ mkdir -p dist
 godot --headless --path godot --export-release Web "$PWD/dist/index.html"
 ```
 
-Web builds must be served over HTTP. The existing Vite preview command can serve `dist/`:
+Web builds must be served over HTTP. For example, use Python:
 
 ```sh
-npm install
-npm run serve:dist
+python -m http.server 8080 --directory dist
 ```
 
 ## Build & Test
@@ -81,6 +80,8 @@ npm run serve:dist
 godot --headless --path godot --script res://tests/rules_test.gd
 godot --headless --path godot --script res://tests/gameplay_test.gd
 godot --headless --path godot --script res://tests/integration_test.gd
+godot --headless --path godot --script res://tests/performance_test.gd
+godot --headless --path godot --quit-after 120
 ```
 
-The previous TypeScript + Three.js implementation remains in `src/`; its unit and E2E tests continue to run through the npm scripts. [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) publishes the Godot WebAssembly build to GitHub Pages, PR previews, and itch.io.
+Godot is the repository's only runtime implementation; `legacy/` preserves the original 1999 source archive. [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) publishes the WebAssembly build to GitHub Pages, PR previews, and itch.io.

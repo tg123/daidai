@@ -2,11 +2,8 @@
 Thumbs.db
 .vscode/
 .idea/
-node_modules/
 *.log
 dist/
-test-results/
-playwright-report/
 
 # itch.io artifacts
 cover-630x500.png
@@ -16,4 +13,3 @@ daidai-web.zip
 *.jks
 *.keystore
 key.properties
-src-tauri/gen/

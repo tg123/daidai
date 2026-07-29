@@ -2,8 +2,7 @@ extends Node
 class_name DaiDaiAudio
 
 ## Godot audio subsystem for DaiDai Worm.
-## Mirrors the semantics of src/audio/AudioEngine.ts:
-##   - Same play(type) aliases and per-type volumes
+##   - Named play(type) events and per-type volumes
 ##   - Background music loop (auto-started)
 ##   - Beat loop start / stop with fade
 ##   - Rain + thunder scheduling for magic_blue

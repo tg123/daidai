@@ -22,7 +22,7 @@
 - 方向键 / WASD — 控制呆呆虫移动（同时按两个方向键可斜着走）
 - 空格 — 暂停
 - 回车 — 重开
-- 移动端：屏幕滑动控制方向（斜向滑动可斜走）；右上角 ⏸ / ⟳ / 🔊 按钮
+- 移动端：屏幕滑动控制方向（斜向滑动可斜走）；右上角暂停，暂停后可静音或切换语言
 - 手柄：左摇杆 / 方向键控制（均支持 8 方向斜走）；A 暂停 / 开始；B 重开
 
 每吃一颗豆子长一节并得 5 分；每吃 20 颗蜕一次皮。
@@ -68,11 +68,10 @@ mkdir -p dist
 godot --headless --path godot --export-release Web "$PWD/dist/index.html"
 ```
 
-浏览器构建必须通过 HTTP 服务预览；仓库现有的 Vite preview 可直接托管：
+浏览器构建必须通过 HTTP 服务预览，例如使用 Python：
 
 ```sh
-npm install
-npm run serve:dist
+python -m http.server 8080 --directory dist
 ```
 
 ## 构建与测试
@@ -81,6 +80,8 @@ npm run serve:dist
 godot --headless --path godot --script res://tests/rules_test.gd
 godot --headless --path godot --script res://tests/gameplay_test.gd
 godot --headless --path godot --script res://tests/integration_test.gd
+godot --headless --path godot --script res://tests/performance_test.gd
+godot --headless --path godot --quit-after 120
 ```
 
-之前的 TypeScript + Three.js 实现仍保留在 `src/`，其单元和 E2E 测试继续通过 npm 脚本运行。GitHub Pages、PR Preview 和 itch.io 由 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) 自动发布 Godot WebAssembly 构建。
+仓库仅保留 Godot 运行实现；`legacy/` 保存 1999 原版源码档案。GitHub Pages、PR Preview 和 itch.io 由 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) 自动发布 Godot WebAssembly 构建。
