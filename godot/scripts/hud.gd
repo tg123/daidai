@@ -644,9 +644,7 @@ func _web_ui_scale() -> float:
 
 
 func _has_touch_controls() -> bool:
-	if OS.has_feature("web"):
-		return bool(JavaScriptBridge.eval("matchMedia('(pointer: coarse)').matches", true))
-	return OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
+	return DaiDaiWebQuality.has_coarse_pointer()
 
 
 func _hide_effect_later(generation: int) -> void:

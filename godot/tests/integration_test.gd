@@ -26,6 +26,10 @@ func _run() -> void:
 	_check(i18n.t("fx.boost", {"mult": 4}).contains("4"), "translation parameters interpolate")
 	_check(i18n.t("missing.test.key") == "missing.test.key", "missing translations fall back to key")
 	i18n.set_locale(original_locale)
+	_check(
+		not DaiDaiWebQuality.use_reduced_quality(),
+		"native builds keep the desktop quality profile",
+	)
 
 	var ui_font := load("res://assets/fonts/ui_font.tres") as Font
 	_check(ui_font != null, "bundled UI font loads")

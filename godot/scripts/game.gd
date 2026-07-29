@@ -95,7 +95,12 @@ func _ready() -> void:
 	rng.randomize()
 	_install_web_focus_handlers()
 	if OS.has_feature("web"):
-		($MainLight as DirectionalLight3D).shadow_enabled = false
+		var reduced_quality := DaiDaiWebQuality.use_reduced_quality()
+		print("DaiDai Web quality profile: %s" % ("reduced" if reduced_quality else "desktop"))
+		($MainLight as DirectionalLight3D).shadow_enabled = not reduced_quality
+		get_viewport().msaa_3d = (
+			Viewport.MSAA_DISABLED if reduced_quality else Viewport.MSAA_2X
+		)
 	viewport_baseline = get_viewport().get_visible_rect().size
 	get_viewport().size_changed.connect(_on_viewport_size_changed)
 	_compute_grid()
@@ -734,9 +739,7 @@ func _is_mobile_view(size: Vector2) -> bool:
 
 
 func _has_touch_controls() -> bool:
-	if OS.has_feature("web"):
-		return bool(JavaScriptBridge.eval("matchMedia('(pointer: coarse)').matches", true))
-	return OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
+	return DaiDaiWebQuality.has_coarse_pointer()
 
 
 func _is_occupied(cell: Vector2i) -> bool:

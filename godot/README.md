@@ -67,6 +67,8 @@ godot --headless --path godot --export-release Web "$PWD/dist/index.html"
 
 The preset uses the Compatibility renderer on the web, resizes the canvas to the browser viewport, supports desktop and mobile texture formats, and emits an installable offline PWA. `.github/workflows/deploy.yml` publishes this build to GitHub Pages, PR previews, and itch.io.
 
+Web quality is selected automatically from pointer type, WebGL renderer, device memory, CPU count, and texture limits. Append `?quality=high` or `?quality=low` to override detection while testing.
+
 ## Native release artifacts
 
 Publishing a GitHub Release builds and uploads:

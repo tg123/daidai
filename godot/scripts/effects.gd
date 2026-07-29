@@ -35,10 +35,12 @@ var projectile_mesh: SphereMesh
 var projectile_material: StandardMaterial3D
 var gold_effect_mesh: SphereMesh
 var gold_effect_material: StandardMaterial3D
+var reduced_web_quality := false
 
 
 func _ready() -> void:
 	rng.randomize()
+	reduced_web_quality = _use_reduced_web_quality()
 	_prepare_shared_effect_resources()
 	atmosphere_node = Node3D.new()
 	atmosphere_node.name = "Atmosphere"
@@ -91,8 +93,8 @@ func _prepare_shared_effect_resources() -> void:
 	falling_bean_mesh = SphereMesh.new()
 	falling_bean_mesh.radius = 0.35
 	falling_bean_mesh.height = 0.7
-	falling_bean_mesh.radial_segments = 8 if web else 12
-	falling_bean_mesh.rings = 6 if web else 10
+	falling_bean_mesh.radial_segments = 8 if reduced_web_quality else 12
+	falling_bean_mesh.rings = 6 if reduced_web_quality else 10
 	for color: Color in DaiDaiRules.COLORS:
 		var material := StandardMaterial3D.new()
 		material.albedo_color = color
@@ -106,15 +108,15 @@ func _prepare_shared_effect_resources() -> void:
 	projectile_mesh = SphereMesh.new()
 	projectile_mesh.radius = 0.3
 	projectile_mesh.height = 0.6
-	projectile_mesh.radial_segments = 8 if web else 12
-	projectile_mesh.rings = 6 if web else 10
+	projectile_mesh.radial_segments = 8 if reduced_web_quality else 12
+	projectile_mesh.rings = 6 if reduced_web_quality else 10
 	projectile_material = _create_gold_material(web)
 
 	gold_effect_mesh = SphereMesh.new()
 	gold_effect_mesh.radius = 0.4
 	gold_effect_mesh.height = 0.8
-	gold_effect_mesh.radial_segments = 8 if web else 10
-	gold_effect_mesh.rings = 6 if web else 8
+	gold_effect_mesh.radial_segments = 8 if reduced_web_quality else 10
+	gold_effect_mesh.rings = 6 if reduced_web_quality else 8
 	gold_effect_material = _create_gold_material(web)
 
 
@@ -335,8 +337,8 @@ func _build_floor() -> void:
 	floor_mesh = MeshInstance3D.new()
 	var mesh := PlaneMesh.new()
 	mesh.size = Vector2(cols * 10.0, rows * 10.0)
-	mesh.subdivide_width = 24 if OS.has_feature("web") else 40
-	mesh.subdivide_depth = 24 if OS.has_feature("web") else 40
+	mesh.subdivide_width = 24 if reduced_web_quality else 40
+	mesh.subdivide_depth = 24 if reduced_web_quality else 40
 	floor_mesh.mesh = mesh
 	var shader := Shader.new()
 	shader.code = """
@@ -408,8 +410,8 @@ func _build_water() -> void:
 	water_mesh = MeshInstance3D.new()
 	var mesh := PlaneMesh.new()
 	mesh.size = Vector2(cols * 3.0, rows * 3.0)
-	mesh.subdivide_width = 32 if OS.has_feature("web") else 60
-	mesh.subdivide_depth = 32 if OS.has_feature("web") else 60
+	mesh.subdivide_width = 32 if reduced_web_quality else 60
+	mesh.subdivide_depth = 32 if reduced_web_quality else 60
 	water_mesh.mesh = mesh
 	var shader := Shader.new()
 	shader.code = """
@@ -462,7 +464,7 @@ void fragment() {
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.mesh = reed_cluster
-	multimesh.instance_count = 48 if OS.has_feature("web") else REED_COUNT
+	multimesh.instance_count = 48 if reduced_web_quality else REED_COUNT
 	for i in range(multimesh.instance_count):
 		var transform := Transform3D.IDENTITY
 		transform = transform.rotated(Vector3.UP, rng.randf_range(0.0, TAU))
@@ -544,7 +546,7 @@ func _build_rocks() -> void:
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.use_colors = true
 	multimesh.mesh = rock
-	multimesh.instance_count = 20 if OS.has_feature("web") else ROCK_COUNT
+	multimesh.instance_count = 20 if reduced_web_quality else ROCK_COUNT
 	for i in range(multimesh.instance_count):
 		var transform := Transform3D.IDENTITY
 		transform = transform.rotated(Vector3.UP, rng.randf_range(0.0, TAU))
@@ -601,7 +603,7 @@ void fragment() {
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.mesh = leaf
-	multimesh.instance_count = 32 if OS.has_feature("web") else FLOATING_LEAF_COUNT
+	multimesh.instance_count = 32 if reduced_web_quality else FLOATING_LEAF_COUNT
 	var cluster_center := Vector2.ZERO
 	for i in range(multimesh.instance_count):
 		if i % 6 == 0:
@@ -699,7 +701,7 @@ void fragment() {
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.mesh = pad
-	multimesh.instance_count = 16 if OS.has_feature("web") else LILY_PAD_COUNT
+	multimesh.instance_count = 16 if reduced_web_quality else LILY_PAD_COUNT
 	var pad_positions: Array[Vector3] = []
 	var cluster_center := Vector2.ZERO
 	for i in range(multimesh.instance_count):
@@ -804,7 +806,7 @@ func _build_bubbles() -> void:
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.mesh = mesh
-	multimesh.instance_count = 24 if OS.has_feature("web") else BUBBLE_COUNT
+	multimesh.instance_count = 24 if reduced_web_quality else BUBBLE_COUNT
 	for i in range(multimesh.instance_count):
 		var position := Vector3(
 			rng.randf_range(-cols * 0.2, cols * 1.2),
@@ -885,3 +887,7 @@ func _make_sphere(radius: float, color: Color) -> MeshInstance3D:
 	instance.material_override = material
 	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return instance
+
+
+func _use_reduced_web_quality() -> bool:
+	return DaiDaiWebQuality.use_reduced_quality()
