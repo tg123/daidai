@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   test-and-export:
-    name: Test and export Windows
+    name: Test and export Web + Windows
     runs-on: windows-latest
     timeout-minutes: 20
 
@@ -92,6 +92,45 @@ jobs:
           if ($process.ExitCode -ne 0) {
             throw "Godot integration tests failed with exit code $($process.ExitCode)."
           }
+
+      - name: Export Web release
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force godot/exports/web | Out-Null
+          $output = Join-Path $PWD "godot/exports/web/index.html"
+          $startInfo = [Diagnostics.ProcessStartInfo]::new()
+          $startInfo.FileName = $env:GODOT
+          $startInfo.UseShellExecute = $false
+          foreach ($argument in @("--headless", "--path", "godot", "--export-release", "Web", $output)) {
+            [void] $startInfo.ArgumentList.Add($argument)
+          }
+          $process = [Diagnostics.Process]::Start($startInfo)
+          $process.WaitForExit()
+          if ($process.ExitCode -ne 0) {
+            throw "Godot Web export failed with exit code $($process.ExitCode)."
+          }
+
+      - name: Verify Web artifact
+        shell: pwsh
+        run: |
+          foreach ($path in @(
+            "godot/exports/web/index.html",
+            "godot/exports/web/index.wasm",
+            "godot/exports/web/index.pck"
+          )) {
+            $artifact = Get-Item $path
+            if ($artifact.Length -eq 0) {
+              throw "$path is empty."
+            }
+            Write-Host "${path}: $($artifact.Length) bytes"
+          }
+
+      - name: Upload Web release
+        uses: actions/upload-artifact@v4
+        with:
+          name: DaiDai-Web
+          path: godot/exports/web
+          if-no-files-found: error
 
       - name: Export Windows release
         shell: pwsh

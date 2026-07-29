@@ -17,6 +17,7 @@ const MOBILE_RESERVED_TOP := 38.0
 const DESKTOP_RESERVED_TOP := 42.0
 const MOBILE_BASE_DPI := 160.0
 const MAX_MOBILE_SCALE := 3.0
+const PROJECTILE_STEP_SECONDS := 1.0 / 60.0
 
 @onready var snake: DaiDaiSnake = $Snake
 @onready var bean_spawner: DaiDaiBeanSpawner = $BeanSpawner
@@ -60,6 +61,14 @@ var next_sky_drop_ms := 0.0
 var rng := RandomNumberGenerator.new()
 var viewport_baseline := Vector2.ZERO
 var resize_generation := 0
+var projectile_accumulator := 0.0
+var gaze_accumulator := 0.0
+var viewport_pixel_scale := 1.0
+var web_blur_callback
+var web_focus_callback
+var web_visibility_callback
+var web_window
+var web_document
 
 const KONAMI: Array[String] = [
 	"arrowup", "arrowup", "arrowdown", "arrowdown",
@@ -74,13 +83,24 @@ const HEART: Array[String] = [
 
 
 func _enter_tree() -> void:
-	if OS.has_feature("mobile"):
+	if OS.has_feature("web"):
+		var ratio = JavaScriptBridge.eval("window.devicePixelRatio || 1", true)
+		viewport_pixel_scale = clampf(float(ratio), 1.0, 4.0)
+	elif OS.has_feature("mobile"):
 		var dpi := maxf(MOBILE_BASE_DPI, DisplayServer.screen_get_dpi())
 		get_window().content_scale_factor = clampf(dpi / MOBILE_BASE_DPI, 1.0, MAX_MOBILE_SCALE)
 
 
 func _ready() -> void:
 	rng.randomize()
+	_install_web_focus_handlers()
+	if OS.has_feature("web"):
+		var reduced_quality := DaiDaiWebQuality.use_reduced_quality()
+		print("DaiDai Web quality profile: %s" % ("reduced" if reduced_quality else "desktop"))
+		($MainLight as DirectionalLight3D).shadow_enabled = not reduced_quality
+		get_viewport().msaa_3d = (
+			Viewport.MSAA_DISABLED if reduced_quality else Viewport.MSAA_2X
+		)
 	viewport_baseline = get_viewport().get_visible_rect().size
 	get_viewport().size_changed.connect(_on_viewport_size_changed)
 	_compute_grid()
@@ -90,6 +110,45 @@ func _ready() -> void:
 	hud.bind_game(self)
 	reset_game(false)
 	next_sky_drop_ms = Time.get_ticks_msec() + rng.randf_range(60000.0, 120000.0)
+
+
+func _exit_tree() -> void:
+	if web_blur_callback == null:
+		return
+	web_window.removeEventListener("blur", web_blur_callback)
+	web_window.removeEventListener("focus", web_focus_callback)
+	web_document.removeEventListener("visibilitychange", web_visibility_callback)
+	web_blur_callback = null
+	web_focus_callback = null
+	web_visibility_callback = null
+	web_window = null
+	web_document = null
+
+
+func _install_web_focus_handlers() -> void:
+	if not OS.has_feature("web"):
+		return
+	web_window = JavaScriptBridge.get_interface("window")
+	web_document = JavaScriptBridge.get_interface("document")
+	web_blur_callback = JavaScriptBridge.create_callback(_on_web_blur)
+	web_focus_callback = JavaScriptBridge.create_callback(_on_web_focus)
+	web_visibility_callback = JavaScriptBridge.create_callback(_on_web_visibility_changed)
+	web_window.addEventListener("blur", web_blur_callback)
+	web_window.addEventListener("focus", web_focus_callback)
+	web_document.addEventListener("visibilitychange", web_visibility_callback)
+
+
+func _on_web_blur(_args: Array) -> void:
+	_set_application_focus(false)
+
+
+func _on_web_focus(_args: Array) -> void:
+	if not bool(web_document.hidden):
+		_set_application_focus(true)
+
+
+func _on_web_visibility_changed(_args: Array) -> void:
+	_set_application_focus(not bool(web_document.hidden))
 
 
 func reset_game(run_immediately: bool = false) -> void:
@@ -118,6 +177,8 @@ func reset_game(run_immediately: bool = false) -> void:
 	shed_skin.clear()
 	gold_beans.clear()
 	golden_projectiles.clear()
+	projectile_accumulator = 0.0
+	gaze_accumulator = 0.0
 	typed_buffer = ""
 	konami_buffer.clear()
 	heart_buffer.clear()
@@ -150,8 +211,14 @@ func _process(delta: float) -> void:
 		_update_sky_drop()
 	snake.interpolate_visuals(game_accumulator_ms / speed_ms)
 	if not paused and not game_over:
-		_update_projectiles()
-	_update_gaze()
+		projectile_accumulator += delta
+		while projectile_accumulator >= PROJECTILE_STEP_SECONDS:
+			projectile_accumulator -= PROJECTILE_STEP_SECONDS
+			_update_projectiles()
+	gaze_accumulator += delta
+	if not OS.has_feature("web") or gaze_accumulator >= 0.1:
+		gaze_accumulator = 0.0
+		_update_gaze()
 	snake.set_visual_state(boost_active, god_mode, game_over)
 
 
@@ -455,7 +522,7 @@ func _capture_easter_eggs(token: String) -> void:
 
 
 func _try_debug_cheat(keycode: Key) -> bool:
-	if not OS.is_debug_build() or game_over:
+	if (not OS.is_debug_build() and not OS.has_feature("preview")) or game_over:
 		return false
 	match keycode:
 		KEY_1:
@@ -659,11 +726,20 @@ func _fit_camera() -> void:
 
 
 func _reserved_top(size: Vector2) -> float:
-	return MOBILE_RESERVED_TOP if _is_mobile_view(size) else DESKTOP_RESERVED_TOP
+	var base := MOBILE_RESERVED_TOP if _is_mobile_view(size) else DESKTOP_RESERVED_TOP
+	return base * viewport_pixel_scale
 
 
 func _is_mobile_view(size: Vector2) -> bool:
-	return OS.has_feature("mobile") or DisplayServer.is_touchscreen_available() or size.x <= MOBILE_WIDTH
+	return (
+		OS.has_feature("mobile")
+		or _has_touch_controls()
+		or size.x <= MOBILE_WIDTH * viewport_pixel_scale
+	)
+
+
+func _has_touch_controls() -> bool:
+	return DaiDaiWebQuality.has_coarse_pointer()
 
 
 func _is_occupied(cell: Vector2i) -> bool:
@@ -768,7 +844,7 @@ func _is_direction_key(keycode: Key) -> bool:
 func _start_prompt() -> String:
 	if not Input.get_connected_joypads().is_empty():
 		return _t("start.gamepad")
-	if DisplayServer.is_touchscreen_available():
+	if _has_touch_controls():
 		return _t("start.touch") if OS.has_feature("mobile") else _t("start.both")
 	return _t("start.keyboard")
 
@@ -823,15 +899,23 @@ func _save_hi_score() -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and not paused and not game_over:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		_set_application_focus(false)
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		_set_application_focus(true)
+
+
+func _set_application_focus(active: bool) -> void:
+	audio.set_application_active(active)
+	if not active and not paused and not game_over:
 		set_paused(true)
 
 
 func _on_viewport_size_changed() -> void:
 	var current := get_viewport().get_visible_rect().size
 	if (
-		absf(current.x - viewport_baseline.x) < 80.0
-		and absf(current.y - viewport_baseline.y) < 80.0
+		absf(current.x - viewport_baseline.x) < 80.0 * viewport_pixel_scale
+		and absf(current.y - viewport_baseline.y) < 80.0 * viewport_pixel_scale
 	):
 		_fit_camera()
 		return

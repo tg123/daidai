@@ -27,6 +27,10 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="disabled"
 
+[gui]
+
+theme/custom_font="res://assets/fonts/ui_font.tres"
+
 [input]
 
 snake_up={
@@ -67,4 +71,5 @@ snake_right={
 environment/defaults/default_clear_color=Color(0.16, 0.32, 0.22, 1)
 lights_and_shadows/directional_shadow/size=2048
 renderer/rendering_method.mobile="gl_compatibility"
+renderer/rendering_method.web="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true

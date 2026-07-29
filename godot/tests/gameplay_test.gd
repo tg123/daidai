@@ -72,6 +72,15 @@ func _run() -> void:
 		is_equal_approx(snake.head_node.position.x, game.cols - 0.5),
 		"worm interpolation follows the shortest wrapped step",
 	)
+	var has_wrapped_head_mirror := false
+	for mirror in snake.head_wrap_mirrors:
+		if mirror.visible and is_equal_approx(mirror.position.x, -0.5):
+			has_wrapped_head_mirror = true
+	_check(has_wrapped_head_mirror, "worm head is mirrored across the wrapped screen edge")
+	_check(
+		snake._wrap_offsets(Vector3.ZERO, DaiDaiSnake.BODY_RADIUS).size() == 3,
+		"worm body creates horizontal, vertical, and diagonal corner mirrors",
+	)
 	snake.interpolate_visuals(1.0)
 	_check(
 		is_equal_approx(snake.head_node.position.x, game.cols - 1.0),

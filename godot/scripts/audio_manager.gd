@@ -28,6 +28,7 @@ var _loops: Dictionary = {}
 var _loop_volumes: Dictionary = {}
 
 var _muted: bool = false
+var _application_active := true
 
 
 func _ready() -> void:
@@ -38,6 +39,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	AudioServer.set_bus_mute(AudioServer.get_bus_index("Master"), false)
 	for name: String in _loops:
 		var player := _loops[name] as AudioStreamPlayer
 		player.stop()
@@ -81,7 +83,7 @@ func _preload_streams() -> void:
 # ── One-shot playback ─────────────────────────────────────────────────────────
 
 func _play_oneshot(stream_name: String, volume: float) -> void:
-	if _muted:
+	if _muted or not _application_active:
 		return
 	if not _streams.has(stream_name):
 		push_warning("DaiDaiAudio: no stream loaded for '" + stream_name + "'")
@@ -109,7 +111,7 @@ func _start_loop(stream_name: String, volume: float) -> void:
 	var player := AudioStreamPlayer.new()
 	add_child(player)
 	player.stream = loop_stream
-	player.volume_db = linear_to_db(volume) if not _muted else -80.0
+	player.volume_db = linear_to_db(volume) if not _muted and _application_active else -80.0
 	player.play()
 	_loops[stream_name] = player
 	_loop_volumes[stream_name] = volume
@@ -130,7 +132,7 @@ func _stop_loop(stream_name: String, fade_time: float = 0.5) -> void:
 ## Mirrors AudioEngine.setLoopVolume().
 func set_loop_volume(stream_name: String, volume: float, ramp_time: float = 0.3) -> void:
 	_loop_volumes[stream_name] = volume
-	if not _loops.has(stream_name) or _muted:
+	if not _loops.has(stream_name) or _muted or not _application_active:
 		return
 	var player: AudioStreamPlayer = _loops[stream_name]
 	var tween := create_tween()
@@ -201,10 +203,18 @@ func is_muted() -> bool:
 	return _muted
 
 
+func set_application_active(active: bool) -> void:
+	if _application_active == active:
+		return
+	_application_active = active
+	AudioServer.set_bus_mute(AudioServer.get_bus_index("Master"), not active)
+	_apply_mute()
+
+
 func _apply_mute() -> void:
 	for name: String in _loops:
 		var player: AudioStreamPlayer = _loops[name]
-		if _muted:
+		if _muted or not _application_active:
 			player.volume_db = -80.0
 		else:
 			var vol: float = _loop_volumes.get(name, 0.5)

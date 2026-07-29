@@ -13,10 +13,48 @@ var rows := 30
 var target_count := DaiDaiRules.BEAN_COUNT
 var occupied_check: Callable
 var rng := RandomNumberGenerator.new()
+var bean_mesh: SphereMesh
+var bean_materials: Array[StandardMaterial3D] = []
+var halo_textures: Array[GradientTexture2D] = []
+var animation_accumulator := 0.0
 
 
 func _ready() -> void:
 	rng.randomize()
+	_prepare_shared_resources()
+
+
+func _prepare_shared_resources() -> void:
+	bean_mesh = SphereMesh.new()
+	bean_mesh.radius = 0.35
+	bean_mesh.height = 0.7
+	bean_mesh.radial_segments = 16
+	bean_mesh.rings = 10
+	for color: Color in DaiDaiRules.COLORS:
+		var material := StandardMaterial3D.new()
+		material.albedo_color = color
+		material.emission_enabled = true
+		material.emission = color
+		material.emission_energy_multiplier = 0.55
+		material.metallic = 0.05
+		material.roughness = 0.15
+		bean_materials.append(material)
+
+		var gradient := Gradient.new()
+		gradient.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
+		gradient.colors = PackedColorArray([
+			Color(1.0, 1.0, 1.0, 0.9),
+			Color(color, 0.3),
+			Color(color, 0.0),
+		])
+		var halo_texture := GradientTexture2D.new()
+		halo_texture.width = 64
+		halo_texture.height = 64
+		halo_texture.gradient = gradient
+		halo_texture.fill = GradientTexture2D.FILL_RADIAL
+		halo_texture.fill_from = Vector2(0.5, 0.5)
+		halo_texture.fill_to = Vector2(1.0, 0.5)
+		halo_textures.append(halo_texture)
 
 
 func reset(new_cols: int, new_rows: int, is_occupied: Callable) -> void:
@@ -92,7 +130,16 @@ func has_cell(cell: Vector2i) -> bool:
 
 
 func _process(delta: float) -> void:
+	if OS.has_feature("web"):
+		animation_accumulator += delta
+		if animation_accumulator < 1.0 / 30.0:
+			return
+		delta = animation_accumulator
+		animation_accumulator = 0.0
 	var now := Time.get_ticks_msec()
+	var emission_energy := 0.55 + sin(now * 0.005) * 0.2
+	for material in bean_materials:
+		material.emission_energy_multiplier = emission_energy
 	for bean in beans:
 		var node := bean["node"] as MeshInstance3D
 		var drop_phase := float(bean["drop_phase"])
@@ -111,44 +158,16 @@ func _process(delta: float) -> void:
 		node.position.y = rest_y + drop_phase * drop_phase * 22.0
 		node.scale = Vector3(1.0 + drop_bounce * 0.4, 1.0 - drop_bounce * 0.5, 1.0 + drop_bounce * 0.4)
 		node.rotation.y = now * 0.002
-		var material := node.material_override as StandardMaterial3D
-		material.emission_energy_multiplier = 0.55 + sin(now * 0.005) * 0.2
 
 
 func _create_bean(color_index: int) -> MeshInstance3D:
 	var bean := MeshInstance3D.new()
-	var mesh := SphereMesh.new()
-	mesh.radius = 0.35
-	mesh.height = 0.7
-	mesh.radial_segments = 16
-	mesh.rings = 10
-	bean.mesh = mesh
-	var material := StandardMaterial3D.new()
-	material.albedo_color = DaiDaiRules.COLORS[color_index]
-	material.emission_enabled = true
-	material.emission = DaiDaiRules.COLORS[color_index]
-	material.emission_energy_multiplier = 0.55
-	material.metallic = 0.05
-	material.roughness = 0.15
-	bean.material_override = material
+	bean.mesh = bean_mesh
+	bean.material_override = bean_materials[color_index]
 	bean.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 	var halo := Sprite3D.new()
-	var gradient := Gradient.new()
-	gradient.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
-	gradient.colors = PackedColorArray([
-		Color(1.0, 1.0, 1.0, 0.9),
-		Color(DaiDaiRules.COLORS[color_index], 0.3),
-		Color(DaiDaiRules.COLORS[color_index], 0.0),
-	])
-	var halo_texture := GradientTexture2D.new()
-	halo_texture.width = 64
-	halo_texture.height = 64
-	halo_texture.gradient = gradient
-	halo_texture.fill = GradientTexture2D.FILL_RADIAL
-	halo_texture.fill_from = Vector2(0.5, 0.5)
-	halo_texture.fill_to = Vector2(1.0, 0.5)
-	halo.texture = halo_texture
+	halo.texture = halo_textures[color_index]
 	halo.pixel_size = 0.025
 	halo.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	halo.shaded = false

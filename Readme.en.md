@@ -8,7 +8,7 @@
 >
 > I've long wanted to recreate it but never had the skill. Thanks to AI, this long-held wish finally came true.
 
-A nostalgic 3D remake of _"DAIDAI" Worm_, built with Three.js and runs in your browser.
+A nostalgic 3D remake of _"DAIDAI" Worm_, built with Godot 4 for browsers and native platforms.
 
 🎮 **Play online:** <https://tg123.github.io/daidai/> · <https://farmer1992.itch.io/daidai>
 
@@ -40,7 +40,7 @@ Eating 5 beans of the same color in a row triggers a magic effect:
 
 The remake keeps the core 1999 gameplay intact, with some extensions and modern touches:
 
-- **3D rendering** — The original was 2D pixel art; this version is rewritten in Three.js as a top-down 3D world (reflective metallic gold beans, pond ripples, weather effects, etc.).
+- **3D rendering** — The original was 2D pixel art; this version is rewritten in Godot 4 as a top-down 3D world (reflective metallic gold beans, pond ripples, weather effects, etc.).
 - **🔴 Red speed boost, enhanced** — Original: speed up + 5 bonus per bean. This version: 15-second speed boost, and re-triggering during the boost doubles the multiplier (×2 → ×4 → ×8 …), rewarding combos.
 - **🟠 Orange holy light** — Original used an "aura" that radiated outward to convert nearby objects into gold beans. This version uses a directed laser fired from the worm's head along the current direction; both beans and shed skin segments hit by the beam convert into gold beans (matches the original where any nearby object — including sloughed-off skin — could be transmuted; the +30 gold-bean reward is preserved).
 - **🟢 Green vitality** — Old shed skins turn back into edible beans (with a new random color), so old skins don't just clutter the field.
@@ -48,7 +48,7 @@ The remake keeps the core 1999 gameplay intact, with some extensions and modern 
 - **🟣 Purple shrink** — Length is halved (rounded up); use it to save yourself.
 - **🌧️ Rain of beans** — Replaces the original "delete a random bean every 60s" rule. Starting 60–120s in, 0–3 beans drop from the sky at random times (at most once every 60s), complete with splash ripples.
 - **🐍 Molting** — Every 20 beans you molt; shed skin stays on the map permanently and kills you on contact (same as the original). The orange holy light/laser can convert shed into gold beans, and the green vitality magic can convert up to 5 random shed segments back into normal beans (both match the original).
-- **🎵 Audio / music** — Fully rebuilt with WebAudio, Opus-compressed; mobile has special handling to bypass the iOS silent switch.
+- **🎵 Audio / music** — Fully rebuilt with Godot's audio system and played through the Web Audio API in browsers.
 - **🎮 Multi-input** — Keyboard / touch swipe / Xbox & PlayStation gamepads all supported, with automatic detection and matching on-screen prompts.
 
 ## Credits
@@ -59,33 +59,28 @@ The remake keeps the core 1999 gameplay intact, with some extensions and modern 
 
 ## Local Development
 
-The source uses TypeScript / ES Modules, so it needs Vite to transpile:
+The canonical implementation requires Godot 4.6 or newer. Import `godot/project.godot` and press **F5** to run it.
+
+Export the browser build:
+
+```sh
+mkdir -p dist
+godot --headless --path godot --export-release Web "$PWD/dist/index.html"
+```
+
+Web builds must be served over HTTP. The existing Vite preview command can serve `dist/`:
 
 ```sh
 npm install
-npm run dev                  # start the Vite dev server (default http://localhost:5173/)
-```
-
-If you only want to preview a pre-built bundle, point any static file server at `dist/`:
-
-```sh
-npm run build
-npm run serve:dist           # equivalent to: vite preview --outDir dist
+npm run serve:dist
 ```
 
 ## Build & Test
 
-Requires Node `^20.19.0 || ^22.13.0 || >=24` (matches the `engines` field in `package.json`):
-
 ```sh
-npm install                  # install deps
-npm run test:install         # install Playwright browsers (one-time)
-
-npm test                     # run E2E tests against source
-npm run build                # bundle + minify into dist/ (HTML+JS+CSS, ~ -48%)
-npm run test:dist            # run E2E tests against the dist build
+godot --headless --path godot --script res://tests/rules_test.gd
+godot --headless --path godot --script res://tests/gameplay_test.gd
+godot --headless --path godot --script res://tests/integration_test.gd
 ```
 
-Build output is written to `dist/` (minified `index.html` plus runtime assets:
-`audio/`, favicon, `apple-touch-icon.png`, …). GitHub Pages auto-deploys
-`dist/` via [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
+The previous TypeScript + Three.js implementation remains in `src/`; its unit and E2E tests continue to run through the npm scripts. [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) publishes the Godot WebAssembly build to GitHub Pages, PR previews, and itch.io.

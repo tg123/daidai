@@ -1,30 +1,39 @@
 extends CanvasLayer
 class_name DaiDaiHUD
 
-const LANGUAGE_LABELS := {
-	"zh-cn": "🇨🇳 简体中文",
-	"zh-tw": "🇹🇼 繁體中文",
-	"en-us": "🇬🇧 English",
-	"ja-jp": "🇯🇵 日本語",
-	"ko-kr": "🇰🇷 한국어",
-	"es-es": "🇪🇸 Español",
-	"fr-fr": "🇫🇷 Français",
-	"it-it": "🇮🇹 Italiano",
-	"de-de": "🇩🇪 Deutsch",
-	"pt-br": "🇧🇷 Português",
-	"pl-pl": "🇵🇱 Polski",
-	"ru-ru": "🇷🇺 Русский",
-	"th-th": "🇹🇭 ไทย",
+const LANGUAGE_FLAGS := {
+	"zh-cn": "🇨🇳",
+	"zh-tw": "🇹🇼",
+	"en-us": "🇬🇧",
+	"ja-jp": "🇯🇵",
+	"ko-kr": "🇰🇷",
+	"es-es": "🇪🇸",
+	"fr-fr": "🇫🇷",
+	"it-it": "🇮🇹",
+	"de-de": "🇩🇪",
+	"pt-br": "🇧🇷",
+	"pl-pl": "🇵🇱",
+	"ru-ru": "🇷🇺",
+	"th-th": "🇹🇭",
 }
+const ICON_PAUSE := preload("res://assets/icons/pause.svg")
+const ICON_PLAY := preload("res://assets/icons/play.svg")
+const ICON_VOLUME := preload("res://assets/icons/volume.svg")
+const ICON_MUTED := preload("res://assets/icons/muted.svg")
+const ICON_LANGUAGE := preload("res://assets/icons/language.svg")
+const ICON_GITHUB := preload("res://assets/icons/github.svg")
 
 var game: Node
 var i18n: DaiDaiI18n
+var ui_root: Control
+var ui_scale := 1.0
 var hi_label: Label
 var score_label: Label
 var timer_label: Label
 var length_label: Label
 var combo_label: Label
 var boost_label: Label
+var top_panel: PanelContainer
 var info_container: HBoxContainer
 var message_label: Label
 var effect_label: Label
@@ -32,9 +41,11 @@ var restart_button: Button
 var pause_button: Button
 var mute_button: Button
 var language_button: Button
+var github_button: Button
 var instructions: Label
 var language_menu: PanelContainer
 var language_list: VBoxContainer
+var utility_container: VBoxContainer
 var rain_filter: ColorRect
 var effect_generation := 0
 
@@ -42,8 +53,13 @@ var effect_generation := 0
 func _ready() -> void:
 	i18n = DaiDaiI18n.new()
 	i18n.initialize()
+	ui_root = Control.new()
+	ui_root.name = "ResponsiveRoot"
+	ui_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(ui_root)
+	_resize_ui_root()
 	_build_hud()
-	get_viewport().size_changed.connect(_apply_responsive_layout)
+	get_viewport().size_changed.connect(_on_viewport_size_changed)
 	_apply_responsive_layout()
 
 
@@ -53,6 +69,9 @@ func bind_game(value: Node) -> void:
 	pause_button.pressed.connect(func() -> void: game.call("toggle_pause"))
 	mute_button.pressed.connect(func() -> void: game.call("toggle_mute"))
 	language_button.pressed.connect(func() -> void: game.call("cycle_language"))
+	github_button.pressed.connect(
+		func() -> void: OS.shell_open("https://github.com/tg123/daidai")
+	)
 	_refresh_static_text()
 
 
@@ -86,7 +105,7 @@ func update_state(state: Dictionary) -> void:
 	hi_label.text = "%s  %05d" % [translate("ui.hiscore"), int(state["hi_score"])]
 	score_label.text = "%s  %05d" % [translate("ui.score"), int(state["score"])]
 	var elapsed := int(state["elapsed_seconds"])
-	timer_label.text = "⏱  %02d:%02d" % [elapsed / 60, elapsed % 60]
+	timer_label.text = "⏱️  %02d:%02d" % [elapsed / 60, elapsed % 60]
 	length_label.text = "📏  %d" % int(state["length"])
 	var color_index := int(state["combo_color"])
 	var count := int(state["combo_count"])
@@ -104,14 +123,34 @@ func update_state(state: Dictionary) -> void:
 	var is_game_over := bool(state["game_over"])
 	restart_button.visible = is_game_over
 	instructions.visible = is_paused or is_game_over
-	var pause_icon := ">" if is_paused else "II"
+	var visibility := _utility_visibility(
+		is_paused,
+		is_game_over,
+		_has_touch_controls(),
+	)
+	pause_button.visible = visibility["pause"]
+	mute_button.visible = visibility["mute"]
+	language_button.visible = visibility["language"]
+	utility_container.visible = (
+		pause_button.visible or mute_button.visible or language_button.visible
+	)
+	var pause_icon := ICON_PLAY if is_paused else ICON_PAUSE
 	_set_utility_button(pause_button, pause_icon, "A")
 	pause_button.disabled = is_game_over
-	var mute_icon := "×" if bool(state["muted"]) else "♪"
+	var mute_icon := ICON_MUTED if bool(state["muted"]) else ICON_VOLUME
 	_set_utility_button(mute_button, mute_icon, "X")
-	_set_utility_button(language_button, "文", "Y")
-	if not is_paused:
+	_set_utility_button(language_button, ICON_LANGUAGE, "Y")
+	if not language_button.visible:
 		_close_language_menu()
+
+
+func _utility_visibility(is_paused: bool, is_game_over: bool, has_touch: bool) -> Dictionary:
+	var is_playing := not is_paused and not is_game_over
+	return {
+		"pause": has_touch and not is_game_over,
+		"mute": not is_playing,
+		"language": is_paused and not is_game_over,
+	}
 
 
 func toggle_language_menu() -> void:
@@ -148,7 +187,7 @@ func show_tribute(subtitle: String) -> void:
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.color = Color(0.0, 0.0, 0.0, 0.78)
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(overlay)
+	ui_root.add_child(overlay)
 
 	var static_shader := Shader.new()
 	static_shader.code = """
@@ -177,13 +216,13 @@ void fragment() {
 	subtitle_label.add_theme_color_override("font_shadow_color", Color(1.0, 0.2, 0.55, 0.9))
 	subtitle_label.add_theme_constant_override("shadow_offset_x", 4)
 	subtitle_label.add_theme_constant_override("shadow_offset_y", 4)
-	subtitle_label.position = Vector2(get_viewport().get_visible_rect().size.x, get_viewport().get_visible_rect().size.y / 2.0 - 40.0)
+	subtitle_label.position = Vector2(ui_root.size.x, ui_root.size.y / 2.0 - 40.0)
 	overlay.add_child(subtitle_label)
 	var tween := create_tween()
 	tween.tween_property(
 		subtitle_label,
 		"position:x",
-		-subtitle_label.get_minimum_size().x - get_viewport().get_visible_rect().size.x,
+		-subtitle_label.get_minimum_size().x - ui_root.size.x,
 		5.0,
 	)
 	tween.tween_property(overlay, "modulate:a", 0.0, 0.6)
@@ -192,16 +231,16 @@ void fragment() {
 
 func _build_hud() -> void:
 	_build_screen_filters()
-	var top_panel := PanelContainer.new()
+	top_panel = PanelContainer.new()
 	top_panel.name = "InfoBar"
-	top_panel.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	top_panel.offset_bottom = 42.0
+	top_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	top_panel.size = Vector2(1280.0, 42.0)
 	var panel_style := StyleBoxFlat.new()
 	panel_style.bg_color = Color(0.0, 0.0, 0.0, 0.68)
 	panel_style.border_width_bottom = 1
 	panel_style.border_color = Color(1.0, 1.0, 1.0, 0.18)
 	top_panel.add_theme_stylebox_override("panel", panel_style)
-	add_child(top_panel)
+	ui_root.add_child(top_panel)
 
 	info_container = HBoxContainer.new()
 	info_container.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -217,10 +256,24 @@ func _build_hud() -> void:
 	for label in [hi_label, score_label, timer_label, length_label, combo_label, boost_label]:
 		info_container.add_child(label)
 
+	github_button = Button.new()
+	github_button.name = "GitHub"
+	github_button.icon = ICON_GITHUB
+	github_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	github_button.expand_icon = true
+	github_button.flat = true
+	github_button.focus_mode = Control.FOCUS_NONE
+	github_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	github_button.position = Vector2(7.0, 5.0)
+	github_button.size = Vector2(32.0, 32.0)
+	github_button.tooltip_text = "GitHub"
+	github_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	ui_root.add_child(github_button)
+
 	message_label = Label.new()
 	message_label.name = "Message"
-	message_label.set_anchors_preset(Control.PRESET_CENTER)
-	message_label.position = Vector2(-250.0, -90.0)
+	message_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	message_label.position = Vector2.ZERO
 	message_label.size = Vector2(500.0, 180.0)
 	message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	message_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -231,12 +284,12 @@ func _build_hud() -> void:
 	message_label.add_theme_constant_override("shadow_offset_x", 3)
 	message_label.add_theme_constant_override("shadow_offset_y", 3)
 	message_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(message_label)
+	ui_root.add_child(message_label)
 
 	effect_label = Label.new()
 	effect_label.name = "EffectText"
-	effect_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	effect_label.position = Vector2(-300.0, 76.0)
+	effect_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	effect_label.position = Vector2.ZERO
 	effect_label.size = Vector2(600.0, 48.0)
 	effect_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	effect_label.add_theme_font_size_override("font_size", 22)
@@ -246,12 +299,12 @@ func _build_hud() -> void:
 	effect_label.add_theme_constant_override("shadow_offset_y", 2)
 	effect_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	effect_label.visible = false
-	add_child(effect_label)
+	ui_root.add_child(effect_label)
 
 	restart_button = Button.new()
 	restart_button.name = "Restart"
-	restart_button.set_anchors_preset(Control.PRESET_CENTER)
-	restart_button.position = Vector2(-110.0, 90.0)
+	restart_button.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	restart_button.position = Vector2.ZERO
 	restart_button.size = Vector2(220.0, 58.0)
 	restart_button.focus_mode = Control.FOCUS_NONE
 	restart_button.add_theme_font_size_override("font_size", 20)
@@ -276,7 +329,7 @@ func _build_hud() -> void:
 	restart_button.add_theme_stylebox_override("disabled", restart_style)
 	restart_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	restart_button.visible = false
-	add_child(restart_button)
+	ui_root.add_child(restart_button)
 
 	instructions = Label.new()
 	instructions.name = "Instructions"
@@ -290,25 +343,25 @@ func _build_hud() -> void:
 	instructions.add_theme_constant_override("line_spacing", 2)
 	instructions.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.85))
 	instructions.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(instructions)
+	ui_root.add_child(instructions)
 
-	var utility := VBoxContainer.new()
-	utility.name = "UtilityButtons"
-	utility.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	utility.position = Vector2(-58.0, 54.0)
-	utility.size = Vector2(46.0, 160.0)
-	utility.add_theme_constant_override("separation", 6)
-	add_child(utility)
-	pause_button = _utility_button("⏸")
-	mute_button = _utility_button("🔊")
-	language_button = _utility_button("🌐")
+	utility_container = VBoxContainer.new()
+	utility_container.name = "UtilityButtons"
+	utility_container.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	utility_container.position = Vector2.ZERO
+	utility_container.size = Vector2(46.0, 160.0)
+	utility_container.add_theme_constant_override("separation", 6)
+	ui_root.add_child(utility_container)
+	pause_button = _utility_button(ICON_PAUSE)
+	mute_button = _utility_button(ICON_VOLUME)
+	language_button = _utility_button(ICON_LANGUAGE)
 	for button in [pause_button, mute_button, language_button]:
-		utility.add_child(button)
+		utility_container.add_child(button)
 
 	language_menu = PanelContainer.new()
 	language_menu.name = "LanguageMenu"
-	language_menu.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	language_menu.position = Vector2(-260.0, 54.0)
+	language_menu.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	language_menu.position = Vector2.ZERO
 	language_menu.size = Vector2(196.0, 468.0)
 	var menu_style := StyleBoxFlat.new()
 	menu_style.bg_color = Color(0.0, 0.0, 0.0, 0.88)
@@ -324,7 +377,7 @@ func _build_hud() -> void:
 	language_list = VBoxContainer.new()
 	language_menu.add_child(language_list)
 	language_menu.visible = false
-	add_child(language_menu)
+	ui_root.add_child(language_menu)
 	_rebuild_language_menu()
 
 
@@ -335,7 +388,7 @@ func _rebuild_language_menu() -> void:
 		child.free()
 	for locale in i18n.get_locales():
 		var button := Button.new()
-		button.text = str(LANGUAGE_LABELS.get(locale, locale))
+		button.text = "%s %s" % [LANGUAGE_FLAGS.get(locale, ""), i18n.lang_name(locale)]
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.flat = true
 		if locale == i18n.get_locale():
@@ -355,7 +408,7 @@ func _refresh_static_text() -> void:
 	restart_button.text = (
 		"%s  %s" % [_gamepad_glyph("B"), translate("btn.restart")]
 		if _has_gamepad()
-		else "⟳  %s" % translate("btn.restart")
+		else "🔄  %s" % translate("btn.restart")
 	)
 	pause_button.tooltip_text = (
 		translate("hint.pauseGamepad", {"btn": _gamepad_glyph("A")})
@@ -372,7 +425,7 @@ func _refresh_static_text() -> void:
 		translate("hint.combo.orange"),
 		translate("hint.combo.purple"),
 	]
-	if OS.is_debug_build():
+	if OS.is_debug_build() or OS.has_feature("preview"):
 		instructions.text += "\n🧪 1–5: FX   ·   6: +1"
 
 
@@ -382,7 +435,7 @@ func _build_screen_filters() -> void:
 	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var vignette_shader := Shader.new()
-	if OS.has_feature("mobile"):
+	if OS.has_feature("mobile") or OS.has_feature("web"):
 		vignette_shader.code = """
 shader_type canvas_item;
 void fragment() {
@@ -412,14 +465,14 @@ void fragment() {
 	var vignette_material := ShaderMaterial.new()
 	vignette_material.shader = vignette_shader
 	vignette.material = vignette_material
-	add_child(vignette)
+	ui_root.add_child(vignette)
 
 	rain_filter = ColorRect.new()
 	rain_filter.name = "RainFilter"
 	rain_filter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	rain_filter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var rain_shader := Shader.new()
-	if OS.has_feature("mobile"):
+	if OS.has_feature("mobile") or OS.has_feature("web"):
 		rain_shader.code = """
 shader_type canvas_item;
 uniform float strength : hint_range(0.0, 1.0) = 0.0;
@@ -447,7 +500,7 @@ void fragment() {
 	rain_material.shader = rain_shader
 	rain_filter.material = rain_material
 	rain_filter.visible = false
-	add_child(rain_filter)
+	ui_root.add_child(rain_filter)
 
 
 func _info_label() -> Label:
@@ -457,9 +510,11 @@ func _info_label() -> Label:
 	return label
 
 
-func _utility_button(text: String) -> Button:
+func _utility_button(icon: Texture2D) -> Button:
 	var button := Button.new()
-	button.text = text
+	button.icon = icon
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.expand_icon = true
 	button.focus_mode = Control.FOCUS_NONE
 	button.custom_minimum_size = Vector2(44.0, 44.0)
 	button.add_theme_font_size_override("font_size", 20)
@@ -499,8 +554,8 @@ func _utility_button(text: String) -> Button:
 	return button
 
 
-func _set_utility_button(button: Button, icon: String, gamepad_button: String) -> void:
-	button.text = icon
+func _set_utility_button(button: Button, icon: Texture2D, gamepad_button: String) -> void:
+	button.icon = icon
 	var badge := button.get_node("GamepadBadge") as Label
 	badge.visible = _has_gamepad()
 	badge.text = _gamepad_glyph(gamepad_button) if badge.visible else ""
@@ -527,17 +582,36 @@ func _round_style(
 
 
 func _apply_responsive_layout() -> void:
-	var viewport_size := get_viewport().get_visible_rect().size
+	var viewport_size := ui_root.size
 	var width := viewport_size.x
-	var mobile := width <= 720.0 or DisplayServer.is_touchscreen_available()
+	var mobile := width <= 720.0 or _has_touch_controls()
 	var font_size := 11 if mobile else 14
 	info_container.add_theme_constant_override("separation", 5 if mobile else 22)
+	top_panel.position = Vector2.ZERO
+	top_panel.size = Vector2(width, 42.0)
+	utility_container.position = Vector2(width - 58.0, 54.0)
+	language_menu.position = Vector2(width - 260.0, 54.0)
 	hi_label.visible = not mobile
 	for label in [hi_label, score_label, timer_label, length_label, combo_label, boost_label]:
 		if label != null:
 			label.add_theme_font_size_override("font_size", font_size)
 	if message_label != null:
 		message_label.add_theme_font_size_override("font_size", 20 if mobile else 28)
+		var message_width := minf(500.0, width - 24.0)
+		message_label.position = Vector2(
+			(width - message_width) / 2.0,
+			viewport_size.y / 2.0 - 90.0,
+		)
+		message_label.size = Vector2(message_width, 180.0)
+	if effect_label != null:
+		var effect_width := minf(600.0, width - 24.0)
+		effect_label.position = Vector2((width - effect_width) / 2.0, 76.0)
+		effect_label.size = Vector2(effect_width, 48.0)
+	if restart_button != null:
+		restart_button.position = Vector2(
+			(width - restart_button.size.x) / 2.0,
+			viewport_size.y / 2.0 + 90.0,
+		)
 	if instructions != null:
 		instructions.add_theme_font_size_override("font_size", 10 if mobile else 12)
 		var legend_width := minf(820.0, width - 16.0)
@@ -549,6 +623,28 @@ func _apply_responsive_layout() -> void:
 			viewport_size.y - legend_height - bottom_margin,
 		)
 		instructions.size = Vector2(legend_width, legend_height)
+
+
+func _on_viewport_size_changed() -> void:
+	_resize_ui_root()
+	_apply_responsive_layout()
+
+
+func _resize_ui_root() -> void:
+	ui_scale = _web_ui_scale()
+	ui_root.scale = Vector2.ONE * ui_scale
+	ui_root.size = get_viewport().get_visible_rect().size / ui_scale
+
+
+func _web_ui_scale() -> float:
+	if not OS.has_feature("web"):
+		return 1.0
+	var ratio = JavaScriptBridge.eval("window.devicePixelRatio || 1", true)
+	return clampf(float(ratio), 1.0, 4.0)
+
+
+func _has_touch_controls() -> bool:
+	return DaiDaiWebQuality.has_coarse_pointer()
 
 
 func _hide_effect_later(generation: int) -> void:
