@@ -1,22 +1,6 @@
 extends CanvasLayer
 class_name DaiDaiHUD
 
-const LANGUAGE_LABELS := {
-	"zh-cn": "🇨🇳 简体中文",
-	"zh-tw": "🇹🇼 繁體中文",
-	"en-us": "🇬🇧 English",
-	"ja-jp": "🇯🇵 日本語",
-	"ko-kr": "🇰🇷 한국어",
-	"es-es": "🇪🇸 Español",
-	"fr-fr": "🇫🇷 Français",
-	"it-it": "🇮🇹 Italiano",
-	"de-de": "🇩🇪 Deutsch",
-	"pt-br": "🇧🇷 Português",
-	"pl-pl": "🇵🇱 Polski",
-	"ru-ru": "🇷🇺 Русский",
-	"th-th": "🇹🇭 ไทย",
-}
-
 var game: Node
 var i18n: DaiDaiI18n
 var hi_label: Label
@@ -87,13 +71,13 @@ func update_state(state: Dictionary) -> void:
 	score_label.text = "%s  %05d" % [translate("ui.score"), int(state["score"])]
 	var elapsed := int(state["elapsed_seconds"])
 	timer_label.text = "⏱  %02d:%02d" % [elapsed / 60, elapsed % 60]
-	length_label.text = "📏  %d" % int(state["length"])
+	length_label.text = "↔  %d" % int(state["length"])
 	var color_index := int(state["combo_color"])
 	var count := int(state["combo_count"])
 	combo_label.text = "● ×%d" % count if count > 0 else ""
 	combo_label.modulate = DaiDaiRules.COLORS[color_index] if color_index >= 0 else Color.WHITE
 	if bool(state["boost_active"]):
-		boost_label.text = "🔥 ×%d  %.1fs" % [
+		boost_label.text = "↑ ×%d  %.1fs" % [
 			int(state["boost_multiplier"]),
 			float(state["boost_remaining"]),
 		]
@@ -299,9 +283,9 @@ func _build_hud() -> void:
 	utility.size = Vector2(46.0, 160.0)
 	utility.add_theme_constant_override("separation", 6)
 	add_child(utility)
-	pause_button = _utility_button("⏸")
-	mute_button = _utility_button("🔊")
-	language_button = _utility_button("🌐")
+	pause_button = _utility_button("II")
+	mute_button = _utility_button("♪")
+	language_button = _utility_button("文")
 	for button in [pause_button, mute_button, language_button]:
 		utility.add_child(button)
 
@@ -335,7 +319,7 @@ func _rebuild_language_menu() -> void:
 		child.free()
 	for locale in i18n.get_locales():
 		var button := Button.new()
-		button.text = str(LANGUAGE_LABELS.get(locale, locale))
+		button.text = i18n.lang_name(locale)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.flat = true
 		if locale == i18n.get_locale():
@@ -355,7 +339,7 @@ func _refresh_static_text() -> void:
 	restart_button.text = (
 		"%s  %s" % [_gamepad_glyph("B"), translate("btn.restart")]
 		if _has_gamepad()
-		else "⟳  %s" % translate("btn.restart")
+		else "R  %s" % translate("btn.restart")
 	)
 	pause_button.tooltip_text = (
 		translate("hint.pauseGamepad", {"btn": _gamepad_glyph("A")})
@@ -364,7 +348,7 @@ func _refresh_static_text() -> void:
 	)
 	mute_button.tooltip_text = translate("btn.sound")
 	language_button.tooltip_text = translate("btn.language")
-	instructions.text = "%s   |   🔴 %s   🔵 %s   🟢 %s   🟠 %s   🟣 %s" % [
+	instructions.text = "%s   |   ● %s   ● %s   ● %s   ● %s   ● %s" % [
 		pause_button.tooltip_text,
 		translate("hint.combo.red"),
 		translate("hint.combo.blue"),
@@ -373,7 +357,7 @@ func _refresh_static_text() -> void:
 		translate("hint.combo.purple"),
 	]
 	if OS.is_debug_build():
-		instructions.text += "\n🧪 1–5: FX   ·   6: +1"
+		instructions.text += "\nDEV 1–5: FX   ·   6: +1"
 
 
 func _build_screen_filters() -> void:

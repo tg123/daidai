@@ -27,6 +27,15 @@ func _run() -> void:
 	_check(i18n.t("missing.test.key") == "missing.test.key", "missing translations fall back to key")
 	i18n.set_locale(original_locale)
 
+	var ui_font := load("res://assets/fonts/ui_font.tres") as Font
+	_check(ui_font != null, "bundled UI font loads")
+	if ui_font != null:
+		for glyph in [
+			"A", "é", "中", "繁", "あ", "한", "Я", "ไ", "←", "⏱", "↔", "●",
+			"↑", "♪", "文", "␣", "★", "✦", "☂", "✿", "♥", "∞",
+		]:
+			_check(ui_font.has_char(glyph.unicode_at(0)), "UI font covers %s" % glyph)
+
 	var audio_names := [
 		"eat", "die", "drop", "freeze", "laser", "warp", "thunder1", "thunder2",
 		"rainloop", "speedup", "speedown", "beat", "fade", "loop", "popo", "start",

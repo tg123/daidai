@@ -10,7 +10,7 @@
 >
 > 一直想把它复刻一下，无奈能力有限。感谢 AI 的出现，让这个心愿终于实现。
 
-一个用 Three.js 在浏览器里 3D 复刻的怀旧版《呆呆虫之豆豆潭》。
+一个用 Godot 4 复刻、可在浏览器和原生平台运行的 3D 怀旧版《呆呆虫之豆豆潭》。
 
 🎮 **在线试玩：** <https://tg123.github.io/daidai/> · <https://farmer1992.itch.io/daidai>
 
@@ -40,7 +40,7 @@
 
 复刻在保留 1999 原版核心玩法的基础上做了一些扩展和现代化调整：
 
-- **3D 化** — 原版是 2D 像素图形，本版用 Three.js 重写成俯视 3D（金属反光金豆、池塘水波、天气特效等）。
+- **3D 化** — 原版是 2D 像素图形，本版用 Godot 4 重写成俯视 3D（金属反光金豆、池塘水波、天气特效等）。
 - **🔴 红豆变速增强** — 原版是加速 + 每豆 +5 分；本版加速 15 秒，期间每再触发一次倍率翻倍（×2 → ×4 → ×8 …），鼓励连击堆分。
 - **🟠 橙豆圣光** — 原版是"光环照射"周围物体把它们变金豆；本版改成"激光发射"：从蛇头沿当前方向射出金色光束，命中的豆子和蜕下的皮都会变成金豆（与原版一致：所有物体都能被转化，金豆 +30 分）。
 - **🟢 绿豆生机** — 蜕下的旧皮会重新变回可吃豆子（颜色重新随机），减少老皮挡路的尴尬。
@@ -48,7 +48,7 @@
 - **🟣 紫豆寸缩** — 长度直接减半（向上取整），用来救命。
 - **🌧️ 天降豆子** — 取代原版"60s 随机删一颗豆"的设定。开局 60–120 秒后随机时点（最多每 60s 一次）从天而降 0–3 颗豆子，带溅水波纹。
 - **🐍 蜕皮机制** — 每 20 颗蜕一次皮，蜕下的皮永久留在地图上、蛇撞到会死（与原版一致）。橙豆圣光/激光可把皮转成金豆（与原版一致）；绿豆生机可随机将最多 5 段皮转回豆子（与原版一致）。
-- **🎵 音效 / 音乐** — 全部用 WebAudio 重做，Opus 压缩，移动端单独处理 iOS 静音键 bypass。
+- **🎵 音效 / 音乐** — 使用 Godot 音频系统重做，浏览器通过 Web Audio API 播放。
 - **🎮 多端输入** — 键盘 / 触屏滑动 / Xbox & PlayStation 手柄全支持，并自动检测显示对应按键提示。
 
 ## 致谢
@@ -59,31 +59,28 @@
 
 ## 本地开发
 
-源码使用 TypeScript / ES Modules，需要 Vite 来转译：
+主实现需要 Godot 4.6 或更高版本。用 Godot 导入 `godot/project.godot` 后按 **F5** 即可运行。
+
+导出浏览器版本：
+
+```sh
+mkdir -p dist
+godot --headless --path godot --export-release Web "$PWD/dist/index.html"
+```
+
+浏览器构建必须通过 HTTP 服务预览；仓库现有的 Vite preview 可直接托管：
 
 ```sh
 npm install
-npm run dev                  # 启动 Vite 开发服务器（默认 http://localhost:5173/）
-```
-
-如果只想本地预览已经构建好的产物，可以用任意静态文件服务器指向 `dist/`：
-
-```sh
-npm run build
-npm run serve:dist           # 等价于 vite preview --outDir dist
+npm run serve:dist
 ```
 
 ## 构建与测试
 
-需要 Node `^20.19.0 || ^22.13.0 || >=24`（与 `package.json` 的 `engines` 字段一致）：
-
 ```sh
-npm install                  # 装依赖
-npm run test:install         # 装 Playwright 浏览器（一次性）
-
-npm test                     # 跑 E2E 测试（源码）
-npm run build                # 编译 + 压缩到 dist/（HTML+JS+CSS 一起压，约 -48%）
-npm run test:dist            # 跑 E2E 测试（dist 产物，验证压缩没破功能）
+godot --headless --path godot --script res://tests/rules_test.gd
+godot --headless --path godot --script res://tests/gameplay_test.gd
+godot --headless --path godot --script res://tests/integration_test.gd
 ```
 
-构建产物会输出到 `dist/`，包含压缩后的 `index.html` 加运行时静态资源（`audio/`、favicon、`apple-touch-icon.png` 等）。GitHub Pages 通过 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) 自动构建并发布 `dist/`。
+之前的 TypeScript + Three.js 实现仍保留在 `src/`，其单元和 E2E 测试继续通过 npm 脚本运行。GitHub Pages、PR Preview 和 itch.io 由 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) 自动发布 Godot WebAssembly 构建。

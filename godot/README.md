@@ -1,6 +1,6 @@
-# DaiDai — Godot 4 port
+# DaiDai — Godot 4
 
-> The canonical web release remains the TypeScript + Three.js version in the repository root. This parallel Godot 4 implementation provides the same playable game through a native engine for desktop, mobile, and console export evaluation.
+> Godot 4 is the canonical implementation for browser and native releases. The earlier TypeScript + Three.js implementation remains in the repository for regression tests and reference.
 
 ## Implemented parity
 
@@ -14,7 +14,7 @@
 - All 13 web locales with the same fallback and placeholder rules
 - Original music and sound effects, with persisted mute state
 
-Gameplay constants and state-transition order match the TypeScript implementation. Visuals intentionally go beyond the web version to create a stronger native 3D underwater atmosphere rather than reproducing its pond pixel-for-pixel.
+Gameplay constants and state-transition order match the TypeScript implementation. The same Godot scenes and scripts now power WebAssembly and native exports.
 
 ## Project layout
 
@@ -33,12 +33,13 @@ godot/
 │   └── audio_manager.gd     # Music, SFX, loops, and mute state
 ├── assets/
 │   ├── i18n.json
+│   ├── fonts/*              # Bundled Noto UI font and multilingual fallbacks
 │   └── audio/*.ogg
 └── tests/
-    ├── rules_test.gd
-    ├── gameplay_test.gd
-    ├── integration_test.gd
-    └── performance_test.gd
+	├── rules_test.gd
+	├── gameplay_test.gd
+	├── integration_test.gd
+	└── performance_test.gd
 ```
 
 ## Run
@@ -54,6 +55,17 @@ Controls match the web game:
 - Gamepad: D-pad/left stick steer; A/Cross or Start pauses; B/Circle or Back restarts; X/Square mutes; Y/Triangle opens languages
 
 Debug builds also expose direct effect testing: `1`–`5` trigger the five color powers and `6` adds one growth unit. Release exports disable these shortcuts.
+
+## Browser export
+
+The `Web` preset produces a single-threaded WebAssembly build that works on GitHub Pages and itch.io without cross-origin-isolation headers:
+
+```sh
+mkdir -p dist
+godot --headless --path godot --export-release Web "$PWD/dist/index.html"
+```
+
+The preset uses the Compatibility renderer on the web, resizes the canvas to the browser viewport, supports desktop and mobile texture formats, and emits an installable offline PWA. `.github/workflows/deploy.yml` publishes this build to GitHub Pages, PR previews, and itch.io.
 
 ## Native release artifacts
 
@@ -105,8 +117,9 @@ node scripts/export_godot_i18n.mjs
 
 The web audio files use Ogg Opus. Godot's native importer requires Ogg Vorbis, so the copies in `godot/assets/audio/` are transcoded to Vorbis while retaining the original sound content and filenames.
 
+The bundled Noto Sans fonts are licensed under the SIL Open Font License 1.1; see `assets/fonts/OFL.txt`.
+
 ## Remaining distribution work
 
 - [ ] Sign the Windows executables, notarize macOS, and add mobile export presets
 - [ ] Evaluate the licensed console export path and produce an Xbox package
-- [ ] Add a Godot web export only if a second web implementation is still desired

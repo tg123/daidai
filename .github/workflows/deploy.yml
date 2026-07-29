@@ -17,25 +17,34 @@ jobs:
       (github.event_name == 'pull_request'
         && github.event.action != 'closed'
         && github.event.pull_request.head.repo.full_name == github.repository)
-    timeout-minutes: 5
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - name: Set up Godot
+        uses: chickensoft-games/setup-godot@v2
         with:
-          node-version: '20.19.0'
-          cache: 'npm'
-      - run: npm ci
-      - name: Build
-        # See ci.yml `build` step for rationale on DAIDAI_BUILD_SHA.
-        # DAIDAI_INCLUDE_CHEATS=1 on pull_request events keeps the 1-6
-        # keyboard cheat backdoor compiled in for PR-preview builds so
-        # reviewers can exercise the magic effects; production deploys
-        # from `push` to main leave it unset, dropping the cheat code.
-        env:
-          DAIDAI_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          DAIDAI_INCLUDE_CHEATS: ${{ github.event_name == 'pull_request' && '1' || '' }}
-        run: npm run build
+          version: 4.6.3
+          use-dotnet: false
+          include-templates: true
+      - name: Import Godot resources
+        run: '"$GODOT" --headless --editor --path godot --quit'
+      - name: Export Godot Web build
+        run: |
+          mkdir -p dist
+          export_mode="--export-release"
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            export_mode="--export-debug"
+          fi
+          "$GODOT" --headless --path godot "$export_mode" Web "$PWD/dist/index.html"
+          cp public/privacy.html public/PRIVACY.md public/fav.ico dist/
+          touch dist/.nojekyll
+      - name: Verify Web artifact
+        run: |
+          test -s dist/index.html
+          test -s dist/index.wasm
+          test -s dist/index.pck
+          test -s dist/privacy.html
       - uses: actions/upload-artifact@v4
         with:
           name: dist-deploy
