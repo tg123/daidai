@@ -81,6 +81,10 @@ func _run() -> void:
 		not AudioServer.is_bus_mute(AudioServer.get_bus_index("Master")),
 		"focus return restores the audio bus",
 	)
+	game.set_paused(false)
+	game._set_application_focus(false)
+	_check(game.paused, "focus loss pauses active gameplay")
+	game._set_application_focus(true)
 	_check(
 		game.hud.instructions.autowrap_mode == TextServer.AUTOWRAP_WORD_SMART,
 		"paused combo hints wrap instead of clipping",

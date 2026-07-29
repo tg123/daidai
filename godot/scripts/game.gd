@@ -64,6 +64,11 @@ var resize_generation := 0
 var projectile_accumulator := 0.0
 var gaze_accumulator := 0.0
 var viewport_pixel_scale := 1.0
+var web_blur_callback
+var web_focus_callback
+var web_visibility_callback
+var web_window
+var web_document
 
 const KONAMI: Array[String] = [
 	"arrowup", "arrowup", "arrowdown", "arrowdown",
@@ -88,6 +93,7 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	rng.randomize()
+	_install_web_focus_handlers()
 	if OS.has_feature("web"):
 		($MainLight as DirectionalLight3D).shadow_enabled = false
 	viewport_baseline = get_viewport().get_visible_rect().size
@@ -99,6 +105,45 @@ func _ready() -> void:
 	hud.bind_game(self)
 	reset_game(false)
 	next_sky_drop_ms = Time.get_ticks_msec() + rng.randf_range(60000.0, 120000.0)
+
+
+func _exit_tree() -> void:
+	if web_blur_callback == null:
+		return
+	web_window.removeEventListener("blur", web_blur_callback)
+	web_window.removeEventListener("focus", web_focus_callback)
+	web_document.removeEventListener("visibilitychange", web_visibility_callback)
+	web_blur_callback = null
+	web_focus_callback = null
+	web_visibility_callback = null
+	web_window = null
+	web_document = null
+
+
+func _install_web_focus_handlers() -> void:
+	if not OS.has_feature("web"):
+		return
+	web_window = JavaScriptBridge.get_interface("window")
+	web_document = JavaScriptBridge.get_interface("document")
+	web_blur_callback = JavaScriptBridge.create_callback(_on_web_blur)
+	web_focus_callback = JavaScriptBridge.create_callback(_on_web_focus)
+	web_visibility_callback = JavaScriptBridge.create_callback(_on_web_visibility_changed)
+	web_window.addEventListener("blur", web_blur_callback)
+	web_window.addEventListener("focus", web_focus_callback)
+	web_document.addEventListener("visibilitychange", web_visibility_callback)
+
+
+func _on_web_blur(_args: Array) -> void:
+	_set_application_focus(false)
+
+
+func _on_web_focus(_args: Array) -> void:
+	if not bool(web_document.hidden):
+		_set_application_focus(true)
+
+
+func _on_web_visibility_changed(_args: Array) -> void:
+	_set_application_focus(not bool(web_document.hidden))
 
 
 func reset_game(run_immediately: bool = false) -> void:
@@ -852,11 +897,15 @@ func _save_hi_score() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
-		audio.set_application_active(false)
-		if not paused and not game_over:
-			set_paused(true)
+		_set_application_focus(false)
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
-		audio.set_application_active(true)
+		_set_application_focus(true)
+
+
+func _set_application_focus(active: bool) -> void:
+	audio.set_application_active(active)
+	if not active and not paused and not game_over:
+		set_paused(true)
 
 
 func _on_viewport_size_changed() -> void:
