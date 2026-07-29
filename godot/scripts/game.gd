@@ -703,7 +703,10 @@ func _spawn_falling_bean(cell: Vector2i, color_index: int) -> void:
 
 
 func _spawn_delayed_falling_bean(delay: float) -> void:
+	var generation := resize_generation
 	await get_tree().create_timer(delay).timeout
+	if generation != resize_generation:
+		return
 	var cell := Vector2i(rng.randi_range(0, cols - 1), rng.randi_range(0, rows - 1))
 	_spawn_falling_bean(cell, rng.randi_range(0, DaiDaiRules.COLORS.size() - 1))
 
@@ -736,7 +739,10 @@ func _update_sky_drop() -> void:
 
 
 func _spawn_delayed_specific_bean(cell: Vector2i, color_index: int, delay: float) -> void:
+	var generation := resize_generation
 	await get_tree().create_timer(delay).timeout
+	if generation != resize_generation:
+		return
 	_spawn_falling_bean(cell, color_index)
 
 

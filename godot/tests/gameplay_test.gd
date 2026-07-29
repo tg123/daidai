@@ -36,6 +36,14 @@ func _run() -> void:
 		game.resize_generation == resize_generation_before_reset + 1,
 		"manual reset invalidates pending resize callbacks",
 	)
+	game._spawn_delayed_falling_bean(0.01)
+	game._spawn_delayed_specific_bean(Vector2i(1, 1), 0, 0.01)
+	game.reset_game(false)
+	await create_timer(0.03).timeout
+	_check(
+		game.effects.falling_beans.is_empty(),
+		"reset cancels delayed meteor and sky-drop beans",
+	)
 	_check(snake.cells.size() == DaiDaiRules.START_LENGTH, "snake starts at length five")
 	_check(spawner.beans.size() == spawner.target_count, "adaptive bean density is populated")
 	for bean in spawner.beans:
