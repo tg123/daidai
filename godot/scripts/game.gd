@@ -63,6 +63,7 @@ var viewport_baseline := Vector2.ZERO
 var resize_generation := 0
 var projectile_accumulator := 0.0
 var gaze_accumulator := 0.0
+var viewport_pixel_scale := 1.0
 
 const KONAMI: Array[String] = [
 	"arrowup", "arrowup", "arrowdown", "arrowdown",
@@ -77,7 +78,10 @@ const HEART: Array[String] = [
 
 
 func _enter_tree() -> void:
-	if OS.has_feature("mobile"):
+	if OS.has_feature("web"):
+		var ratio = JavaScriptBridge.eval("window.devicePixelRatio || 1", true)
+		viewport_pixel_scale = clampf(float(ratio), 1.0, 4.0)
+	elif OS.has_feature("mobile"):
 		var dpi := maxf(MOBILE_BASE_DPI, DisplayServer.screen_get_dpi())
 		get_window().content_scale_factor = clampf(dpi / MOBILE_BASE_DPI, 1.0, MAX_MOBILE_SCALE)
 
@@ -672,11 +676,16 @@ func _fit_camera() -> void:
 
 
 func _reserved_top(size: Vector2) -> float:
-	return MOBILE_RESERVED_TOP if _is_mobile_view(size) else DESKTOP_RESERVED_TOP
+	var base := MOBILE_RESERVED_TOP if _is_mobile_view(size) else DESKTOP_RESERVED_TOP
+	return base * viewport_pixel_scale
 
 
 func _is_mobile_view(size: Vector2) -> bool:
-	return OS.has_feature("mobile") or DisplayServer.is_touchscreen_available() or size.x <= MOBILE_WIDTH
+	return (
+		OS.has_feature("mobile")
+		or DisplayServer.is_touchscreen_available()
+		or size.x <= MOBILE_WIDTH * viewport_pixel_scale
+	)
 
 
 func _is_occupied(cell: Vector2i) -> bool:
@@ -847,8 +856,8 @@ func _notification(what: int) -> void:
 func _on_viewport_size_changed() -> void:
 	var current := get_viewport().get_visible_rect().size
 	if (
-		absf(current.x - viewport_baseline.x) < 80.0
-		and absf(current.y - viewport_baseline.y) < 80.0
+		absf(current.x - viewport_baseline.x) < 80.0 * viewport_pixel_scale
+		and absf(current.y - viewport_baseline.y) < 80.0 * viewport_pixel_scale
 	):
 		_fit_camera()
 		return
