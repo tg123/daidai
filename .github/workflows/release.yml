@@ -1,22 +1,14 @@
 name: Release
 
-# Two-phase, manual-gate release flow (mirrors github.com/tg123/bbb):
-#
-#   1. push to main  →  `draft` job creates/refreshes a *draft* release at
-#      the next patch version, using auto-generated release notes. The draft
-#      is never auto-published; you click "Publish release" in the GitHub UI
-#      when you're ready.
-#   2. on release published  →  `build` job runs `tauri build` on a
-#      win/mac matrix and uploads ONLY the raw, no-installer executables:
-#        - Windows:  DaiDai-windows-x64.exe   (single .exe, no MSI/NSIS)
-#        - macOS:    DaiDai-macos-universal.zip (zipped .app, no DMG)
-#      Linux is intentionally not built.
+# Two-phase release flow:
+#   1. Pushes to main refresh the next patch release as a draft.
+#   2. Publishing the draft exports native Godot builds and attaches them.
 
 on:
   push:
     branches: [main]
   release:
-    types: [published, released]
+    types: [published]
 
 permissions:
   contents: write
@@ -26,22 +18,21 @@ jobs:
     if: github.event_name != 'release'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
       - name: Compute next semver
         id: repo-semver
         uses: lhstrh/action-repo-semver@v1.2.1
         with:
           bump: patch
+
       - name: Refresh draft release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="v${{ steps.repo-semver.outputs.bump }}"
-          # Delete any existing draft at this tag so we can re-create with fresh notes.
-          # `gh release list | grep` exits non-zero on no-match (common on first run);
-          # use `--json` + `jq` instead so the step doesn't fail before `release create`.
           existing=$(gh release list --json tagName,isDraft \
             --jq ".[] | select(.isDraft and .tagName==\"$tag\") | .tagName")
           if [ -n "$existing" ]; then
@@ -51,91 +42,179 @@ jobs:
 
   build:
     if: github.event_name == 'release'
+    name: Godot ${{ matrix.label }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-latest
-            target: universal-apple-darwin
-            arch: universal
-          - platform: windows-latest
-            target: x86_64-pc-windows-msvc
-            arch: x64
-          - platform: windows-latest
-            target: aarch64-pc-windows-msvc
-            arch: arm64
+          - label: Windows x64
+            platform: windows-latest
+            preset: Windows Desktop
+            artifact: DaiDai-windows-x64.exe
+          - label: Windows ARM64
+            platform: windows-latest
+            preset: Windows arm64
+            artifact: DaiDai-windows-arm64.exe
+          - label: macOS ARM64
+            platform: macos-latest
+            preset: macOS Universal
+            artifact: DaiDai-macos-arm64.zip
     runs-on: ${{ matrix.platform }}
-    timeout-minutes: 60
+    timeout-minutes: 30
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - name: Set up Godot
+        uses: chickensoft-games/setup-godot@v2
         with:
-          node-version: '20.19.0'
-          cache: 'npm'
+          version: 4.6.3
+          use-dotnet: false
+          include-templates: true
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.target }}
+      - name: Import Godot resources
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath $env:GODOT `
+            -ArgumentList @("--headless", "--editor", "--path", "godot", "--quit") `
+            -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Godot resource import failed with exit code $($process.ExitCode)."
+          }
 
-      - name: Cache cargo registry + build
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri -> target
+      - name: Import Godot resources
+        if: runner.os == 'macOS'
+        shell: bash
+        run: '"$GODOT" --headless --editor --path godot --quit'
 
-      - name: Install npm deps
-        run: npm ci
+      - name: Export Windows release
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $output = Join-Path $PWD "${{ matrix.artifact }}"
+          $startInfo = [Diagnostics.ProcessStartInfo]::new()
+          $startInfo.FileName = $env:GODOT
+          $startInfo.UseShellExecute = $false
+          foreach ($argument in @("--headless", "--path", "godot", "--export-release", "${{ matrix.preset }}", $output)) {
+            [void] $startInfo.ArgumentList.Add($argument)
+          }
+          $process = [Diagnostics.Process]::Start($startInfo)
+          $process.WaitForExit()
+          if ($process.ExitCode -ne 0) {
+            throw "Godot export failed with exit code $($process.ExitCode)."
+          }
 
-      # macOS: build a universal .app (no DMG installer). The .app is a
-      # bundle directory; zip it so users get a single download that
-      # extracts to a drag-to-Applications artifact.
-      - name: Build macOS .app
-        if: matrix.platform == 'macos-latest'
-        env:
-          DAIDAI_BUILD_SHA: ${{ github.sha }}
-        run: npm run tauri -- build --target ${{ matrix.target }} --bundles app
+      - name: Export macOS release
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          source_zip="$RUNNER_TEMP/DaiDai-macos-universal.zip"
+          "$GODOT" --headless --path godot --export-release "${{ matrix.preset }}" "$source_zip"
+          bash scripts/thin_macos_arm64.sh "$source_zip" "$PWD/${{ matrix.artifact }}"
 
-      - name: Zip and upload macOS .app
-        if: matrix.platform == 'macos-latest'
+      - name: Verify release artifact
+        shell: pwsh
+        run: |
+          $artifact = Get-Item "${{ matrix.artifact }}"
+          if ($artifact.Length -lt 1MB) {
+            throw "Exported artifact is unexpectedly small."
+          }
+          Write-Host "${{ matrix.artifact }}: $($artifact.Length) bytes"
+
+      - name: Upload release artifact
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name }}" "${{ matrix.artifact }}" --clobber
+
+  android:
+    if: github.event_name == 'release'
+    name: Godot Android ARM64
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
         run: |
-          cd "src-tauri/target/${{ matrix.target }}/release/bundle/macos"
-          # productName in src-tauri/tauri.conf.json -> DaiDai.app
-          app="DaiDai.app"
-          if [ ! -d "$app" ]; then
-            echo "::error::Expected $app in $(pwd); got: $(ls)"
+          sdkmanager --install \
+            "platform-tools" \
+            "build-tools;35.0.1" \
+            "platforms;android-35" \
+            "cmdline-tools;latest" \
+            "cmake;3.10.2.4988404" \
+            "ndk;28.1.13356709"
+
+      - name: Set up Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.6.3
+          use-dotnet: false
+          include-templates: true
+
+      - name: Restore Android release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [[ -z "$ANDROID_KEYSTORE_BASE64" || -z "$ANDROID_KEYSTORE_ALIAS" || -z "$ANDROID_KEYSTORE_PASSWORD" ]]; then
+            echo "::error::Configure ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_ALIAS, and ANDROID_KEYSTORE_PASSWORD secrets."
             exit 1
           fi
-          out="DaiDai-macos-${{ matrix.arch }}.zip"
-          # ditto preserves macOS metadata (resource forks, code signatures)
-          # that plain `zip` would strip, so the extracted .app launches
-          # cleanly without "is damaged" Gatekeeper errors.
-          ditto -c -k --sequesterRsrc --keepParent "$app" "$out"
-          gh release upload "${{ github.event.release.tag_name }}" "$out" --clobber
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/android-release.keystore"
 
-      # Windows: build the raw .exe only (--bundles none skips NSIS/MSI).
-      # The resulting executable depends only on the system-provided
-      # WebView2 runtime (preinstalled on Windows 11 and on Windows 10
-      # via Edge updates), so it ships as a true single-file download.
-      # We build x64 + arm64 in separate matrix jobs so Surface / Copilot+
-      # PC users get a native binary instead of x64-on-arm emulation.
-      - name: Build Windows .exe
-        if: matrix.platform == 'windows-latest'
+      - name: Configure Godot Android SDK
+        run: |
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.6.tres" <<EOF
+          [gd_resource format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          EOF
+
+      - name: Set Android release version
+        run: |
+          version_name="${GITHUB_REF_NAME#v}"
+          sed -i "s|^version/code=.*|version/code=$GITHUB_RUN_NUMBER|" godot/export_presets.cfg
+          sed -i "s|^version/name=.*|version/name=\"$version_name\"|" godot/export_presets.cfg
+
+      - name: Import Godot resources
+        run: '"$GODOT" --headless --editor --path godot --quit'
+
+      - name: Export signed Android APK and AAB
         env:
-          DAIDAI_BUILD_SHA: ${{ github.sha }}
-        run: npm run tauri -- build --target ${{ matrix.target }} --bundles none
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ runner.temp }}/android-release.keystore
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          "$GODOT" --headless --path godot --export-release "Android APK" "$PWD/DaiDai-android-arm64.apk"
+          "$GODOT" --headless --path godot --install-android-build-template --export-release "Android AAB" "$PWD/DaiDai-android-arm64.aab"
 
-      - name: Upload Windows .exe
-        if: matrix.platform == 'windows-latest'
-        shell: pwsh
+      - name: Verify Android artifacts
+        run: |
+          test -s DaiDai-android-arm64.apk
+          test -s DaiDai-android-arm64.aab
+          unzip -l DaiDai-android-arm64.apk | grep -q 'lib/arm64-v8a/'
+          unzip -l DaiDai-android-arm64.aab | grep -q 'base/lib/arm64-v8a/'
+
+      - name: Upload Android release artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # mainBinaryName in src-tauri/tauri.conf.json -> daidai.exe
-          $src = "src-tauri\target\${{ matrix.target }}\release\daidai.exe"
-          if (-not (Test-Path $src)) { throw "Expected $src to exist after tauri build" }
-          $out = "DaiDai-windows-${{ matrix.arch }}.exe"
-          Copy-Item $src $out
-          gh release upload "${{ github.event.release.tag_name }}" $out --clobber
+          gh release upload "${{ github.event.release.tag_name }}" \
+            DaiDai-android-arm64.apk \
+            DaiDai-android-arm64.aab \
+            --clobber

@@ -1,0 +1,21 @@
+# Godot 4 generated cache, builds, and editor state.
+# See https://docs.godotengine.org/en/stable/tutorials/best_practices/version_control_systems.html
+.godot/
+.import/
+android/
+*.import
+export.cfg
+
+# Build outputs
+build/
+exports/
+*.zip
+*.pck
+*.exe
+*.x86_64
+*.dmg
+*.app/
+
+# OS noise
+.DS_Store
+Thumbs.db

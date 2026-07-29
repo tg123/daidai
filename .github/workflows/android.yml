@@ -1,23 +1,28 @@
-name: android
+name: Android
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'godot/**'
+      - '.github/workflows/android.yml'
   pull_request:
-    types: [opened, reopened, synchronize]
+    paths:
+      - 'godot/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    name: build Android APK
-    timeout-minutes: 45
+    name: Godot Android ARM64 APK + AAB
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    timeout-minutes: 30
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20.19.0'
-          cache: 'npm'
+    steps:
+      - uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -28,46 +33,71 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android NDK
-        id: ndk
-        uses: nttld/setup-ndk@v1
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager --install \
+            "platform-tools" \
+            "build-tools;35.0.1" \
+            "platforms;android-35" \
+            "cmdline-tools;latest" \
+            "cmake;3.10.2.4988404" \
+            "ndk;28.1.13356709"
+
+      - name: Set up Godot
+        uses: chickensoft-games/setup-godot@v2
         with:
-          ndk-version: r27c
-          local-cache: true
+          version: 4.6.3
+          use-dotnet: false
+          include-templates: true
 
-      - name: Install Rust toolchain (Android target)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-linux-android
+      - name: Configure Godot Android SDK
+        run: |
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.6.tres" <<EOF
+          [gd_resource format=3]
 
-      - name: Cache cargo registry + build
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri -> target
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          EOF
+          keytool -genkeypair -noprompt \
+            -keystore "$RUNNER_TEMP/android-debug.keystore" \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US" \
+            -keyalg RSA \
+            -validity 10000
 
-      - name: Install npm deps
-        run: npm ci
+      - name: Import Godot resources
+        run: '"$GODOT" --headless --editor --path godot --quit'
 
-      # src-tauri/gen/android is gitignored (it's generated, and holds the
-      # signing config locally), so regenerate the Gradle project in CI.
-      - name: Initialize Android project
+      - name: Export debug APK and AAB
         env:
-          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
-        run: npm run tauri -- android init
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ runner.temp }}/android-debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
+        run: |
+          "$GODOT" --headless --path godot --export-debug "Android APK" "$PWD/DaiDai-android-arm64-debug.apk"
+          "$GODOT" --headless --path godot --install-android-build-template --export-debug "Android AAB" "$PWD/DaiDai-android-arm64-debug.aab"
 
-      # Debug build validates the full Rust + Gradle Android compile without
-      # needing the release keystore (which is never present in CI). Gradle
-      # auto-signs debug APKs with the generated debug key. Restrict to the
-      # primary arm64-v8a ABI to keep CI fast.
-      - name: Build debug APK (arm64-v8a)
-        env:
-          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
-          DAIDAI_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: npm run tauri -- android build --debug --apk --target aarch64
+      - name: Verify Android artifacts
+        run: |
+          test -s DaiDai-android-arm64-debug.apk
+          test -s DaiDai-android-arm64-debug.aab
+          unzip -l DaiDai-android-arm64-debug.apk | grep -q 'lib/arm64-v8a/'
+          unzip -l DaiDai-android-arm64-debug.aab | grep -q 'base/lib/arm64-v8a/'
+          if unzip -l DaiDai-android-arm64-debug.apk | grep -Eq 'lib/(armeabi-v7a|x86|x86_64)/'; then
+            echo "::error::APK contains an unexpected non-ARM64 ABI."
+            exit 1
+          fi
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
         with:
-          name: android-apk-debug
-          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          name: DaiDai-Android-ARM64-debug
+          path: |
+            DaiDai-android-arm64-debug.apk
+            DaiDai-android-arm64-debug.aab
           retention-days: 7
           if-no-files-found: error
