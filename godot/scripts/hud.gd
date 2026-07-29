@@ -263,6 +263,7 @@ func _build_hud() -> void:
 	github_button.expand_icon = true
 	github_button.flat = true
 	github_button.focus_mode = Control.FOCUS_NONE
+	github_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	github_button.position = Vector2(7.0, 5.0)
 	github_button.size = Vector2(32.0, 32.0)
 	github_button.tooltip_text = "GitHub"

@@ -100,6 +100,10 @@ func _run() -> void:
 		"language button cannot retain keyboard focus",
 	)
 	_check(game.hud.github_button != null, "HUD keeps the GitHub repository link")
+	_check(
+		game.hud.github_button.mouse_default_cursor_shape == Control.CURSOR_POINTING_HAND,
+		"GitHub link uses the browser-style pointing cursor",
+	)
 	var desktop_playing_controls := game.hud._utility_visibility(false, false, false)
 	_check(
 		not desktop_playing_controls["pause"]
