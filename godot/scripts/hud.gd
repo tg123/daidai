@@ -53,6 +53,7 @@ var effect_generation := 0
 func _ready() -> void:
 	i18n = DaiDaiI18n.new()
 	i18n.initialize()
+	get_window().title = i18n.t("title")
 	ui_root = Control.new()
 	ui_root.name = "ResponsiveRoot"
 	ui_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -81,7 +82,7 @@ func translate(key: String, params: Dictionary = {}) -> String:
 
 func set_locale(locale: String) -> void:
 	i18n.set_locale(locale)
-	DisplayServer.window_set_title(i18n.t("title"))
+	get_window().title = i18n.t("title")
 	_refresh_static_text()
 	_rebuild_language_menu()
 

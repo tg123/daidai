@@ -28,6 +28,7 @@ jobs:
           "$GODOT" --headless --path godot --script res://tests/rules_test.gd
           "$GODOT" --headless --path godot --script res://tests/gameplay_test.gd
           "$GODOT" --headless --path godot --script res://tests/integration_test.gd
+          "$GODOT" --headless --path godot --script res://tests/regression_test.gd
           "$GODOT" --headless --path godot --script res://tests/performance_test.gd
       - name: Run scene smoke test
         run: '"$GODOT" --headless --path godot --quit-after 120'

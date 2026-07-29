@@ -69,6 +69,7 @@ var web_focus_callback
 var web_visibility_callback
 var web_window
 var web_document
+var web_e2e_enabled := false
 
 const KONAMI: Array[String] = [
 	"arrowup", "arrowup", "arrowdown", "arrowdown",
@@ -95,6 +96,15 @@ func _ready() -> void:
 	rng.randomize()
 	_install_web_focus_handlers()
 	if OS.has_feature("web"):
+		web_e2e_enabled = (
+			OS.has_feature("preview")
+			and bool(
+				JavaScriptBridge.eval(
+					"new URLSearchParams(location.search).get('e2e') === '1'",
+					true,
+				)
+			)
+		)
 		var reduced_quality := DaiDaiWebQuality.use_reduced_quality()
 		print("DaiDai Web quality profile: %s" % ("reduced" if reduced_quality else "desktop"))
 		($MainLight as DirectionalLight3D).shadow_enabled = not reduced_quality
@@ -881,6 +891,30 @@ func _refresh_ui() -> void:
 			"game_over": game_over,
 			"muted": audio.is_muted(),
 		},
+	)
+	_sync_web_e2e_state()
+
+
+func _sync_web_e2e_state() -> void:
+	if not web_e2e_enabled:
+		return
+	var state := {
+		"paused": paused,
+		"game_over": game_over,
+		"has_started": has_started,
+		"elapsed_seconds": elapsed_seconds,
+		"score": score,
+		"title": get_window().title,
+		"quality": "reduced" if DaiDaiWebQuality.use_reduced_quality() else "desktop",
+		"pause_visible": hud.pause_button.visible,
+		"mute_visible": hud.mute_button.visible,
+		"language_visible": hud.language_button.visible,
+		"message": hud.message_label.text,
+	}
+	var serialized := JSON.stringify(state)
+	JavaScriptBridge.eval(
+		"document.documentElement.dataset.daidaiState = %s" % JSON.stringify(serialized),
+		true,
 	)
 
 

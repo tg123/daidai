@@ -73,6 +73,16 @@ jobs:
             throw "Godot integration tests failed with exit code $($process.ExitCode)."
           }
 
+      - name: Run migrated E2E regressions
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath $env:GODOT `
+            -ArgumentList @("--headless", "--path", "godot", "--script", "res://tests/regression_test.gd") `
+            -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Godot migrated E2E regressions failed with exit code $($process.ExitCode)."
+          }
+
       - name: Run performance tests
         shell: pwsh
         run: |
@@ -117,7 +127,10 @@ jobs:
             "godot/exports/web/index.html",
             "godot/exports/web/index.js",
             "godot/exports/web/index.wasm",
-            "godot/exports/web/index.pck"
+            "godot/exports/web/index.pck",
+            "godot/exports/web/index.manifest.json",
+            "godot/exports/web/index.icon.png",
+            "godot/exports/web/index.apple-touch-icon.png"
           )) {
             $artifact = Get-Item $path
             if ($artifact.Length -eq 0) {

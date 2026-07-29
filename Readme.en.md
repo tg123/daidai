@@ -80,6 +80,7 @@ python -m http.server 8080 --directory dist
 godot --headless --path godot --script res://tests/rules_test.gd
 godot --headless --path godot --script res://tests/gameplay_test.gd
 godot --headless --path godot --script res://tests/integration_test.gd
+godot --headless --path godot --script res://tests/regression_test.gd
 godot --headless --path godot --script res://tests/performance_test.gd
 godot --headless --path godot --quit-after 120
 ```
