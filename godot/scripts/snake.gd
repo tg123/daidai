@@ -28,6 +28,8 @@ var toss_bean: MeshInstance3D
 var smile_node: MeshInstance3D
 var open_mouth_node: MeshInstance3D
 var tongue_node: MeshInstance3D
+var head_wrap_mirrors: Array[Node3D] = []
+var body_wrap_mirrors: Array[Array] = []
 var blink_time := 2.5
 var blink_phase := 0.0
 var eat_time := 0.0
@@ -42,6 +44,11 @@ func _ready() -> void:
 	head_node = _build_head()
 	head_node.name = "Head"
 	add_child(head_node)
+	for _i in range(3):
+		var mirror := head_node.duplicate() as Node3D
+		mirror.visible = false
+		add_child(mirror)
+		head_wrap_mirrors.append(mirror)
 
 
 func reset(new_cols: int, new_rows: int) -> void:
@@ -58,6 +65,10 @@ func reset(new_cols: int, new_rows: int) -> void:
 	chew_time = 0.0
 	for child in body_node.get_children():
 		child.free()
+	for mirrors in body_wrap_mirrors:
+		for mirror in mirrors:
+			mirror.free()
+	body_wrap_mirrors.clear()
 
 	var start := Vector2i(cols / 2, rows / 2)
 	for i in range(DaiDaiRules.START_LENGTH):
@@ -75,6 +86,8 @@ func sync_visuals() -> void:
 		_create_body_segment()
 	while body_node.get_child_count() > cells.size() - 1:
 		body_node.get_child(body_node.get_child_count() - 1).free()
+		for mirror in body_wrap_mirrors.pop_back():
+			mirror.free()
 
 	_orient_head()
 	_update_materials()
@@ -109,10 +122,12 @@ func interpolate_visuals(alpha: float) -> void:
 		if i == 0:
 			head_node.position.x = position.x
 			head_node.position.z = position.z
+			_sync_head_wrap_mirrors()
 		else:
-			var segment := body_node.get_child(i - 1) as Node3D
+			var segment := body_node.get_child(i - 1) as MeshInstance3D
 			segment.position.x = position.x
 			segment.position.z = position.z
+			_sync_wrap_mirrors(segment, body_wrap_mirrors[i - 1], BODY_RADIUS)
 
 
 func _update_materials() -> void:
@@ -293,14 +308,21 @@ func _build_head() -> Node3D:
 		dead_eye_nodes.append(dead_x)
 
 	smile_node = MeshInstance3D.new()
-	var smile_mesh := BoxMesh.new()
-	smile_mesh.size = Vector3(0.24, 0.035, 0.035)
+	smile_node.name = "Mouth"
+	var smile_mesh := CylinderMesh.new()
+	smile_mesh.top_radius = 0.105
+	smile_mesh.bottom_radius = 0.105
+	smile_mesh.height = 0.025
+	smile_mesh.radial_segments = 16
 	smile_node.mesh = smile_mesh
 	smile_node.material_override = _material(Color(0.23, 0.1, 0.06), 0.6)
-	smile_node.position = Vector3(0.0, 0.33, 0.54)
+	smile_node.rotation.x = PI / 2.0
+	smile_node.position = Vector3(0.0, 0.24, 0.51)
+	smile_node.scale = Vector3(1.15, 1.0, 0.7)
 	head.add_child(smile_node)
 
 	open_mouth_node = MeshInstance3D.new()
+	open_mouth_node.name = "OpenMouth"
 	var mouth_mesh := CylinderMesh.new()
 	mouth_mesh.top_radius = 0.12
 	mouth_mesh.bottom_radius = 0.12
@@ -314,6 +336,7 @@ func _build_head() -> Node3D:
 	head.add_child(open_mouth_node)
 
 	tongue_node = MeshInstance3D.new()
+	tongue_node.name = "Tongue"
 	var tongue_mesh := CylinderMesh.new()
 	tongue_mesh.top_radius = 0.07
 	tongue_mesh.bottom_radius = 0.07
@@ -360,6 +383,13 @@ func _create_body_segment() -> void:
 	mesh.rings = 12
 	segment.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	body_node.add_child(segment)
+	var mirrors: Array[MeshInstance3D] = []
+	for _i in range(3):
+		var mirror := segment.duplicate() as MeshInstance3D
+		mirror.visible = false
+		add_child(mirror)
+		mirrors.append(mirror)
+	body_wrap_mirrors.append(mirrors)
 
 
 func _sphere_mesh(radius: float, material: Material) -> MeshInstance3D:
@@ -384,6 +414,62 @@ func _material(color: Color, roughness: float) -> StandardMaterial3D:
 
 func _orient_head() -> void:
 	head_node.rotation.y = atan2(direction.x, direction.y)
+
+
+func _sync_head_wrap_mirrors() -> void:
+	var offsets := _wrap_offsets(head_node.position, HEAD_RADIUS)
+	for i in range(head_wrap_mirrors.size()):
+		var mirror := head_wrap_mirrors[i]
+		if i >= offsets.size():
+			mirror.visible = false
+			continue
+		_copy_visual_state(head_node, mirror)
+		mirror.position = head_node.position + offsets[i]
+		mirror.visible = true
+
+
+func _sync_wrap_mirrors(source: MeshInstance3D, mirrors: Array, radius: float) -> void:
+	var offsets := _wrap_offsets(source.position, radius)
+	for i in range(mirrors.size()):
+		var mirror := mirrors[i] as MeshInstance3D
+		if i >= offsets.size():
+			mirror.visible = false
+			continue
+		mirror.transform = source.transform
+		mirror.position = source.position + offsets[i]
+		mirror.visible = true
+
+
+func _wrap_offsets(position: Vector3, radius: float) -> Array[Vector3]:
+	var offsets: Array[Vector3] = []
+	var x_offset := 0.0
+	var z_offset := 0.0
+	if position.x < radius:
+		x_offset = cols
+	elif position.x > cols - 1.0 - radius:
+		x_offset = -cols
+	if position.z < radius:
+		z_offset = rows
+	elif position.z > rows - 1.0 - radius:
+		z_offset = -rows
+	if x_offset != 0.0:
+		offsets.append(Vector3(x_offset, 0.0, 0.0))
+	if z_offset != 0.0:
+		offsets.append(Vector3(0.0, 0.0, z_offset))
+	if x_offset != 0.0 and z_offset != 0.0:
+		offsets.append(Vector3(x_offset, 0.0, z_offset))
+	return offsets
+
+
+func _copy_visual_state(source: Node3D, target: Node3D) -> void:
+	target.transform = source.transform
+	var child_count := mini(source.get_child_count(), target.get_child_count())
+	for i in range(child_count):
+		var source_child := source.get_child(i)
+		var target_child := target.get_child(i)
+		target_child.visible = source_child.visible
+		if source_child is Node3D and target_child is Node3D:
+			_copy_visual_state(source_child as Node3D, target_child as Node3D)
 
 
 func _set_dead_eyes(value: bool) -> void:

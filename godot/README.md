@@ -33,7 +33,7 @@ godot/
 │   └── audio_manager.gd     # Music, SFX, loops, and mute state
 ├── assets/
 │   ├── i18n.json
-│   ├── fonts/*              # Bundled Noto UI font and multilingual fallbacks
+│   ├── fonts/*              # Fusion Pixel UI, Noto fallbacks, and color emoji
 │   └── audio/*.ogg
 └── tests/
 	├── rules_test.gd
@@ -117,7 +117,7 @@ node scripts/export_godot_i18n.mjs
 
 The web audio files use Ogg Opus. Godot's native importer requires Ogg Vorbis, so the copies in `godot/assets/audio/` are transcoded to Vorbis while retaining the original sound content and filenames.
 
-The bundled Noto Sans fonts are licensed under the SIL Open Font License 1.1; see `assets/fonts/OFL.txt`.
+The bundled Fusion Pixel and Noto fonts are licensed under the SIL Open Font License 1.1. Their source license notices are retained in `assets/fonts/*-OFL.txt`.
 
 ## Remaining distribution work
 

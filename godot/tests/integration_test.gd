@@ -29,10 +29,18 @@ func _run() -> void:
 
 	var ui_font := load("res://assets/fonts/ui_font.tres") as Font
 	_check(ui_font != null, "bundled UI font loads")
+	var emoji_font := load("res://assets/fonts/NotoColorEmoji.ttf") as FontFile
+	_check(emoji_font != null, "bundled color emoji font loads")
+	if emoji_font != null:
+		_check(
+			not emoji_font.disable_embedded_bitmaps,
+			"color emoji keeps its embedded bitmap glyphs",
+		)
 	if ui_font != null:
 		for glyph in [
 			"A", "é", "中", "繁", "あ", "한", "Я", "ไ", "←", "⏱", "↔", "●",
-			"↑", "♪", "文", "␣", "★", "✦", "☂", "✿", "♥", "∞",
+			"↑", "♪", "文", "␣", "★", "✦", "☂", "✿", "♥", "∞", "🌐", "🔴",
+			"📏", "🔥", "🧪", "🏆", "🇨",
 		]:
 			_check(ui_font.has_char(glyph.unicode_at(0)), "UI font covers %s" % glyph)
 
@@ -63,6 +71,16 @@ func _run() -> void:
 	_check(game.hud.score_label != null, "HUD creates score label")
 	_check(game.hud.language_list.get_child_count() == 13, "HUD lists every locale")
 	_check(audio.is_muted(), "tests mute audio through its public API")
+	audio.set_application_active(false)
+	_check(
+		AudioServer.is_bus_mute(AudioServer.get_bus_index("Master")),
+		"focus loss mutes every active sound",
+	)
+	audio.set_application_active(true)
+	_check(
+		not AudioServer.is_bus_mute(AudioServer.get_bus_index("Master")),
+		"focus return restores the audio bus",
+	)
 	_check(
 		game.hud.instructions.autowrap_mode == TextServer.AUTOWRAP_WORD_SMART,
 		"paused combo hints wrap instead of clipping",
@@ -81,6 +99,7 @@ func _run() -> void:
 		game.hud.language_button.focus_mode == Control.FOCUS_NONE,
 		"language button cannot retain keyboard focus",
 	)
+	_check(game.hud.github_button != null, "HUD keeps the GitHub repository link")
 	_check(
 		game.hud.restart_button.focus_mode == Control.FOCUS_NONE,
 		"restart button cannot retain keyboard focus",
@@ -97,7 +116,7 @@ func _run() -> void:
 		"gamepad hint uses a layout-independent badge",
 	)
 	_check(
-		game.hud.pause_button.text == ">",
+		game.hud.pause_button.text.is_empty() and game.hud.pause_button.icon != null,
 		"gamepad hint does not stretch utility button text",
 	)
 	var space_press := InputEventKey.new()
@@ -142,6 +161,39 @@ func _run() -> void:
 		game.effects.bubbles.size() == DaiDaiEffects.BUBBLE_COUNT,
 		"underwater bubbles are generated",
 	)
+	var bean_a := game.bean_spawner._create_bean(0)
+	var bean_b := game.bean_spawner._create_bean(0)
+	_check(bean_a.mesh == bean_b.mesh, "beans reuse their mesh")
+	_check(
+		bean_a.material_override == bean_b.material_override,
+		"same-color beans reuse their material",
+	)
+	_check(
+		(bean_a.get_child(0) as Sprite3D).texture == (bean_b.get_child(0) as Sprite3D).texture,
+		"same-color beans reuse their halo texture",
+	)
+	bean_a.free()
+	bean_b.free()
+	var projectile_a := game.effects.create_projectile(Vector3.ZERO)
+	var projectile_b := game.effects.create_projectile(Vector3.ONE)
+	var projectile_mesh_a := projectile_a.get_child(0) as MeshInstance3D
+	var projectile_mesh_b := projectile_b.get_child(0) as MeshInstance3D
+	_check(
+		projectile_mesh_a.mesh == projectile_mesh_b.mesh,
+		"gold projectiles reuse their mesh",
+	)
+	_check(
+		projectile_mesh_a.material_override == projectile_mesh_b.material_override,
+		"gold projectiles reuse their material",
+	)
+	var projectile_material := projectile_mesh_a.material_override as StandardMaterial3D
+	_check(
+		projectile_material.emission_enabled
+		and projectile_material.emission_energy_multiplier > 1.0,
+		"gold projectile material stays brightly emissive",
+	)
+	projectile_a.free()
+	projectile_b.free()
 	var animated_bean := game.bean_spawner.beans[0]
 	animated_bean["drop_phase"] = 1.0
 	animated_bean["drop_bounce"] = 0.0

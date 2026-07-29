@@ -1,6 +1,28 @@
 extends CanvasLayer
 class_name DaiDaiHUD
 
+const LANGUAGE_FLAGS := {
+	"zh-cn": "🇨🇳",
+	"zh-tw": "🇹🇼",
+	"en-us": "🇬🇧",
+	"ja-jp": "🇯🇵",
+	"ko-kr": "🇰🇷",
+	"es-es": "🇪🇸",
+	"fr-fr": "🇫🇷",
+	"it-it": "🇮🇹",
+	"de-de": "🇩🇪",
+	"pt-br": "🇧🇷",
+	"pl-pl": "🇵🇱",
+	"ru-ru": "🇷🇺",
+	"th-th": "🇹🇭",
+}
+const ICON_PAUSE := preload("res://assets/icons/pause.svg")
+const ICON_PLAY := preload("res://assets/icons/play.svg")
+const ICON_VOLUME := preload("res://assets/icons/volume.svg")
+const ICON_MUTED := preload("res://assets/icons/muted.svg")
+const ICON_LANGUAGE := preload("res://assets/icons/language.svg")
+const ICON_GITHUB := preload("res://assets/icons/github.svg")
+
 var game: Node
 var i18n: DaiDaiI18n
 var hi_label: Label
@@ -16,6 +38,7 @@ var restart_button: Button
 var pause_button: Button
 var mute_button: Button
 var language_button: Button
+var github_button: Button
 var instructions: Label
 var language_menu: PanelContainer
 var language_list: VBoxContainer
@@ -37,6 +60,9 @@ func bind_game(value: Node) -> void:
 	pause_button.pressed.connect(func() -> void: game.call("toggle_pause"))
 	mute_button.pressed.connect(func() -> void: game.call("toggle_mute"))
 	language_button.pressed.connect(func() -> void: game.call("cycle_language"))
+	github_button.pressed.connect(
+		func() -> void: OS.shell_open("https://github.com/tg123/daidai")
+	)
 	_refresh_static_text()
 
 
@@ -70,14 +96,14 @@ func update_state(state: Dictionary) -> void:
 	hi_label.text = "%s  %05d" % [translate("ui.hiscore"), int(state["hi_score"])]
 	score_label.text = "%s  %05d" % [translate("ui.score"), int(state["score"])]
 	var elapsed := int(state["elapsed_seconds"])
-	timer_label.text = "⏱  %02d:%02d" % [elapsed / 60, elapsed % 60]
-	length_label.text = "↔  %d" % int(state["length"])
+	timer_label.text = "⏱️  %02d:%02d" % [elapsed / 60, elapsed % 60]
+	length_label.text = "📏  %d" % int(state["length"])
 	var color_index := int(state["combo_color"])
 	var count := int(state["combo_count"])
 	combo_label.text = "● ×%d" % count if count > 0 else ""
 	combo_label.modulate = DaiDaiRules.COLORS[color_index] if color_index >= 0 else Color.WHITE
 	if bool(state["boost_active"]):
-		boost_label.text = "↑ ×%d  %.1fs" % [
+		boost_label.text = "🔥 ×%d  %.1fs" % [
 			int(state["boost_multiplier"]),
 			float(state["boost_remaining"]),
 		]
@@ -88,12 +114,12 @@ func update_state(state: Dictionary) -> void:
 	var is_game_over := bool(state["game_over"])
 	restart_button.visible = is_game_over
 	instructions.visible = is_paused or is_game_over
-	var pause_icon := ">" if is_paused else "II"
+	var pause_icon := ICON_PLAY if is_paused else ICON_PAUSE
 	_set_utility_button(pause_button, pause_icon, "A")
 	pause_button.disabled = is_game_over
-	var mute_icon := "×" if bool(state["muted"]) else "♪"
+	var mute_icon := ICON_MUTED if bool(state["muted"]) else ICON_VOLUME
 	_set_utility_button(mute_button, mute_icon, "X")
-	_set_utility_button(language_button, "文", "Y")
+	_set_utility_button(language_button, ICON_LANGUAGE, "Y")
 	if not is_paused:
 		_close_language_menu()
 
@@ -201,6 +227,19 @@ func _build_hud() -> void:
 	for label in [hi_label, score_label, timer_label, length_label, combo_label, boost_label]:
 		info_container.add_child(label)
 
+	github_button = Button.new()
+	github_button.name = "GitHub"
+	github_button.icon = ICON_GITHUB
+	github_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	github_button.expand_icon = true
+	github_button.flat = true
+	github_button.focus_mode = Control.FOCUS_NONE
+	github_button.position = Vector2(7.0, 5.0)
+	github_button.size = Vector2(32.0, 32.0)
+	github_button.tooltip_text = "GitHub"
+	github_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	add_child(github_button)
+
 	message_label = Label.new()
 	message_label.name = "Message"
 	message_label.set_anchors_preset(Control.PRESET_CENTER)
@@ -283,9 +322,9 @@ func _build_hud() -> void:
 	utility.size = Vector2(46.0, 160.0)
 	utility.add_theme_constant_override("separation", 6)
 	add_child(utility)
-	pause_button = _utility_button("II")
-	mute_button = _utility_button("♪")
-	language_button = _utility_button("文")
+	pause_button = _utility_button(ICON_PAUSE)
+	mute_button = _utility_button(ICON_VOLUME)
+	language_button = _utility_button(ICON_LANGUAGE)
 	for button in [pause_button, mute_button, language_button]:
 		utility.add_child(button)
 
@@ -319,7 +358,7 @@ func _rebuild_language_menu() -> void:
 		child.free()
 	for locale in i18n.get_locales():
 		var button := Button.new()
-		button.text = i18n.lang_name(locale)
+		button.text = "%s %s" % [LANGUAGE_FLAGS.get(locale, ""), i18n.lang_name(locale)]
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.flat = true
 		if locale == i18n.get_locale():
@@ -339,7 +378,7 @@ func _refresh_static_text() -> void:
 	restart_button.text = (
 		"%s  %s" % [_gamepad_glyph("B"), translate("btn.restart")]
 		if _has_gamepad()
-		else "R  %s" % translate("btn.restart")
+		else "🔄  %s" % translate("btn.restart")
 	)
 	pause_button.tooltip_text = (
 		translate("hint.pauseGamepad", {"btn": _gamepad_glyph("A")})
@@ -348,7 +387,7 @@ func _refresh_static_text() -> void:
 	)
 	mute_button.tooltip_text = translate("btn.sound")
 	language_button.tooltip_text = translate("btn.language")
-	instructions.text = "%s   |   ● %s   ● %s   ● %s   ● %s   ● %s" % [
+	instructions.text = "%s   |   🔴 %s   🔵 %s   🟢 %s   🟠 %s   🟣 %s" % [
 		pause_button.tooltip_text,
 		translate("hint.combo.red"),
 		translate("hint.combo.blue"),
@@ -356,8 +395,8 @@ func _refresh_static_text() -> void:
 		translate("hint.combo.orange"),
 		translate("hint.combo.purple"),
 	]
-	if OS.is_debug_build():
-		instructions.text += "\nDEV 1–5: FX   ·   6: +1"
+	if OS.is_debug_build() or OS.has_feature("preview"):
+		instructions.text += "\n🧪 1–5: FX   ·   6: +1"
 
 
 func _build_screen_filters() -> void:
@@ -366,7 +405,7 @@ func _build_screen_filters() -> void:
 	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var vignette_shader := Shader.new()
-	if OS.has_feature("mobile"):
+	if OS.has_feature("mobile") or OS.has_feature("web"):
 		vignette_shader.code = """
 shader_type canvas_item;
 void fragment() {
@@ -403,7 +442,7 @@ void fragment() {
 	rain_filter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	rain_filter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var rain_shader := Shader.new()
-	if OS.has_feature("mobile"):
+	if OS.has_feature("mobile") or OS.has_feature("web"):
 		rain_shader.code = """
 shader_type canvas_item;
 uniform float strength : hint_range(0.0, 1.0) = 0.0;
@@ -441,9 +480,11 @@ func _info_label() -> Label:
 	return label
 
 
-func _utility_button(text: String) -> Button:
+func _utility_button(icon: Texture2D) -> Button:
 	var button := Button.new()
-	button.text = text
+	button.icon = icon
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.expand_icon = true
 	button.focus_mode = Control.FOCUS_NONE
 	button.custom_minimum_size = Vector2(44.0, 44.0)
 	button.add_theme_font_size_override("font_size", 20)
@@ -483,8 +524,8 @@ func _utility_button(text: String) -> Button:
 	return button
 
 
-func _set_utility_button(button: Button, icon: String, gamepad_button: String) -> void:
-	button.text = icon
+func _set_utility_button(button: Button, icon: Texture2D, gamepad_button: String) -> void:
+	button.icon = icon
 	var badge := button.get_node("GamepadBadge") as Label
 	badge.visible = _has_gamepad()
 	badge.text = _gamepad_glyph(gamepad_button) if badge.visible else ""

@@ -17,6 +17,7 @@ const MOBILE_RESERVED_TOP := 38.0
 const DESKTOP_RESERVED_TOP := 42.0
 const MOBILE_BASE_DPI := 160.0
 const MAX_MOBILE_SCALE := 3.0
+const PROJECTILE_STEP_SECONDS := 1.0 / 60.0
 
 @onready var snake: DaiDaiSnake = $Snake
 @onready var bean_spawner: DaiDaiBeanSpawner = $BeanSpawner
@@ -60,6 +61,8 @@ var next_sky_drop_ms := 0.0
 var rng := RandomNumberGenerator.new()
 var viewport_baseline := Vector2.ZERO
 var resize_generation := 0
+var projectile_accumulator := 0.0
+var gaze_accumulator := 0.0
 
 const KONAMI: Array[String] = [
 	"arrowup", "arrowup", "arrowdown", "arrowdown",
@@ -81,6 +84,8 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	rng.randomize()
+	if OS.has_feature("web"):
+		($MainLight as DirectionalLight3D).shadow_enabled = false
 	viewport_baseline = get_viewport().get_visible_rect().size
 	get_viewport().size_changed.connect(_on_viewport_size_changed)
 	_compute_grid()
@@ -118,6 +123,8 @@ func reset_game(run_immediately: bool = false) -> void:
 	shed_skin.clear()
 	gold_beans.clear()
 	golden_projectiles.clear()
+	projectile_accumulator = 0.0
+	gaze_accumulator = 0.0
 	typed_buffer = ""
 	konami_buffer.clear()
 	heart_buffer.clear()
@@ -150,8 +157,14 @@ func _process(delta: float) -> void:
 		_update_sky_drop()
 	snake.interpolate_visuals(game_accumulator_ms / speed_ms)
 	if not paused and not game_over:
-		_update_projectiles()
-	_update_gaze()
+		projectile_accumulator += delta
+		while projectile_accumulator >= PROJECTILE_STEP_SECONDS:
+			projectile_accumulator -= PROJECTILE_STEP_SECONDS
+			_update_projectiles()
+	gaze_accumulator += delta
+	if not OS.has_feature("web") or gaze_accumulator >= 0.1:
+		gaze_accumulator = 0.0
+		_update_gaze()
 	snake.set_visual_state(boost_active, god_mode, game_over)
 
 
@@ -455,7 +468,7 @@ func _capture_easter_eggs(token: String) -> void:
 
 
 func _try_debug_cheat(keycode: Key) -> bool:
-	if not OS.is_debug_build() or game_over:
+	if (not OS.is_debug_build() and not OS.has_feature("preview")) or game_over:
 		return false
 	match keycode:
 		KEY_1:
@@ -823,8 +836,12 @@ func _save_hi_score() -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and not paused and not game_over:
-		set_paused(true)
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		audio.set_application_active(false)
+		if not paused and not game_over:
+			set_paused(true)
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		audio.set_application_active(true)
 
 
 func _on_viewport_size_changed() -> void:

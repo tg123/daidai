@@ -32,11 +32,11 @@ jobs:
       - name: Export Godot Web build
         run: |
           mkdir -p dist
-          export_mode="--export-release"
+          export_preset="Web"
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            export_mode="--export-debug"
+            export_preset="Web Preview"
           fi
-          "$GODOT" --headless --path godot "$export_mode" Web "$PWD/dist/index.html"
+          "$GODOT" --headless --path godot --export-release "$export_preset" "$PWD/dist/index.html"
           cp public/privacy.html public/PRIVACY.md public/fav.ico dist/
           touch dist/.nojekyll
       - name: Verify Web artifact

@@ -1,10 +1,12 @@
-[gd_resource type="FontVariation" load_steps=5 format=3]
+[gd_resource type="FontVariation" load_steps=7 format=3]
 
+[ext_resource type="FontFile" path="res://assets/fonts/FusionPixel12.woff2" id="0_pixel"]
 [ext_resource type="FontFile" path="res://assets/fonts/NotoSans-Regular.ttf" id="1_base"]
 [ext_resource type="FontFile" path="res://assets/fonts/NotoSansCJKsc-Regular.otf" id="2_cjk"]
 [ext_resource type="FontFile" path="res://assets/fonts/NotoSansThai-Regular.ttf" id="3_thai"]
 [ext_resource type="FontFile" path="res://assets/fonts/NotoSansSymbols2-Regular.ttf" id="4_symbols"]
+[ext_resource type="FontFile" path="res://assets/fonts/NotoColorEmoji.ttf" id="5_emoji"]
 
 [resource]
-fallbacks = Array[Font]([ExtResource("2_cjk"), ExtResource("3_thai"), ExtResource("4_symbols")])
-base_font = ExtResource("1_base")
+fallbacks = Array[Font]([ExtResource("1_base"), ExtResource("2_cjk"), ExtResource("3_thai"), ExtResource("4_symbols"), ExtResource("5_emoji")])
+base_font = ExtResource("0_pixel")

@@ -43,28 +43,6 @@ const LOCALE_NAMES = [
     'th-th',
 ];
 
-// Godot Web cannot use browser/system emoji fonts. Keep the TypeScript UI's
-// emoji intact, but export portable text symbols covered by the bundled Noto
-// fallback chain so every locale remains readable in WebAssembly builds.
-const GODOT_SYMBOL_REPLACEMENTS = [
-    ['🏆', '★'],
-    ['🎉', '✦'],
-    ['🔥', '↑'],
-    ['🌧️', '☂'],
-    ['🌧', '☂'],
-    ['🌿', '✿'],
-    ['💜', '♥'],
-    ['🌈', '∞'],
-];
-
-function normalizeGodotText(value) {
-    let normalized = value;
-    for (const [emoji, symbol] of GODOT_SYMBOL_REPLACEMENTS) {
-        normalized = normalized.replaceAll(emoji, symbol);
-    }
-    return normalized;
-}
-
 /**
  * Parse one locale TS file and return { localeCode, dict }.
  * Looks for:  registerLocale(<StringLiteral>, <ObjectLiteralExpression>)
@@ -114,7 +92,7 @@ function extractLocale(filePath) {
                 } else {
                     continue;
                 }
-                dict[key] = normalizeGodotText(val);
+                dict[key] = val;
             }
             return;
         }

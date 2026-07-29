@@ -29,10 +29,17 @@ var falling_beans: Array[Dictionary] = []
 var bubbles: Array[Dictionary] = []
 var skin_nodes: Array[MeshInstance3D] = []
 var gold_nodes: Array[MeshInstance3D] = []
+var falling_bean_mesh: SphereMesh
+var falling_bean_materials: Array[StandardMaterial3D] = []
+var projectile_mesh: SphereMesh
+var projectile_material: StandardMaterial3D
+var gold_effect_mesh: SphereMesh
+var gold_effect_material: StandardMaterial3D
 
 
 func _ready() -> void:
 	rng.randomize()
+	_prepare_shared_effect_resources()
 	atmosphere_node = Node3D.new()
 	atmosphere_node.name = "Atmosphere"
 	add_child(atmosphere_node)
@@ -79,13 +86,58 @@ func configure_environment(new_cols: int, new_rows: int, camera_distance: float)
 		world.environment.fog_density = 0.02 * (25.0 / camera_distance)
 
 
+func _prepare_shared_effect_resources() -> void:
+	var web := OS.has_feature("web")
+	falling_bean_mesh = SphereMesh.new()
+	falling_bean_mesh.radius = 0.35
+	falling_bean_mesh.height = 0.7
+	falling_bean_mesh.radial_segments = 8 if web else 12
+	falling_bean_mesh.rings = 6 if web else 10
+	for color: Color in DaiDaiRules.COLORS:
+		var material := StandardMaterial3D.new()
+		material.albedo_color = color
+		material.emission_enabled = true
+		material.emission = color
+		material.emission_energy_multiplier = 0.3
+		material.metallic = 0.4
+		material.roughness = 0.3
+		falling_bean_materials.append(material)
+
+	projectile_mesh = SphereMesh.new()
+	projectile_mesh.radius = 0.3
+	projectile_mesh.height = 0.6
+	projectile_mesh.radial_segments = 8 if web else 12
+	projectile_mesh.rings = 6 if web else 10
+	projectile_material = _create_gold_material(web)
+
+	gold_effect_mesh = SphereMesh.new()
+	gold_effect_mesh.radius = 0.4
+	gold_effect_mesh.height = 0.8
+	gold_effect_mesh.radial_segments = 8 if web else 10
+	gold_effect_mesh.rings = 6 if web else 8
+	gold_effect_material = _create_gold_material(web)
+
+
+func _create_gold_material(web: bool) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(1.0, 0.72, 0.04)
+	material.emission_enabled = true
+	material.emission = Color(1.0, 0.42, 0.02)
+	material.emission_energy_multiplier = 1.35
+	material.metallic = 0.0 if web else 0.9
+	material.roughness = 0.22
+	if web:
+		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	return material
+
+
 func spawn_ripple(world_position: Vector3) -> void:
 	var ring := MeshInstance3D.new()
 	var mesh := TorusMesh.new()
 	mesh.inner_radius = 0.42
 	mesh.outer_radius = 0.5
-	mesh.rings = 12
-	mesh.ring_segments = 32
+	mesh.rings = 6 if OS.has_feature("web") else 12
+	mesh.ring_segments = 16 if OS.has_feature("web") else 32
 	ring.mesh = mesh
 	var material := StandardMaterial3D.new()
 	material.albedo_color = Color(0.75, 0.9, 1.0, 0.28)
@@ -103,7 +155,8 @@ func spawn_ripple(world_position: Vector3) -> void:
 
 
 func spawn_particles(world_position: Vector3, color: Color, count: int) -> void:
-	for _i in range(count):
+	var particle_count := mini(count, 4) if OS.has_feature("web") else count
+	for _i in range(particle_count):
 		var particle := MeshInstance3D.new()
 		var mesh := SphereMesh.new()
 		mesh.radius = 0.12
@@ -136,26 +189,15 @@ func spawn_particles(world_position: Vector3, color: Color, count: int) -> void:
 
 func start_heavy_rain() -> void:
 	_spawn_rain_wave()
-	_delayed_rain_wave(0.8)
-	_delayed_rain_wave(1.6)
+	_delayed_rain_wave(0.9)
+	if not OS.has_feature("web"):
+		_delayed_rain_wave(1.6)
 
 
 func spawn_falling_bean(cell: Vector2i, color_index: int) -> void:
 	var bean := MeshInstance3D.new()
-	var mesh := SphereMesh.new()
-	mesh.radius = 0.35
-	mesh.height = 0.7
-	mesh.radial_segments = 12
-	mesh.rings = 10
-	bean.mesh = mesh
-	var material := StandardMaterial3D.new()
-	material.albedo_color = DaiDaiRules.COLORS[color_index]
-	material.emission_enabled = true
-	material.emission = DaiDaiRules.COLORS[color_index]
-	material.emission_energy_multiplier = 0.3
-	material.metallic = 0.4
-	material.roughness = 0.3
-	bean.material_override = material
+	bean.mesh = falling_bean_mesh
+	bean.material_override = falling_bean_materials[color_index]
 	bean.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	bean.position = Vector3(cell.x, rng.randf_range(12.0, 17.0), cell.y)
 	ephemeral_node.add_child(bean)
@@ -174,27 +216,16 @@ func create_projectile(world_position: Vector3) -> Node3D:
 	var root := Node3D.new()
 	root.position = Vector3(world_position.x, 0.5, world_position.z)
 	var projectile := MeshInstance3D.new()
-	var mesh := SphereMesh.new()
-	mesh.radius = 0.3
-	mesh.height = 0.6
-	mesh.radial_segments = 12
-	mesh.rings = 10
-	projectile.mesh = mesh
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color.GOLD
-	material.emission_enabled = true
-	material.emission = Color8(255, 170, 0)
-	material.emission_energy_multiplier = 1.0
-	material.metallic = 0.9
-	material.roughness = 0.1
-	projectile.material_override = material
+	projectile.mesh = projectile_mesh
+	projectile.material_override = projectile_material
 	projectile.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(projectile)
-	var light := OmniLight3D.new()
-	light.light_color = Color.GOLD
-	light.light_energy = 1.5
-	light.omni_range = 5.0
-	root.add_child(light)
+	if not OS.has_feature("web"):
+		var light := OmniLight3D.new()
+		light.light_color = Color.GOLD
+		light.light_energy = 1.5
+		light.omni_range = 5.0
+		root.add_child(light)
 	ephemeral_node.add_child(root)
 	return root
 
@@ -214,13 +245,10 @@ func sync_entities(shed_skin: Array[Dictionary], gold_beans: Array[Dictionary]) 
 		material.albedo_color.a = minf(0.7, int(item["life"]) / 100.0)
 
 	while gold_nodes.size() < gold_beans.size():
-		var gold := _make_sphere(0.4, Color.GOLD)
-		var material := gold.material_override as StandardMaterial3D
-		material.metallic = 0.9
-		material.roughness = 0.1
-		material.emission_enabled = true
-		material.emission = Color8(255, 170, 0)
-		material.emission_energy_multiplier = 0.5
+		var gold := MeshInstance3D.new()
+		gold.mesh = gold_effect_mesh
+		gold.material_override = gold_effect_material
+		gold.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		ephemeral_node.add_child(gold)
 		gold_nodes.append(gold)
 	while gold_nodes.size() > gold_beans.size():
@@ -294,6 +322,9 @@ func _process(delta: float) -> void:
 			bubble_node.multimesh.set_instance_transform(i, transform)
 
 	var now := Time.get_ticks_msec()
+	var sparkle := 1.25 + sin(now * 0.009) * 0.35
+	projectile_material.emission_energy_multiplier = sparkle
+	gold_effect_material.emission_energy_multiplier = sparkle
 	for i in range(gold_nodes.size()):
 		var node := gold_nodes[i]
 		node.position.y = 0.6 + sin(now * 0.006 + i) * 0.2
@@ -304,8 +335,8 @@ func _build_floor() -> void:
 	floor_mesh = MeshInstance3D.new()
 	var mesh := PlaneMesh.new()
 	mesh.size = Vector2(cols * 10.0, rows * 10.0)
-	mesh.subdivide_width = 40
-	mesh.subdivide_depth = 40
+	mesh.subdivide_width = 24 if OS.has_feature("web") else 40
+	mesh.subdivide_depth = 24 if OS.has_feature("web") else 40
 	floor_mesh.mesh = mesh
 	var shader := Shader.new()
 	shader.code = """
@@ -377,8 +408,8 @@ func _build_water() -> void:
 	water_mesh = MeshInstance3D.new()
 	var mesh := PlaneMesh.new()
 	mesh.size = Vector2(cols * 3.0, rows * 3.0)
-	mesh.subdivide_width = 60
-	mesh.subdivide_depth = 60
+	mesh.subdivide_width = 32 if OS.has_feature("web") else 60
+	mesh.subdivide_depth = 32 if OS.has_feature("web") else 60
 	water_mesh.mesh = mesh
 	var shader := Shader.new()
 	shader.code = """
@@ -431,7 +462,7 @@ void fragment() {
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.mesh = reed_cluster
-	multimesh.instance_count = REED_COUNT
+	multimesh.instance_count = 48 if OS.has_feature("web") else REED_COUNT
 	for i in range(multimesh.instance_count):
 		var transform := Transform3D.IDENTITY
 		transform = transform.rotated(Vector3.UP, rng.randf_range(0.0, TAU))
@@ -513,7 +544,7 @@ func _build_rocks() -> void:
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.use_colors = true
 	multimesh.mesh = rock
-	multimesh.instance_count = ROCK_COUNT
+	multimesh.instance_count = 20 if OS.has_feature("web") else ROCK_COUNT
 	for i in range(multimesh.instance_count):
 		var transform := Transform3D.IDENTITY
 		transform = transform.rotated(Vector3.UP, rng.randf_range(0.0, TAU))
@@ -570,7 +601,7 @@ void fragment() {
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.mesh = leaf
-	multimesh.instance_count = FLOATING_LEAF_COUNT
+	multimesh.instance_count = 32 if OS.has_feature("web") else FLOATING_LEAF_COUNT
 	var cluster_center := Vector2.ZERO
 	for i in range(multimesh.instance_count):
 		if i % 6 == 0:
@@ -668,7 +699,7 @@ void fragment() {
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.mesh = pad
-	multimesh.instance_count = LILY_PAD_COUNT
+	multimesh.instance_count = 16 if OS.has_feature("web") else LILY_PAD_COUNT
 	var pad_positions: Array[Vector3] = []
 	var cluster_center := Vector2.ZERO
 	for i in range(multimesh.instance_count):
@@ -743,7 +774,7 @@ func _build_pond_flowers(pad_positions: Array[Vector3]) -> void:
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.use_colors = true
 	multimesh.mesh = flower
-	multimesh.instance_count = POND_FLOWER_COUNT
+	multimesh.instance_count = mini(POND_FLOWER_COUNT, floori(pad_positions.size() / 4.0))
 	for i in range(multimesh.instance_count):
 		var position := pad_positions[i * 4]
 		var transform := Transform3D.IDENTITY
@@ -773,7 +804,7 @@ func _build_bubbles() -> void:
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.mesh = mesh
-	multimesh.instance_count = BUBBLE_COUNT
+	multimesh.instance_count = 24 if OS.has_feature("web") else BUBBLE_COUNT
 	for i in range(multimesh.instance_count):
 		var position := Vector3(
 			rng.randf_range(-cols * 0.2, cols * 1.2),
@@ -797,7 +828,7 @@ func _build_bubbles() -> void:
 
 func _spawn_rain_wave() -> void:
 	var rain := GPUParticles3D.new()
-	rain.amount = 150
+	rain.amount = 60 if OS.has_feature("web") else 150
 	rain.lifetime = 2.5
 	rain.one_shot = true
 	rain.explosiveness = 0.8
