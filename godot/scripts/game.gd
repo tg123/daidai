@@ -683,9 +683,15 @@ func _reserved_top(size: Vector2) -> float:
 func _is_mobile_view(size: Vector2) -> bool:
 	return (
 		OS.has_feature("mobile")
-		or DisplayServer.is_touchscreen_available()
+		or _has_touch_controls()
 		or size.x <= MOBILE_WIDTH * viewport_pixel_scale
 	)
+
+
+func _has_touch_controls() -> bool:
+	if OS.has_feature("web"):
+		return bool(JavaScriptBridge.eval("matchMedia('(pointer: coarse)').matches", true))
+	return OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
 
 
 func _is_occupied(cell: Vector2i) -> bool:
@@ -790,7 +796,7 @@ func _is_direction_key(keycode: Key) -> bool:
 func _start_prompt() -> String:
 	if not Input.get_connected_joypads().is_empty():
 		return _t("start.gamepad")
-	if DisplayServer.is_touchscreen_available():
+	if _has_touch_controls():
 		return _t("start.touch") if OS.has_feature("mobile") else _t("start.both")
 	return _t("start.keyboard")
 

@@ -126,7 +126,7 @@ func update_state(state: Dictionary) -> void:
 	var visibility := _utility_visibility(
 		is_paused,
 		is_game_over,
-		DisplayServer.is_touchscreen_available(),
+		_has_touch_controls(),
 	)
 	pause_button.visible = visibility["pause"]
 	mute_button.visible = visibility["mute"]
@@ -583,7 +583,7 @@ func _round_style(
 func _apply_responsive_layout() -> void:
 	var viewport_size := ui_root.size
 	var width := viewport_size.x
-	var mobile := width <= 720.0 or DisplayServer.is_touchscreen_available()
+	var mobile := width <= 720.0 or _has_touch_controls()
 	var font_size := 11 if mobile else 14
 	info_container.add_theme_constant_override("separation", 5 if mobile else 22)
 	top_panel.position = Vector2.ZERO
@@ -640,6 +640,12 @@ func _web_ui_scale() -> float:
 		return 1.0
 	var ratio = JavaScriptBridge.eval("window.devicePixelRatio || 1", true)
 	return clampf(float(ratio), 1.0, 4.0)
+
+
+func _has_touch_controls() -> bool:
+	if OS.has_feature("web"):
+		return bool(JavaScriptBridge.eval("matchMedia('(pointer: coarse)').matches", true))
+	return OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
 
 
 func _hide_effect_later(generation: int) -> void:
