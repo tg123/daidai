@@ -126,7 +126,9 @@
 <meta name="theme-color" content="#02101c">
     </head>
     <body>
-        <canvas id="canvas">Your browser does not support the canvas tag.</canvas>
+        <canvas id="canvas" tabindex="0" aria-label="DaiDai game canvas"
+            >Your browser does not support the canvas tag.</canvas
+        >
         <noscript>Your browser does not support JavaScript.</noscript>
         <div id="status" role="status" aria-live="polite">
             <div id="loading-worm" aria-hidden="true">🐛</div>
@@ -138,7 +140,7 @@
         </div>
         <script src="index.js"></script>
         <script>
-            const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":27651228,"index.wasm":37700666},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js"};
+            const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":27650684,"index.wasm":37700666},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js"};
             const GODOT_THREADS_ENABLED = false;
             const engine = new Engine(GODOT_CONFIG);
             const status = document.getElementById('status');
