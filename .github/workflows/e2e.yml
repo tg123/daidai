@@ -43,6 +43,8 @@ jobs:
         run: |
           mkdir -p dist
           "$GODOT" --headless --path godot --export-release "Web Preview" "$PWD/dist/index.html"
+          mkdir -p dist-production
+          "$GODOT" --headless --path godot --export-release "Web" "$PWD/dist-production/index.html"
       - name: Verify Web distribution
         run: |
           test -s dist/index.html
@@ -51,6 +53,13 @@ jobs:
           test -s dist/index.pck
           grep -q 'loading-worm' dist/index.html
           grep -q 'GODOT_CONFIG' dist/index.html
+          test -s dist-production/index.html
+          test -s dist-production/index.js
+          test -s dist-production/index.wasm
+          test -s dist-production/index.pck
+          test -s dist-production/index.manifest.json
+          test -s dist-production/index.service.worker.js
+          test -s dist-production/index.offline.html
       - name: Run exported Web build in Chrome
         env:
           CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}

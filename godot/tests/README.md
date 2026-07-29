@@ -11,6 +11,6 @@ The retired browser suite defined 40 test bodies (52 runs after expanding the 13
 | `mobile-touch.spec.ts` | `regression_test.gd`, `integration_test.gd`, and `web_e2e.py`: initial tap start, mid-game tap guard, DPR3 canvas sizing, responsive HUD, and touch-only pause controls |
 | `gamepad.spec.ts` | `gameplay_test.gd` and `integration_test.gd`: gamepad start/actions, prompt selection, badges, and no-gamepad UI |
 | `tribute.spec.ts` | `regression_test.gd`: full/partial sequence and once-per-process behavior |
-| `smoke.spec.ts` | `integration_test.gd`, `regression_test.gd`, `web_e2e.py`, and the `dist` workflow: real WASM startup, scene/HUD assets, Web shell, loading progress, icons, export files, and PWA preset |
+| `smoke.spec.ts` | `integration_test.gd`, `regression_test.gd`, `web_e2e.py`, and the `dist` workflow: real WASM startup, scene/HUD assets, Web shell, loading progress, icons, preview files, and the production PWA artifact |
 
 The old game-specific DOM selectors and mutable `window.__test` bridge are not retained. `Web Preview + ?e2e=1` exposes a read-only state snapshot for exported-browser assertions; production exports expose nothing.
