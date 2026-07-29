@@ -42,6 +42,7 @@ jobs:
       - name: Verify Web artifact
         run: |
           test -s dist/index.html
+          test -s dist/index.js
           test -s dist/index.wasm
           test -s dist/index.pck
           test -s dist/privacy.html

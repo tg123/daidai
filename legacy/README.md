@@ -21,7 +21,7 @@ Source: https://github.com/StellaJiangChina/daidaiworm
 
 The original `DaiDai.exe` binary is intentionally **not** mirrored here.
 
-The current web (Three.js) port lives in the project root (`index.html`).
+The current Godot remake lives under [`../godot/`](../godot/).
 
 ---
 

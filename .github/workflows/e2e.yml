@@ -7,32 +7,72 @@ on:
     types: [opened, reopened, synchronize]
 
 jobs:
+  # Keep this context name until the main ruleset is migrated from the retired
+  # browser suite. It now validates the canonical Godot Web distribution.
   test:
     name: dist
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - name: Set up Godot
+        uses: chickensoft-games/setup-godot@v2
         with:
-          node-version: '20.19.0'
-          cache: 'npm'
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - name: Build
-        # See ci.yml `build` step for rationale on DAIDAI_BUILD_SHA.
-        env:
-          DAIDAI_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: npm run build
-      - name: Test
-        env:
-          TEST_DIST_SKIP_BUILD: '1'
-        run: npm run test:dist
-      - uses: actions/upload-artifact@v4
-        if: failure()
+          version: 4.6.3
+          use-dotnet: false
+          include-templates: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          name: playwright-report-dist
-          path: |
-            playwright-report/
-            test-results/
-          retention-days: 7
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: godot/tests/requirements-web-e2e.txt
+      - name: Set up Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: stable
+          install-chromedriver: true
+      - name: Install Web E2E dependencies
+        run: pip install -r godot/tests/requirements-web-e2e.txt
+      - name: Import Godot resources
+        run: '"$GODOT" --headless --editor --path godot --quit'
+      - name: Run migrated browser regressions
+        run: '"$GODOT" --headless --path godot --script res://tests/regression_test.gd'
+      - name: Export Web distribution
+        run: |
+          mkdir -p dist
+          "$GODOT" --headless --path godot --export-release "Web Preview" "$PWD/dist/index.html"
+          mkdir -p dist-production
+          "$GODOT" --headless --path godot --export-release "Web" "$PWD/dist-production/index.html"
+      - name: Verify Web distribution
+        run: |
+          test -s dist/index.html
+          test -s dist/index.js
+          test -s dist/index.wasm
+          test -s dist/index.pck
+          grep -q 'loading-worm' dist/index.html
+          grep -q 'GODOT_CONFIG' dist/index.html
+          test -s dist-production/index.html
+          test -s dist-production/index.js
+          test -s dist-production/index.wasm
+          test -s dist-production/index.pck
+          test -s dist-production/index.manifest.json
+          test -s dist-production/index.service.worker.js
+          test -s dist-production/index.offline.html
+      - name: Run exported Web build in Chrome
+        env:
+          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
+          CHROMEDRIVER_BIN: ${{ steps.chrome.outputs.chromedriver-path }}
+        run: |
+          python -m http.server 8080 --directory dist > "$RUNNER_TEMP/daidai-web.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:8080/ >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8080/ >/dev/null
+          python godot/tests/web_e2e.py

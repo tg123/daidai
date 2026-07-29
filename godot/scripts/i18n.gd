@@ -2,8 +2,7 @@ extends RefCounted
 class_name DaiDaiI18n
 
 ## Godot localisation subsystem for DaiDai Worm.
-## Mirrors the semantics of src/i18n/index.ts:
-##   - Same 13 locale codes (BCP-47, lower-case)
+##   - 13 locale codes (BCP-47, lower-case)
 ##   - zh-Hant / TW / HK / MO resolution → zh-tw
 ##   - Language-prefix fallback for all other codes
 ##   - Translation fallback chain: current → en-us → zh-cn → key
@@ -83,7 +82,6 @@ func _save_persisted() -> void:
 
 
 ## Resolve an arbitrary BCP-47 tag to a supported locale code.
-## Replicates the logic in src/i18n/index.ts → pickLang().
 func pick_lang(raw: String) -> String:
 	var lc := raw.to_lower().replace("_", "-")
 	# Traditional Chinese: explicit region/script tags

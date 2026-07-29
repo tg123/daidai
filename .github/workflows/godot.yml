@@ -4,17 +4,12 @@ on:
   pull_request:
     paths:
       - 'godot/**'
-      - 'scripts/export_godot_i18n.mjs'
-      - 'src/i18n/**'
       - '.github/workflows/godot.yml'
   push:
     branches:
       - main
-      - experiment/godot-port
     paths:
       - 'godot/**'
-      - 'scripts/export_godot_i18n.mjs'
-      - 'src/i18n/**'
       - '.github/workflows/godot.yml'
   workflow_dispatch:
 
@@ -31,27 +26,12 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install JavaScript dependencies
-        run: npm ci
-
       - name: Set up Godot
         uses: chickensoft-games/setup-godot@v2
         with:
           version: 4.6.3
           use-dotnet: false
           include-templates: true
-
-      - name: Verify generated translations
-        shell: pwsh
-        run: |
-          node scripts/export_godot_i18n.mjs
-          git diff --exit-code -- godot/assets/i18n.json
 
       - name: Import Godot resources
         shell: pwsh
@@ -93,6 +73,36 @@ jobs:
             throw "Godot integration tests failed with exit code $($process.ExitCode)."
           }
 
+      - name: Run migrated E2E regressions
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath $env:GODOT `
+            -ArgumentList @("--headless", "--path", "godot", "--script", "res://tests/regression_test.gd") `
+            -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Godot migrated E2E regressions failed with exit code $($process.ExitCode)."
+          }
+
+      - name: Run performance tests
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath $env:GODOT `
+            -ArgumentList @("--headless", "--path", "godot", "--script", "res://tests/performance_test.gd") `
+            -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Godot performance tests failed with exit code $($process.ExitCode)."
+          }
+
+      - name: Run scene smoke test
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath $env:GODOT `
+            -ArgumentList @("--headless", "--path", "godot", "--quit-after", "120") `
+            -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Godot scene smoke test failed with exit code $($process.ExitCode)."
+          }
+
       - name: Export Web release
         shell: pwsh
         run: |
@@ -115,8 +125,12 @@ jobs:
         run: |
           foreach ($path in @(
             "godot/exports/web/index.html",
+            "godot/exports/web/index.js",
             "godot/exports/web/index.wasm",
-            "godot/exports/web/index.pck"
+            "godot/exports/web/index.pck",
+            "godot/exports/web/index.manifest.json",
+            "godot/exports/web/index.icon.png",
+            "godot/exports/web/index.apple-touch-icon.png"
           )) {
             $artifact = Get-Item $path
             if ($artifact.Length -eq 0) {

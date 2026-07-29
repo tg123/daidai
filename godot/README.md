@@ -1,6 +1,6 @@
 # DaiDai — Godot 4
 
-> Godot 4 is the canonical implementation for browser and native releases. The earlier TypeScript + Three.js implementation remains in the repository for regression tests and reference.
+> Godot 4 is the sole implementation for browser and native releases.
 
 ## Implemented parity
 
@@ -14,13 +14,15 @@
 - All 13 web locales with the same fallback and placeholder rules
 - Original music and sound effects, with persisted mute state
 
-Gameplay constants and state-transition order match the TypeScript implementation. The same Godot scenes and scripts now power WebAssembly and native exports.
+The same Godot scenes and scripts power WebAssembly and every native export.
 
 ## Project layout
 
 ```text
 godot/
 ├── project.godot
+├── export_presets.cfg
+├── web_shell.html
 ├── scenes/Main.tscn
 ├── scripts/
 │   ├── game.gd              # Canonical game loop and state transitions
@@ -39,6 +41,7 @@ godot/
 	├── rules_test.gd
 	├── gameplay_test.gd
 	├── integration_test.gd
+	├── regression_test.gd
 	└── performance_test.gd
 ```
 
@@ -48,7 +51,7 @@ godot/
 2. Import `godot/project.godot` in the project manager.
 3. Press **F5**.
 
-Controls match the web game:
+Controls are consistent across targets:
 
 - Keyboard: arrows/WASD steer, including diagonals; Space pauses; Enter restarts
 - Touch: tap or swipe starts; swipes steer; on-screen buttons pause, mute, and change language
@@ -107,21 +110,16 @@ From the repository root:
 godot --headless --path godot --script res://tests/rules_test.gd
 godot --headless --path godot --script res://tests/gameplay_test.gd
 godot --headless --path godot --script res://tests/integration_test.gd
+godot --headless --path godot --script res://tests/regression_test.gd
 godot --headless --path godot --script res://tests/performance_test.gd
 godot --headless --path godot --quit-after 120
 ```
 
-Regenerate the Godot locale bundle after changing `src/i18n/*.ts`:
-
-```sh
-node scripts/export_godot_i18n.mjs
-```
-
-The web audio files use Ogg Opus. Godot's native importer requires Ogg Vorbis, so the copies in `godot/assets/audio/` are transcoded to Vorbis while retaining the original sound content and filenames.
+Translations are maintained directly in `assets/i18n.json`. Audio assets use Ogg Vorbis so the same files work in native and Web exports.
 
 The bundled Noto fonts are licensed under the SIL Open Font License 1.1. Their source license notices are retained in `assets/fonts/*-OFL.txt`.
 
 ## Remaining distribution work
 
-- [ ] Sign the Windows executables, notarize macOS, and add mobile export presets
+- [ ] Sign the Windows executables and notarize macOS
 - [ ] Evaluate the licensed console export path and produce an Xbox package
