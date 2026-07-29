@@ -123,14 +123,34 @@ func update_state(state: Dictionary) -> void:
 	var is_game_over := bool(state["game_over"])
 	restart_button.visible = is_game_over
 	instructions.visible = is_paused or is_game_over
+	var visibility := _utility_visibility(
+		is_paused,
+		is_game_over,
+		DisplayServer.is_touchscreen_available(),
+	)
+	pause_button.visible = visibility["pause"]
+	mute_button.visible = visibility["mute"]
+	language_button.visible = visibility["language"]
+	utility_container.visible = (
+		pause_button.visible or mute_button.visible or language_button.visible
+	)
 	var pause_icon := ICON_PLAY if is_paused else ICON_PAUSE
 	_set_utility_button(pause_button, pause_icon, "A")
 	pause_button.disabled = is_game_over
 	var mute_icon := ICON_MUTED if bool(state["muted"]) else ICON_VOLUME
 	_set_utility_button(mute_button, mute_icon, "X")
 	_set_utility_button(language_button, ICON_LANGUAGE, "Y")
-	if not is_paused:
+	if not language_button.visible:
 		_close_language_menu()
+
+
+func _utility_visibility(is_paused: bool, is_game_over: bool, has_touch: bool) -> Dictionary:
+	var is_playing := not is_paused and not is_game_over
+	return {
+		"pause": has_touch and not is_game_over,
+		"mute": not is_playing,
+		"language": is_paused and not is_game_over,
+	}
 
 
 func toggle_language_menu() -> void:

@@ -100,6 +100,27 @@ func _run() -> void:
 		"language button cannot retain keyboard focus",
 	)
 	_check(game.hud.github_button != null, "HUD keeps the GitHub repository link")
+	var desktop_playing_controls := game.hud._utility_visibility(false, false, false)
+	_check(
+		not desktop_playing_controls["pause"]
+		and not desktop_playing_controls["mute"]
+		and not desktop_playing_controls["language"],
+		"desktop play hides all utility controls",
+	)
+	var touch_playing_controls := game.hud._utility_visibility(false, false, true)
+	_check(
+		touch_playing_controls["pause"]
+		and not touch_playing_controls["mute"]
+		and not touch_playing_controls["language"],
+		"touch play shows only pause",
+	)
+	var desktop_paused_controls := game.hud._utility_visibility(true, false, false)
+	_check(
+		not desktop_paused_controls["pause"]
+		and desktop_paused_controls["mute"]
+		and desktop_paused_controls["language"],
+		"desktop pause exposes mute and language",
+	)
 	_check(
 		game.hud.restart_button.focus_mode == Control.FOCUS_NONE,
 		"restart button cannot retain keyboard focus",
