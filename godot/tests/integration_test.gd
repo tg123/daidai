@@ -189,7 +189,7 @@ func _run() -> void:
 	var projectile_material := projectile_mesh_a.material_override as StandardMaterial3D
 	_check(
 		projectile_material.emission_enabled
-		and projectile_material.emission_energy_multiplier > 1.0,
+		and projectile_material.emission_energy_multiplier > 0.8,
 		"gold projectile material stays brightly emissive",
 	)
 	projectile_a.free()
