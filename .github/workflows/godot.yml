@@ -1,0 +1,197 @@
+name: Godot
+
+on:
+  pull_request:
+    paths:
+      - 'godot/**'
+      - 'scripts/export_godot_i18n.mjs'
+      - 'src/i18n/**'
+      - '.github/workflows/godot.yml'
+  push:
+    branches:
+      - main
+      - experiment/godot-port
+    paths:
+      - 'godot/**'
+      - 'scripts/export_godot_i18n.mjs'
+      - 'src/i18n/**'
+      - '.github/workflows/godot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-export:
+    name: Test and export Windows
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Set up Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.6.3
+          use-dotnet: false
+          include-templates: true
+
+      - name: Verify generated translations
+        shell: pwsh
+        run: |
+          node scripts/export_godot_i18n.mjs
+          git diff --exit-code -- godot/assets/i18n.json
+
+      - name: Import Godot resources
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath $env:GODOT `
+            -ArgumentList @("--headless", "--editor", "--path", "godot", "--quit") `
+            -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Godot resource import failed with exit code $($process.ExitCode)."
+          }
+
+      - name: Run rules tests
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath $env:GODOT `
+            -ArgumentList @("--headless", "--path", "godot", "--script", "res://tests/rules_test.gd") `
+            -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Godot rules tests failed with exit code $($process.ExitCode)."
+          }
+
+      - name: Run gameplay tests
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath $env:GODOT `
+            -ArgumentList @("--headless", "--path", "godot", "--script", "res://tests/gameplay_test.gd") `
+            -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Godot gameplay tests failed with exit code $($process.ExitCode)."
+          }
+
+      - name: Run integration tests
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath $env:GODOT `
+            -ArgumentList @("--headless", "--path", "godot", "--script", "res://tests/integration_test.gd") `
+            -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Godot integration tests failed with exit code $($process.ExitCode)."
+          }
+
+      - name: Export Windows release
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force godot/exports | Out-Null
+          $output = Join-Path $PWD "godot/exports/DaiDai.exe"
+          $startInfo = [Diagnostics.ProcessStartInfo]::new()
+          $startInfo.FileName = $env:GODOT
+          $startInfo.UseShellExecute = $false
+          foreach ($argument in @("--headless", "--path", "godot", "--export-release", "Windows Desktop", $output)) {
+            [void] $startInfo.ArgumentList.Add($argument)
+          }
+          $process = [Diagnostics.Process]::Start($startInfo)
+          $process.WaitForExit()
+          if ($process.ExitCode -ne 0) {
+            throw "Godot Windows export failed with exit code $($process.ExitCode)."
+          }
+
+      - name: Verify Windows artifact
+        shell: pwsh
+        run: |
+          $artifact = Get-Item godot/exports/DaiDai.exe
+          if ($artifact.Length -lt 1MB) {
+            throw "Exported executable is unexpectedly small."
+          }
+          Write-Host "DaiDai.exe: $($artifact.Length) bytes"
+
+      - name: Upload Windows release
+        uses: actions/upload-artifact@v4
+        with:
+          name: DaiDai-Windows-x86_64
+          path: godot/exports/DaiDai.exe
+          if-no-files-found: error
+
+  additional-exports:
+    name: Export ${{ matrix.label }}
+    needs: test-and-export
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Windows ARM64
+            platform: windows-latest
+            preset: Windows arm64
+            artifact: DaiDai-windows-arm64.exe
+          - label: macOS ARM64
+            platform: macos-latest
+            preset: macOS Universal
+            artifact: DaiDai-macos-arm64.zip
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.6.3
+          use-dotnet: false
+          include-templates: true
+
+      - name: Export Windows release
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $output = Join-Path $PWD "${{ matrix.artifact }}"
+          $startInfo = [Diagnostics.ProcessStartInfo]::new()
+          $startInfo.FileName = $env:GODOT
+          $startInfo.UseShellExecute = $false
+          foreach ($argument in @("--headless", "--path", "godot", "--export-release", "${{ matrix.preset }}", $output)) {
+            [void] $startInfo.ArgumentList.Add($argument)
+          }
+          $process = [Diagnostics.Process]::Start($startInfo)
+          $process.WaitForExit()
+          if ($process.ExitCode -ne 0) {
+            throw "Godot export failed with exit code $($process.ExitCode)."
+          }
+
+      - name: Export macOS release
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          source_zip="$RUNNER_TEMP/DaiDai-macos-universal.zip"
+          "$GODOT" --headless --path godot --export-release "${{ matrix.preset }}" "$source_zip"
+          bash scripts/thin_macos_arm64.sh "$source_zip" "$PWD/${{ matrix.artifact }}"
+
+      - name: Verify artifact
+        shell: pwsh
+        run: |
+          $artifact = Get-Item "${{ matrix.artifact }}"
+          if ($artifact.Length -lt 1MB) {
+            throw "Exported artifact is unexpectedly small."
+          }
+          Write-Host "${{ matrix.artifact }}: $($artifact.Length) bytes"
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.label }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
