@@ -93,10 +93,16 @@ def wait_for_game(driver: webdriver.Chrome) -> dict:
 
 
 def assert_export_links(driver: webdriver.Chrome) -> None:
-    for selector in ('link[rel="icon"]', 'link[rel="apple-touch-icon"]'):
-        href = driver.find_element(By.CSS_SELECTOR, selector).get_dom_attribute("href")
-        assert href
-        with urllib.request.urlopen(urljoin(driver.current_url, href), timeout=30) as response:
+    expected = {
+        'link[rel="icon"]': "index.icon.png",
+        'link[rel="apple-touch-icon"]': "index.apple-touch-icon.png",
+    }
+    for selector, filename in expected.items():
+        runtime_href = driver.find_element(By.CSS_SELECTOR, selector).get_attribute("href")
+        assert runtime_href and (
+            runtime_href.startswith("blob:") or runtime_href.endswith(filename)
+        )
+        with urllib.request.urlopen(urljoin(BASE_URL, filename), timeout=30) as response:
             assert response.status == 200
 
 
