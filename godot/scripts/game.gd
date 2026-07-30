@@ -219,7 +219,10 @@ func _process(delta: float) -> void:
 			elapsed_seconds = seconds
 			_refresh_ui()
 		_update_sky_drop()
-	snake.interpolate_visuals(game_accumulator_ms / speed_ms)
+	if not paused and not game_over:
+		snake.interpolate_visuals(game_accumulator_ms / speed_ms)
+	else:
+		snake.hide_wrap_mirrors()
 	if not paused and not game_over:
 		projectile_accumulator += delta
 		while projectile_accumulator >= PROJECTILE_STEP_SECONDS:
@@ -388,6 +391,8 @@ func set_paused(value: bool) -> void:
 	if paused and not value:
 		has_started = true
 	paused = value
+	if paused:
+		snake.hide_wrap_mirrors()
 	_show_message(_t("paused") if paused else "")
 	_refresh_ui()
 
@@ -677,6 +682,7 @@ func _end_boost() -> void:
 
 func _finish_game() -> void:
 	game_over = true
+	snake.hide_wrap_mirrors()
 	snake.set_visual_state(boost_active, god_mode, true)
 	_play_audio("heartbeat_stop")
 	_play_audio("die")

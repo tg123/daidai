@@ -51,6 +51,26 @@ func _ready() -> void:
 		head_wrap_mirrors.append(mirror)
 
 
+func _refresh_visible_wrap_mirrors() -> void:
+	for mirror in head_wrap_mirrors:
+		if not mirror.visible:
+			continue
+		var offset := mirror.position - head_node.position
+		offset.y = 0.0
+		_copy_visual_state(head_node, mirror)
+		mirror.position = head_node.position + offset
+	for i in range(body_wrap_mirrors.size()):
+		var source := body_node.get_child(i) as MeshInstance3D
+		for mirror_value in body_wrap_mirrors[i]:
+			var mirror := mirror_value as MeshInstance3D
+			if not mirror.visible:
+				continue
+			var offset: Vector3 = mirror.position - source.position
+			offset.y = 0.0
+			mirror.transform = source.transform
+			mirror.position = source.position + offset
+
+
 func reset(new_cols: int, new_rows: int) -> void:
 	cols = new_cols
 	rows = new_rows
@@ -106,6 +126,8 @@ func interpolate_visuals(alpha: float) -> void:
 		var previous := previous_cells[i] if i < previous_cells.size() else target
 		var delta_x := target.x - previous.x
 		var delta_z := target.y - previous.y
+		var wraps_x: bool = absi(delta_x) > cols / 2
+		var wraps_z: bool = absi(delta_z) > rows / 2
 		if delta_x > cols / 2:
 			delta_x -= cols
 		elif delta_x < -cols / 2:
@@ -122,12 +144,19 @@ func interpolate_visuals(alpha: float) -> void:
 		if i == 0:
 			head_node.position.x = position.x
 			head_node.position.z = position.z
-			_sync_head_wrap_mirrors()
+			_sync_head_wrap_mirrors(wraps_x, wraps_z, clamped_alpha)
 		else:
 			var segment := body_node.get_child(i - 1) as MeshInstance3D
 			segment.position.x = position.x
 			segment.position.z = position.z
-			_sync_wrap_mirrors(segment, body_wrap_mirrors[i - 1], BODY_RADIUS)
+			_sync_wrap_mirrors(
+				segment,
+				body_wrap_mirrors[i - 1],
+				BODY_RADIUS,
+				wraps_x,
+				wraps_z,
+				clamped_alpha,
+			)
 
 
 func _update_materials() -> void:
@@ -194,6 +223,14 @@ func has_cell(cell: Vector2i) -> bool:
 
 func trim_colors(max_count: int) -> void:
 	eaten_colors.resize(mini(eaten_colors.size(), maxi(0, max_count)))
+
+
+func hide_wrap_mirrors() -> void:
+	for mirror in head_wrap_mirrors:
+		mirror.visible = false
+	for mirrors in body_wrap_mirrors:
+		for mirror in mirrors:
+			mirror.visible = false
 
 
 func _process(delta: float) -> void:
@@ -263,6 +300,7 @@ func _process(delta: float) -> void:
 
 	if god_mode or boost_active:
 		_update_materials()
+	_refresh_visible_wrap_mirrors()
 
 
 func _build_head() -> Node3D:
@@ -416,8 +454,10 @@ func _orient_head() -> void:
 	head_node.rotation.y = atan2(direction.x, direction.y)
 
 
-func _sync_head_wrap_mirrors() -> void:
-	var offsets := _wrap_offsets(head_node.position, HEAD_RADIUS)
+func _sync_head_wrap_mirrors(wraps_x: bool, wraps_z: bool, alpha: float) -> void:
+	var offsets: Array[Vector3] = []
+	if alpha < 1.0:
+		offsets = _wrap_offsets(head_node.position, HEAD_RADIUS, wraps_x, wraps_z)
 	for i in range(head_wrap_mirrors.size()):
 		var mirror := head_wrap_mirrors[i]
 		if i >= offsets.size():
@@ -428,8 +468,17 @@ func _sync_head_wrap_mirrors() -> void:
 		mirror.visible = true
 
 
-func _sync_wrap_mirrors(source: MeshInstance3D, mirrors: Array, radius: float) -> void:
-	var offsets := _wrap_offsets(source.position, radius)
+func _sync_wrap_mirrors(
+	source: MeshInstance3D,
+	mirrors: Array,
+	radius: float,
+	wraps_x: bool,
+	wraps_z: bool,
+	alpha: float,
+) -> void:
+	var offsets: Array[Vector3] = []
+	if alpha < 1.0:
+		offsets = _wrap_offsets(source.position, radius, wraps_x, wraps_z)
 	for i in range(mirrors.size()):
 		var mirror := mirrors[i] as MeshInstance3D
 		if i >= offsets.size():
@@ -440,17 +489,22 @@ func _sync_wrap_mirrors(source: MeshInstance3D, mirrors: Array, radius: float) -
 		mirror.visible = true
 
 
-func _wrap_offsets(position: Vector3, radius: float) -> Array[Vector3]:
+func _wrap_offsets(
+	position: Vector3,
+	radius: float,
+	wraps_x: bool = true,
+	wraps_z: bool = true,
+) -> Array[Vector3]:
 	var offsets: Array[Vector3] = []
 	var x_offset := 0.0
 	var z_offset := 0.0
-	if position.x < radius:
+	if wraps_x and position.x < radius:
 		x_offset = cols
-	elif position.x > cols - 1.0 - radius:
+	elif wraps_x and position.x > cols - 1.0 - radius:
 		x_offset = -cols
-	if position.z < radius:
+	if wraps_z and position.z < radius:
 		z_offset = rows
-	elif position.z > rows - 1.0 - radius:
+	elif wraps_z and position.z > rows - 1.0 - radius:
 		z_offset = -rows
 	if x_offset != 0.0:
 		offsets.append(Vector3(x_offset, 0.0, 0.0))
