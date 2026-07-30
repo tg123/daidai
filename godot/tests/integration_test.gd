@@ -40,6 +40,11 @@ func _run() -> void:
 			not emoji_font.disable_embedded_bitmaps,
 			"color emoji keeps its embedded bitmap glyphs",
 		)
+		for glyph in ["🔴", "🔵", "🟢", "🟠", "🟣"]:
+			_check(
+				emoji_font.has_char(glyph.unicode_at(0)),
+				"color emoji font covers combo marker %s" % glyph,
+			)
 	if ui_font != null:
 		for glyph in [
 			"A", "é", "中", "繁", "あ", "한", "Я", "ไ", "←", "⏱", "↔", "●",
@@ -47,6 +52,20 @@ func _run() -> void:
 			"📏", "🔥", "🧪", "🏆", "🇨",
 		]:
 			_check(ui_font.has_char(glyph.unicode_at(0)), "UI font covers %s" % glyph)
+		var emoji_fallback_index := -1
+		var symbol_fallback_index := -1
+		for i in range(ui_font.fallbacks.size()):
+			var fallback := ui_font.fallbacks[i]
+			if fallback.resource_path.ends_with("NotoColorEmoji.ttf"):
+				emoji_fallback_index = i
+			elif fallback.resource_path.ends_with("NotoSansSymbols2-Regular.ttf"):
+				symbol_fallback_index = i
+		_check(
+			emoji_fallback_index >= 0
+			and symbol_fallback_index >= 0
+			and emoji_fallback_index < symbol_fallback_index,
+			"color emoji fallback precedes monochrome symbols",
+		)
 
 	var audio_names := [
 		"eat", "die", "drop", "freeze", "laser", "warp", "thunder1", "thunder2",
@@ -222,11 +241,26 @@ func _run() -> void:
 	var projectile_material := projectile_mesh_a.material_override as StandardMaterial3D
 	_check(
 		projectile_material.emission_enabled
-		and projectile_material.emission_energy_multiplier > 0.8,
+		and projectile_material.emission_energy_multiplier > 1.5,
 		"gold projectile material stays brightly emissive",
+	)
+	_check(
+		projectile_material.albedo_color.g > 0.75
+		and projectile_material.metallic < 0.5,
+		"gold material remains bright without relying on dark reflections",
+	)
+	_check(
+		projectile_a.get_node_or_null("Sparkle") is Sprite3D,
+		"gold projectiles include a visible sparkle",
 	)
 	projectile_a.free()
 	projectile_b.free()
+	game.effects.sync_entities([], [{"x": 1, "y": 1, "life": 300}])
+	_check(
+		game.effects.gold_nodes[0].get_node_or_null("Sparkle") is Sprite3D,
+		"gold beans include a visible sparkle",
+	)
+	game.effects.sync_entities([], [])
 	var animated_bean := game.bean_spawner.beans[0]
 	animated_bean["drop_phase"] = 1.0
 	animated_bean["drop_bounce"] = 0.0

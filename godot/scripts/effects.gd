@@ -3,6 +3,7 @@ class_name DaiDaiEffects
 
 signal falling_bean_landed(cell: Vector2i, color_index: int)
 
+const GOLD_SPARKLE_TEXTURE := preload("res://assets/icons/sparkle.svg")
 const REED_COUNT := 80
 const ROCK_COUNT := 32
 const FLOATING_LEAF_COUNT := 54
@@ -122,15 +123,27 @@ func _prepare_shared_effect_resources() -> void:
 
 func _create_gold_material(web: bool) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(1.0, 0.72, 0.04)
+	material.albedo_color = Color(1.0, 0.82, 0.12)
 	material.emission_enabled = true
-	material.emission = Color(1.0, 0.42, 0.02)
-	material.emission_energy_multiplier = 1.35
-	material.metallic = 0.0 if web else 0.9
-	material.roughness = 0.22
+	material.emission = Color(1.0, 0.68, 0.08)
+	material.emission_energy_multiplier = 2.2
+	material.metallic = 0.0 if web else 0.35
+	material.roughness = 0.18
 	if web:
 		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	return material
+
+
+func _create_gold_sparkle() -> Sprite3D:
+	var sparkle := Sprite3D.new()
+	sparkle.name = "Sparkle"
+	sparkle.texture = GOLD_SPARKLE_TEXTURE
+	sparkle.pixel_size = 0.018
+	sparkle.position = Vector3(0.34, 0.64, 0.14)
+	sparkle.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sparkle.shaded = false
+	sparkle.modulate = Color(1.0, 1.0, 0.72, 1.0)
+	return sparkle
 
 
 func spawn_ripple(world_position: Vector3) -> void:
@@ -222,6 +235,7 @@ func create_projectile(world_position: Vector3) -> Node3D:
 	projectile.material_override = projectile_material
 	projectile.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(projectile)
+	root.add_child(_create_gold_sparkle())
 	if not OS.has_feature("web"):
 		var light := OmniLight3D.new()
 		light.light_color = Color.GOLD
@@ -251,6 +265,7 @@ func sync_entities(shed_skin: Array[Dictionary], gold_beans: Array[Dictionary]) 
 		gold.mesh = gold_effect_mesh
 		gold.material_override = gold_effect_material
 		gold.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		gold.add_child(_create_gold_sparkle())
 		ephemeral_node.add_child(gold)
 		gold_nodes.append(gold)
 	while gold_nodes.size() > gold_beans.size():
@@ -324,13 +339,18 @@ func _process(delta: float) -> void:
 			bubble_node.multimesh.set_instance_transform(i, transform)
 
 	var now := Time.get_ticks_msec()
-	var sparkle := 1.25 + sin(now * 0.009) * 0.35
-	projectile_material.emission_energy_multiplier = sparkle
-	gold_effect_material.emission_energy_multiplier = sparkle
+	var emission_pulse := 2.2 + sin(now * 0.009) * 0.65
+	projectile_material.emission_energy_multiplier = emission_pulse
+	gold_effect_material.emission_energy_multiplier = emission_pulse
 	for i in range(gold_nodes.size()):
 		var node := gold_nodes[i]
 		node.position.y = 0.6 + sin(now * 0.006 + i) * 0.2
 		node.rotation = Vector3(now * 0.003, now * 0.005, 0.0)
+		var sparkle := node.get_node("Sparkle") as Sprite3D
+		var twinkle := 0.85 + sin(now * 0.014 + i * 1.7) * 0.35
+		sparkle.scale = Vector3.ONE * twinkle
+		sparkle.rotation.z = now * 0.002 + i
+		sparkle.modulate.a = 0.65 + sin(now * 0.014 + i * 1.7) * 0.35
 
 
 func _build_floor() -> void:
