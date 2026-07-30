@@ -433,6 +433,7 @@ func _refresh_static_text() -> void:
 func _build_screen_filters() -> void:
 	var vignette := ColorRect.new()
 	vignette.name = "UnderwaterVignette"
+	vignette.z_index = -10
 	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var vignette_shader := Shader.new()
@@ -470,6 +471,7 @@ void fragment() {
 
 	rain_filter = ColorRect.new()
 	rain_filter.name = "RainFilter"
+	rain_filter.z_index = -9
 	rain_filter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	rain_filter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var rain_shader := Shader.new()

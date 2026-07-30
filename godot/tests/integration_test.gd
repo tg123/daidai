@@ -241,13 +241,18 @@ func _run() -> void:
 	var projectile_material := projectile_mesh_a.material_override as StandardMaterial3D
 	_check(
 		projectile_material.emission_enabled
-		and projectile_material.emission_energy_multiplier > 1.5,
+		and projectile_material.emission_energy_multiplier > 3.5,
 		"gold projectile material stays brightly emissive",
 	)
 	_check(
-		projectile_material.albedo_color.g > 0.75
-		and projectile_material.metallic < 0.5,
+		projectile_material.albedo_color.g > 0.85
+		and projectile_material.metallic == 0.0
+		and projectile_material.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED,
 		"gold material remains bright without relying on dark reflections",
+	)
+	_check(
+		projectile_a.get_node_or_null("Glow") is Sprite3D,
+		"gold projectiles include a visible glow",
 	)
 	_check(
 		projectile_a.get_node_or_null("Sparkle") is Sprite3D,
@@ -257,8 +262,18 @@ func _run() -> void:
 	projectile_b.free()
 	game.effects.sync_entities([], [{"x": 1, "y": 1, "life": 300}])
 	_check(
-		game.effects.gold_nodes[0].get_node_or_null("Sparkle") is Sprite3D,
-		"gold beans include a visible sparkle",
+		game.effects.gold_sparkle_overlays.size() == 1,
+		"gold beans include a visible sparkle overlay",
+	)
+	_check(
+		game.effects.gold_glow_overlays.size() == 1,
+		"gold beans include a visible glow overlay",
+	)
+	_check(
+		game.hud.rain_filter.z_index
+		< game.effects.gold_overlay_root.z_index
+		and game.effects.gold_overlay_root.z_index < 0,
+		"gold overlays render after underwater filters and before the HUD",
 	)
 	game.effects.sync_entities([], [])
 	var animated_bean := game.bean_spawner.beans[0]
