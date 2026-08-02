@@ -37,15 +37,38 @@ jobs:
             export_preset="Web Preview"
           fi
           "$GODOT" --headless --path godot --export-release "$export_preset" "$PWD/dist/index.html"
+          asset_base="index-${GITHUB_SHA}"
+          for extension in js wasm pck; do
+            mv "dist/index.${extension}" "dist/${asset_base}.${extension}"
+            sed -i "s/index\\.${extension}/${asset_base}.${extension}/g" dist/index.html
+            if [ -f dist/index.service.worker.js ]; then
+              sed -i "s/index\\.${extension}/${asset_base}.${extension}/g" dist/index.service.worker.js
+            fi
+          done
+          sed -i "s/\"executable\":\"index\"/\"executable\":\"${asset_base}\"/g" dist/index.html
+          sed -i "s/__DAIDAI_BUILD_ID__/${GITHUB_SHA}/g" dist/index.html
+          printf '{"build":"%s"}\n' "$GITHUB_SHA" > dist/build.json
           cp public/privacy.html public/PRIVACY.md public/fav.ico dist/
           touch dist/.nojekyll
       - name: Verify Web artifact
         run: |
+          asset_base="index-${GITHUB_SHA}"
           test -s dist/index.html
-          test -s dist/index.js
-          test -s dist/index.wasm
-          test -s dist/index.pck
+          test -s "dist/${asset_base}.js"
+          test -s "dist/${asset_base}.wasm"
+          test -s "dist/${asset_base}.pck"
+          test ! -e dist/index.js
+          test ! -e dist/index.wasm
+          test ! -e dist/index.pck
           test -s dist/privacy.html
+          test -s dist/build.json
+          grep -q "$asset_base" dist/index.html
+          grep -q "$GITHUB_SHA" dist/index.html
+          grep -q "$GITHUB_SHA" dist/build.json
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            test -s dist/index.service.worker.js
+            grep -q "$asset_base" dist/index.service.worker.js
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: dist-deploy
