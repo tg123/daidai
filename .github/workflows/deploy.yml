@@ -38,11 +38,12 @@ jobs:
           fi
           "$GODOT" --headless --path godot --export-release "$export_preset" "$PWD/dist/index.html"
           asset_base="index-${GITHUB_SHA}"
-          for extension in js wasm pck; do
-            mv "dist/index.${extension}" "dist/${asset_base}.${extension}"
-            sed -i "s/index\\.${extension}/${asset_base}.${extension}/g" dist/index.html
+          for suffix in js wasm pck audio.worklet.js audio.position.worklet.js; do
+            escaped_suffix="${suffix//./\\.}"
+            mv "dist/index.${suffix}" "dist/${asset_base}.${suffix}"
+            sed -i "s/index\\.${escaped_suffix}/${asset_base}.${suffix}/g" dist/index.html
             if [ -f dist/index.service.worker.js ]; then
-              sed -i "s/index\\.${extension}/${asset_base}.${extension}/g" dist/index.service.worker.js
+              sed -i "s/index\\.${escaped_suffix}/${asset_base}.${suffix}/g" dist/index.service.worker.js
             fi
           done
           sed -i "s/\"executable\":\"index\"/\"executable\":\"${asset_base}\"/g" dist/index.html
@@ -80,9 +81,13 @@ jobs:
           test -s "dist/${asset_base}.js"
           test -s "dist/${asset_base}.wasm"
           test -s "dist/${asset_base}.pck"
+          test -s "dist/${asset_base}.audio.worklet.js"
+          test -s "dist/${asset_base}.audio.position.worklet.js"
           test ! -e dist/index.js
           test ! -e dist/index.wasm
           test ! -e dist/index.pck
+          test ! -e dist/index.audio.worklet.js
+          test ! -e dist/index.audio.position.worklet.js
           test -s dist/privacy.html
           test -s dist/build.json
           grep -q "$asset_base" dist/index.html
