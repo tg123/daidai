@@ -916,6 +916,7 @@ func _sync_web_e2e_state() -> void:
 		"mute_visible": hud.mute_button.visible,
 		"language_visible": hud.language_button.visible,
 		"message": hud.message_label.text,
+		"muted": audio.is_muted(),
 	}
 	var serialized := JSON.stringify(state)
 	JavaScriptBridge.eval(

@@ -7,5 +7,5 @@
 [ext_resource type="FontFile" path="res://assets/fonts/NotoColorEmoji.ttf" id="5_emoji"]
 
 [resource]
-fallbacks = Array[Font]([ExtResource("2_cjk"), ExtResource("3_thai"), ExtResource("4_symbols"), ExtResource("5_emoji")])
+fallbacks = Array[Font]([ExtResource("2_cjk"), ExtResource("3_thai"), ExtResource("5_emoji"), ExtResource("4_symbols")])
 base_font = ExtResource("1_base")
