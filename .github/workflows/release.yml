@@ -218,11 +218,12 @@ jobs:
           export/android/java_sdk_path = "$JAVA_HOME"
           EOF
 
-      - name: Set Android release version
-        run: |
-          version_name="${GITHUB_REF_NAME#v}"
-          sed -i "s|^version/code=.*|version/code=$GITHUB_RUN_NUMBER|" godot/export_presets.cfg
-          sed -i "s|^version/name=.*|version/name=\"$version_name\"|" godot/export_presets.cfg
+      - name: Set native release version
+        shell: pwsh
+        run: ./scripts/set_release_version.ps1 -Version "${{ github.event.release.tag_name }}"
+
+      - name: Set Android version code
+        run: sed -i "s|^version/code=.*|version/code=$GITHUB_RUN_NUMBER|" godot/export_presets.cfg
 
       - name: Import Godot resources
         run: '"$GODOT" --headless --editor --path godot --quit'

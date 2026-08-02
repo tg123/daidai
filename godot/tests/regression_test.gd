@@ -208,8 +208,10 @@ func _test_web_distribution_contract() -> void:
 	var project_version := str(
 		ProjectSettings.get_setting("application/config/version", "")
 	)
+	var semver_pattern := RegEx.new()
+	semver_pattern.compile("^\\d+\\.\\d+\\.\\d+$")
 	_check(
-		project_version.split(".").size() == 3,
+		semver_pattern.search(project_version) != null,
 		"native release version uses three-part semantic versioning",
 	)
 	_check(
