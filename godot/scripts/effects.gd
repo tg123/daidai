@@ -5,6 +5,7 @@ signal falling_bean_landed(cell: Vector2i, color_index: int)
 
 const GOLD_SPARKLE_TEXTURE := preload("res://assets/icons/sparkle.svg")
 const GOLD_GLOW_TEXTURE := preload("res://assets/icons/gold_glow.svg")
+const GOLD_CORE_TEXTURE := preload("res://assets/icons/gold_core.svg")
 const REED_COUNT := 80
 const ROCK_COUNT := 32
 const FLOATING_LEAF_COUNT := 54
@@ -32,8 +33,10 @@ var bubbles: Array[Dictionary] = []
 var skin_nodes: Array[MeshInstance3D] = []
 var gold_nodes: Array[MeshInstance3D] = []
 var gold_glow_overlays: Array[Sprite2D] = []
+var gold_core_overlays: Array[Sprite2D] = []
 var gold_sparkle_overlays: Array[Sprite2D] = []
 var gold_overlay_root: Node2D
+var gold_additive_material: CanvasItemMaterial
 var falling_bean_mesh: SphereMesh
 var falling_bean_materials: Array[StandardMaterial3D] = []
 var projectile_mesh: SphereMesh
@@ -72,6 +75,7 @@ func reset(new_cols: int, new_rows: int) -> void:
 	for child in gold_overlay_root.get_children():
 		child.free()
 	gold_glow_overlays.clear()
+	gold_core_overlays.clear()
 	gold_sparkle_overlays.clear()
 
 
@@ -102,6 +106,8 @@ func configure_environment(new_cols: int, new_rows: int, camera_distance: float)
 
 
 func _prepare_shared_effect_resources() -> void:
+	gold_additive_material = CanvasItemMaterial.new()
+	gold_additive_material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	falling_bean_mesh = SphereMesh.new()
 	falling_bean_mesh.radius = 0.35
 	falling_bean_mesh.height = 0.7
@@ -168,11 +174,24 @@ func _create_gold_sparkle() -> Sprite3D:
 	return sparkle
 
 
-func _create_gold_overlay(texture: Texture2D, name: String) -> Sprite2D:
+func _create_gold_core() -> Sprite3D:
+	var core := Sprite3D.new()
+	core.name = "Core"
+	core.texture = GOLD_CORE_TEXTURE
+	core.pixel_size = 0.014
+	core.position = Vector3(0.0, 0.0, 0.1)
+	core.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	core.shaded = false
+	return core
+
+
+func _create_gold_overlay(texture: Texture2D, name: String, additive: bool = false) -> Sprite2D:
 	var sprite := Sprite2D.new()
 	sprite.name = name
 	sprite.texture = texture
 	sprite.centered = true
+	if additive:
+		sprite.material = gold_additive_material
 	return sprite
 
 
@@ -266,6 +285,7 @@ func create_projectile(world_position: Vector3) -> Node3D:
 	projectile.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(projectile)
 	root.add_child(_create_gold_glow())
+	root.add_child(_create_gold_core())
 	root.add_child(_create_gold_sparkle())
 	if not OS.has_feature("web"):
 		var light := OmniLight3D.new()
@@ -296,19 +316,24 @@ func sync_entities(shed_skin: Array[Dictionary], gold_beans: Array[Dictionary]) 
 		gold.mesh = gold_effect_mesh
 		gold.material_override = gold_effect_material
 		gold.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		gold.visible = false
 		ephemeral_node.add_child(gold)
 		gold_nodes.append(gold)
-		var glow := _create_gold_overlay(GOLD_GLOW_TEXTURE, "Glow")
-		glow.modulate = Color(1.0, 0.88, 0.22, 0.72)
+		var glow := _create_gold_overlay(GOLD_GLOW_TEXTURE, "Glow", true)
+		glow.modulate = Color(1.0, 0.74, 0.08, 0.9)
 		gold_overlay_root.add_child(glow)
 		gold_glow_overlays.append(glow)
-		var sparkle := _create_gold_overlay(GOLD_SPARKLE_TEXTURE, "Sparkle")
-		sparkle.modulate = Color(1.0, 1.0, 0.78, 1.0)
+		var core := _create_gold_overlay(GOLD_CORE_TEXTURE, "Core")
+		gold_overlay_root.add_child(core)
+		gold_core_overlays.append(core)
+		var sparkle := _create_gold_overlay(GOLD_SPARKLE_TEXTURE, "Sparkle", true)
+		sparkle.modulate = Color(1.0, 0.98, 0.72, 1.0)
 		gold_overlay_root.add_child(sparkle)
 		gold_sparkle_overlays.append(sparkle)
 	while gold_nodes.size() > gold_beans.size():
 		gold_nodes.pop_back().free()
 		gold_glow_overlays.pop_back().free()
+		gold_core_overlays.pop_back().free()
 		gold_sparkle_overlays.pop_back().free()
 	for i in range(gold_beans.size()):
 		var item := gold_beans[i]
@@ -383,6 +408,7 @@ func _process(delta: float) -> void:
 	projectile_material.emission_energy_multiplier = emission_pulse
 	gold_effect_material.emission_energy_multiplier = emission_pulse
 	var camera := get_node("../Camera3D") as Camera3D
+	var display_scale := (get_node("../HUD") as DaiDaiHUD).ui_scale
 	for i in range(gold_nodes.size()):
 		var node := gold_nodes[i]
 		node.position.y = 0.6 + sin(now * 0.006 + i) * 0.2
@@ -390,15 +416,26 @@ func _process(delta: float) -> void:
 		var screen_position := camera.unproject_position(node.global_position)
 		var sparkle := gold_sparkle_overlays[i]
 		var glow := gold_glow_overlays[i]
+		var core := gold_core_overlays[i]
 		var twinkle := 0.85 + sin(now * 0.014 + i * 1.7) * 0.35
 		var glow_pulse := 0.92 + sin(now * 0.01 + i * 1.1) * 0.1
 		glow.position = screen_position
-		glow.scale = Vector2.ONE * 0.48 * glow_pulse
-		glow.modulate.a = 0.58 + sin(now * 0.01 + i * 1.1) * 0.14
-		sparkle.position = screen_position + Vector2(9.0, -9.0)
-		sparkle.scale = Vector2.ONE * 0.42 * twinkle
+		glow.scale = Vector2.ONE * 0.92 * glow_pulse * display_scale
+		glow.modulate.a = 0.72 + sin(now * 0.01 + i * 1.1) * 0.18
+		core.position = screen_position
+		core.scale = (
+			Vector2.ONE
+			* (0.72 + sin(now * 0.01 + i * 1.1) * 0.025)
+			* display_scale
+		)
+		var orbit_angle := now * 0.0018 + i * 1.7
+		sparkle.position = (
+			screen_position
+			+ Vector2(cos(orbit_angle), sin(orbit_angle)) * 22.0 * display_scale
+		)
+		sparkle.scale = Vector2.ONE * 0.38 * twinkle * display_scale
 		sparkle.rotation = now * 0.002 + i
-		sparkle.modulate.a = 0.65 + sin(now * 0.014 + i * 1.7) * 0.35
+		sparkle.modulate.a = 0.85 + sin(now * 0.014 + i * 1.7) * 0.15
 
 
 func _build_floor() -> void:

@@ -255,6 +255,10 @@ func _run() -> void:
 		"gold projectiles include a visible glow",
 	)
 	_check(
+		projectile_a.get_node_or_null("Core") is Sprite3D,
+		"gold projectiles include a lighting-independent gold core",
+	)
+	_check(
 		projectile_a.get_node_or_null("Sparkle") is Sprite3D,
 		"gold projectiles include a visible sparkle",
 	)
@@ -268,6 +272,19 @@ func _run() -> void:
 	_check(
 		game.effects.gold_glow_overlays.size() == 1,
 		"gold beans include a visible glow overlay",
+	)
+	_check(
+		game.effects.gold_core_overlays.size() == 1
+		and game.effects.gold_core_overlays[0].texture
+		== DaiDaiEffects.GOLD_CORE_TEXTURE,
+		"gold beans use an opaque lighting-independent gold core",
+	)
+	_check(
+		game.effects.gold_glow_overlays[0].material
+		== game.effects.gold_additive_material
+		and game.effects.gold_sparkle_overlays[0].material
+		== game.effects.gold_additive_material,
+		"gold glow and sparkle use additive blending",
 	)
 	_check(
 		game.hud.rain_filter.z_index
