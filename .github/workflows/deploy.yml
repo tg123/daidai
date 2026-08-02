@@ -48,6 +48,29 @@ jobs:
           sed -i "s/\"executable\":\"index\"/\"executable\":\"${asset_base}\"/g" dist/index.html
           sed -i "s/__DAIDAI_BUILD_ID__/${GITHUB_SHA}/g" dist/index.html
           printf '{"build":"%s"}\n' "$GITHUB_SHA" > dist/build.json
+          if [ -f dist/index.service.worker.js ]; then
+            cat >> dist/index.service.worker.js <<'EOF'
+          /* DAIDAI_AUTO_UPDATE */
+          self.addEventListener('install', (event) => {
+            event.waitUntil(self.skipWaiting());
+          });
+          self.addEventListener('activate', (event) => {
+            event.waitUntil(
+              self.clients.claim().then(() => self.clients.matchAll()).then((clients) => {
+                const scopePath = new URL(self.registration.scope).pathname;
+                return Promise.all(
+                  clients
+                    .filter((client) => {
+                      const path = new URL(client.url).pathname;
+                      return path === scopePath || path === `${scopePath}index.html`;
+                    })
+                    .map((client) => client.navigate(client.url)),
+                );
+              }),
+            );
+          });
+          EOF
+          fi
           cp public/privacy.html public/PRIVACY.md public/fav.ico dist/
           touch dist/.nojekyll
       - name: Verify Web artifact
@@ -68,6 +91,7 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" = "push" ]; then
             test -s dist/index.service.worker.js
             grep -q "$asset_base" dist/index.service.worker.js
+            grep -q "DAIDAI_AUTO_UPDATE" dist/index.service.worker.js
           fi
       - uses: actions/upload-artifact@v4
         with:
