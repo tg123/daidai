@@ -15,6 +15,8 @@ A nostalgic 3D remake of _"DAIDAI" Worm_, built with Godot 4 for browsers and na
 <a href="https://apps.microsoft.com/detail/9MV7XJPTM52D"><img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get it from Microsoft" width="190" height="52"></a>
 <a href="https://farmer1992.itch.io/daidai"><img src="https://static.itch.io/images/badge-color.svg" alt="Play on itch.io" width="169" height="52"></a>
 
+The Xbox edition on Microsoft Store is now a native Godot build, not a PWA or WebView wrapper.
+
 📖 [中文说明](README.md)
 
 ## How to Play

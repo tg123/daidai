@@ -38,7 +38,8 @@ jobs:
           if [ -n "$existing" ]; then
             gh release delete "$existing" --yes
           fi
-          gh release create -d --generate-notes "$tag"
+          gh release create -d --generate-notes "$tag" \
+            --notes "Native Godot release. The Xbox edition is built through the private GDK pipeline and is no longer a PWA."
 
   build:
     if: github.event_name == 'release'
@@ -71,6 +72,10 @@ jobs:
           version: 4.6.3
           use-dotnet: false
           include-templates: true
+
+      - name: Set native release version
+        shell: pwsh
+        run: ./scripts/set_release_version.ps1 -Version "${{ github.event.release.tag_name }}"
 
       - name: Import Godot resources
         if: runner.os == 'Windows'

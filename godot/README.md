@@ -90,17 +90,18 @@ Signed Android releases require these repository secrets:
 - `ANDROID_KEYSTORE_ALIAS`
 - `ANDROID_KEYSTORE_PASSWORD`
 
-## Xbox-first release path
+## Native Xbox release
 
-The standard open-source Godot templates cannot create Xbox console packages. Xbox export modules use the NDA-protected Microsoft GDK and must remain private.
+The Microsoft Store Xbox edition is a native Godot console build, not a PWA or WebView wrapper. Xbox export modules use the NDA-protected Microsoft GDK and remain outside this public repository.
 
-1. Apply to [ID@Xbox](https://developer.microsoft.com/en-us/games/publish/id/welcome) and submit DaiDai for concept approval.
-2. After approval, obtain GDK and Xbox development-kit access.
-3. License [W4 Consoles](https://www.w4games.com/w4consoles) or engage another authorized Godot console-porting provider.
-4. Add the private Xbox template to an NDA-compliant self-hosted Windows runner; public GitHub-hosted CI continues to validate Windows native exports.
-5. Complete Xbox certification and Partner Center submission.
+For each Xbox update:
 
-Windows and Android remain fully native Godot targets and do not use a browser or WebView.
+1. Check out the same Git tag used by the public native release.
+2. Run `pwsh scripts/set_release_version.ps1 -Version <tag>`.
+3. Export and sign with the private GDK/W4 template on the NDA-compliant Windows runner.
+4. Upload the package to Partner Center and complete Xbox certification.
+
+Public CI validates the shared Godot gameplay through Windows native exports. Xbox templates, signing material, and packages remain private.
 
 ## Tests
 
@@ -122,4 +123,3 @@ The bundled Noto fonts are licensed under the SIL Open Font License 1.1. Their s
 ## Remaining distribution work
 
 - [ ] Sign the Windows executables and notarize macOS
-- [ ] Evaluate the licensed console export path and produce an Xbox package
