@@ -56,11 +56,13 @@ jobs:
           - label: Windows x64
             platform: windows-latest
             preset: Windows Desktop
-            artifact: DaiDai-windows-x64.exe
+            executable: DaiDai-windows-x64.exe
+            artifact: DaiDai-windows-x64.zip
           - label: Windows ARM64
             platform: windows-latest
             preset: Windows arm64
-            artifact: DaiDai-windows-arm64.exe
+            executable: DaiDai-windows-arm64.exe
+            artifact: DaiDai-windows-arm64.zip
           - label: macOS ARM64
             platform: macos-latest
             preset: macOS Universal
@@ -102,7 +104,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $output = Join-Path $PWD "${{ matrix.artifact }}"
+          $output = Join-Path $PWD "${{ matrix.executable }}"
           $startInfo = [Diagnostics.ProcessStartInfo]::new()
           $startInfo.FileName = $env:GODOT
           $startInfo.UseShellExecute = $false
@@ -114,6 +116,10 @@ jobs:
           if ($process.ExitCode -ne 0) {
             throw "Godot export failed with exit code $($process.ExitCode)."
           }
+          Compress-Archive `
+            -LiteralPath $output `
+            -DestinationPath (Join-Path $PWD "${{ matrix.artifact }}") `
+            -CompressionLevel Optimal
 
       - name: Export macOS release
         if: runner.os == 'macOS'
@@ -131,6 +137,23 @@ jobs:
             throw "Exported artifact is unexpectedly small."
           }
           Write-Host "${{ matrix.artifact }}: $($artifact.Length) bytes"
+
+      - name: Verify Windows archive
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [IO.Compression.ZipFile]::OpenRead(
+            (Resolve-Path "${{ matrix.artifact }}").Path
+          )
+          try {
+            $entries = @($archive.Entries | Select-Object -ExpandProperty FullName)
+            if ($entries.Count -ne 1 -or $entries[0] -ne "${{ matrix.executable }}") {
+              throw "Unexpected Windows archive contents: $($entries -join ', ')"
+            }
+          } finally {
+            $archive.Dispose()
+          }
 
       - name: Upload release artifact
         env:

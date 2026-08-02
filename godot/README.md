@@ -76,8 +76,8 @@ Web quality is selected automatically from pointer type, WebGL renderer, device 
 
 Publishing a GitHub Release builds and uploads:
 
-- `DaiDai-windows-x64.exe`
-- `DaiDai-windows-arm64.exe`
+- `DaiDai-windows-x64.zip` — contains the single native `.exe`
+- `DaiDai-windows-arm64.zip` — contains the single native `.exe`
 - `DaiDai-macos-arm64.zip` — Apple Silicon only
 - `DaiDai-android-arm64.apk`
 - `DaiDai-android-arm64.aab` — Google Play upload
