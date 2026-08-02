@@ -251,19 +251,28 @@ func _run() -> void:
 		"gold material remains bright without relying on dark reflections",
 	)
 	_check(
-		projectile_a.get_node_or_null("Glow") is Sprite3D,
-		"gold projectiles include a visible glow",
+		not projectile_mesh_a.visible and game.effects.projectile_overlays.size() == 2,
+		"gold projectiles replace their filtered 3D meshes with screen overlays",
 	)
+	var projectile_overlay := game.effects.projectile_overlays[0]
 	_check(
-		projectile_a.get_node_or_null("Core") is Sprite3D,
+		projectile_overlay["core"] is Sprite2D
+		and (projectile_overlay["core"] as Sprite2D).texture
+		== DaiDaiEffects.GOLD_CORE_TEXTURE,
 		"gold projectiles include a lighting-independent gold core",
 	)
 	_check(
-		projectile_a.get_node_or_null("Sparkle") is Sprite3D,
-		"gold projectiles include a visible sparkle",
+		projectile_overlay["glow"] is Sprite2D
+		and projectile_overlay["sparkle"] is Sprite2D,
+		"gold projectiles include an additive glow and sparkle",
 	)
 	projectile_a.free()
 	projectile_b.free()
+	game.effects._process(0.0)
+	_check(
+		game.effects.projectile_overlays.is_empty(),
+		"gold projectile overlays are released with their projectiles",
+	)
 	game.effects.sync_entities([], [{"x": 1, "y": 1, "life": 300}])
 	_check(
 		game.effects.gold_sparkle_overlays.size() == 1,

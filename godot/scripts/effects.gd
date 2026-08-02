@@ -37,6 +37,7 @@ var gold_core_overlays: Array[Sprite2D] = []
 var gold_sparkle_overlays: Array[Sprite2D] = []
 var gold_overlay_root: Node2D
 var gold_additive_material: CanvasItemMaterial
+var projectile_overlays: Array[Dictionary] = []
 var falling_bean_mesh: SphereMesh
 var falling_bean_materials: Array[StandardMaterial3D] = []
 var projectile_mesh: SphereMesh
@@ -77,6 +78,7 @@ func reset(new_cols: int, new_rows: int) -> void:
 	gold_glow_overlays.clear()
 	gold_core_overlays.clear()
 	gold_sparkle_overlays.clear()
+	projectile_overlays.clear()
 
 
 func configure_environment(new_cols: int, new_rows: int, camera_distance: float) -> void:
@@ -150,41 +152,6 @@ func _create_gold_material() -> StandardMaterial3D:
 	return material
 
 
-func _create_gold_glow() -> Sprite3D:
-	var glow := Sprite3D.new()
-	glow.name = "Glow"
-	glow.texture = GOLD_GLOW_TEXTURE
-	glow.pixel_size = 0.026
-	glow.position = Vector3(0.0, 0.0, 0.08)
-	glow.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	glow.shaded = false
-	glow.modulate = Color(2.4, 2.0, 0.5, 0.82)
-	return glow
-
-
-func _create_gold_sparkle() -> Sprite3D:
-	var sparkle := Sprite3D.new()
-	sparkle.name = "Sparkle"
-	sparkle.texture = GOLD_SPARKLE_TEXTURE
-	sparkle.pixel_size = 0.018
-	sparkle.position = Vector3(0.34, 0.64, 0.14)
-	sparkle.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	sparkle.shaded = false
-	sparkle.modulate = Color(2.5, 2.5, 1.0, 1.0)
-	return sparkle
-
-
-func _create_gold_core() -> Sprite3D:
-	var core := Sprite3D.new()
-	core.name = "Core"
-	core.texture = GOLD_CORE_TEXTURE
-	core.pixel_size = 0.014
-	core.position = Vector3(0.0, 0.0, 0.1)
-	core.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	core.shaded = false
-	return core
-
-
 func _create_gold_overlay(texture: Texture2D, name: String, additive: bool = false) -> Sprite2D:
 	var sprite := Sprite2D.new()
 	sprite.name = name
@@ -193,6 +160,25 @@ func _create_gold_overlay(texture: Texture2D, name: String, additive: bool = fal
 	if additive:
 		sprite.material = gold_additive_material
 	return sprite
+
+
+func _create_gold_overlay_set() -> Dictionary:
+	var glow := _create_gold_overlay(GOLD_GLOW_TEXTURE, "Glow", true)
+	glow.modulate = Color(1.0, 0.74, 0.08, 0.9)
+	gold_overlay_root.add_child(glow)
+	var core := _create_gold_overlay(GOLD_CORE_TEXTURE, "Core")
+	gold_overlay_root.add_child(core)
+	var sparkle := _create_gold_overlay(GOLD_SPARKLE_TEXTURE, "Sparkle", true)
+	sparkle.modulate = Color(1.0, 0.98, 0.72, 1.0)
+	gold_overlay_root.add_child(sparkle)
+	return {"glow": glow, "core": core, "sparkle": sparkle}
+
+
+func _free_gold_overlay_set(overlay: Dictionary) -> void:
+	for key in ["glow", "core", "sparkle"]:
+		var sprite = overlay.get(key)
+		if is_instance_valid(sprite):
+			(sprite as Sprite2D).queue_free()
 
 
 func spawn_ripple(world_position: Vector3) -> void:
@@ -283,10 +269,8 @@ func create_projectile(world_position: Vector3) -> Node3D:
 	projectile.mesh = projectile_mesh
 	projectile.material_override = projectile_material
 	projectile.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	projectile.visible = false
 	root.add_child(projectile)
-	root.add_child(_create_gold_glow())
-	root.add_child(_create_gold_core())
-	root.add_child(_create_gold_sparkle())
 	if not OS.has_feature("web"):
 		var light := OmniLight3D.new()
 		light.light_color = Color.GOLD
@@ -294,6 +278,9 @@ func create_projectile(world_position: Vector3) -> Node3D:
 		light.omni_range = 5.0
 		root.add_child(light)
 	ephemeral_node.add_child(root)
+	var overlay := _create_gold_overlay_set()
+	overlay["node"] = root
+	projectile_overlays.append(overlay)
 	return root
 
 
@@ -319,17 +306,10 @@ func sync_entities(shed_skin: Array[Dictionary], gold_beans: Array[Dictionary]) 
 		gold.visible = false
 		ephemeral_node.add_child(gold)
 		gold_nodes.append(gold)
-		var glow := _create_gold_overlay(GOLD_GLOW_TEXTURE, "Glow", true)
-		glow.modulate = Color(1.0, 0.74, 0.08, 0.9)
-		gold_overlay_root.add_child(glow)
-		gold_glow_overlays.append(glow)
-		var core := _create_gold_overlay(GOLD_CORE_TEXTURE, "Core")
-		gold_overlay_root.add_child(core)
-		gold_core_overlays.append(core)
-		var sparkle := _create_gold_overlay(GOLD_SPARKLE_TEXTURE, "Sparkle", true)
-		sparkle.modulate = Color(1.0, 0.98, 0.72, 1.0)
-		gold_overlay_root.add_child(sparkle)
-		gold_sparkle_overlays.append(sparkle)
+		var overlay := _create_gold_overlay_set()
+		gold_glow_overlays.append(overlay["glow"] as Sprite2D)
+		gold_core_overlays.append(overlay["core"] as Sprite2D)
+		gold_sparkle_overlays.append(overlay["sparkle"] as Sprite2D)
 	while gold_nodes.size() > gold_beans.size():
 		gold_nodes.pop_back().free()
 		gold_glow_overlays.pop_back().free()
@@ -409,6 +389,28 @@ func _process(delta: float) -> void:
 	gold_effect_material.emission_energy_multiplier = emission_pulse
 	var camera := get_node("../Camera3D") as Camera3D
 	var display_scale := (get_node("../HUD") as DaiDaiHUD).ui_scale
+	for i in range(projectile_overlays.size() - 1, -1, -1):
+		var overlay := projectile_overlays[i]
+		var candidate = overlay.get("node")
+		if not is_instance_valid(candidate) or (candidate as Node).is_queued_for_deletion():
+			_free_gold_overlay_set(overlay)
+			projectile_overlays.remove_at(i)
+			continue
+		var projectile := candidate as Node3D
+		var screen_position := camera.unproject_position(projectile.global_position)
+		var sparkle := overlay["sparkle"] as Sprite2D
+		var glow := overlay["glow"] as Sprite2D
+		var core := overlay["core"] as Sprite2D
+		var phase := now * 0.018 + i
+		glow.position = screen_position
+		glow.scale = Vector2.ONE * (0.76 + sin(phase) * 0.08) * display_scale
+		glow.modulate.a = 0.78 + sin(phase) * 0.14
+		core.position = screen_position
+		core.scale = Vector2.ONE * 0.6 * display_scale
+		sparkle.position = screen_position + Vector2(13.0, -13.0) * display_scale
+		sparkle.scale = Vector2.ONE * (0.3 + sin(phase * 1.3) * 0.08) * display_scale
+		sparkle.rotation = now * 0.004
+		sparkle.modulate.a = 0.85 + sin(phase * 1.3) * 0.15
 	for i in range(gold_nodes.size()):
 		var node := gold_nodes[i]
 		node.position.y = 0.6 + sin(now * 0.006 + i) * 0.2
