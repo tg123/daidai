@@ -22,22 +22,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Compute next semver
-        id: repo-semver
-        uses: lhstrh/action-repo-semver@v1.2.1
-        with:
-          bump: patch
+      - name: Read canonical release version
+        id: project-version
+        shell: bash
+        run: |
+          version=$(sed -n 's/^config\/version="\([^"]*\)"/\1/p' godot/project.godot)
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid application/config/version: $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Refresh draft release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="v${{ steps.repo-semver.outputs.bump }}"
-          existing=$(gh release list --json tagName,isDraft \
-            --jq ".[] | select(.isDraft and .tagName==\"$tag\") | .tagName")
-          if [ -n "$existing" ]; then
-            gh release delete "$existing" --yes
-          fi
+          tag="v${{ steps.project-version.outputs.version }}"
+          gh release list --limit 100 --json tagName,isDraft \
+            --jq '.[] | select(.isDraft) | .tagName' |
+            while read -r existing; do
+              gh release delete "$existing" --yes
+            done
           gh release create -d --generate-notes "$tag" \
             --notes "Native Godot release. The Xbox edition is built through the private GDK pipeline and is no longer a PWA."
 

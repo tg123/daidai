@@ -16,7 +16,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 config/name="DaiDai"
 config/description="呆呆虫之豆豆潭 3D 复刻版 (Godot port)"
-config/version="1.0.1"
+config/version="2.0.0"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.png"
