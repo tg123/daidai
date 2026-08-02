@@ -22,23 +22,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Compute next semver
-        id: repo-semver
-        uses: lhstrh/action-repo-semver@v1.2.1
-        with:
-          bump: patch
+      - name: Read canonical release version
+        id: project-version
+        shell: bash
+        run: |
+          version=$(sed -n 's/^config\/version="\([^"]*\)"/\1/p' godot/project.godot)
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid application/config/version: $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Refresh draft release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="v${{ steps.repo-semver.outputs.bump }}"
-          existing=$(gh release list --json tagName,isDraft \
-            --jq ".[] | select(.isDraft and .tagName==\"$tag\") | .tagName")
-          if [ -n "$existing" ]; then
-            gh release delete "$existing" --yes
-          fi
-          gh release create -d --generate-notes "$tag"
+          tag="v${{ steps.project-version.outputs.version }}"
+          gh release list --limit 100 --json tagName,isDraft \
+            --jq '.[] | select(.isDraft) | .tagName' |
+            while read -r existing; do
+              gh release delete "$existing" --yes
+            done
+          gh release create -d --generate-notes "$tag" \
+            --notes "Native Godot release. The Xbox edition is built through the private GDK pipeline and is no longer a PWA."
 
   build:
     if: github.event_name == 'release'
@@ -50,11 +56,13 @@ jobs:
           - label: Windows x64
             platform: windows-latest
             preset: Windows Desktop
-            artifact: DaiDai-windows-x64.exe
+            executable: DaiDai-windows-x64.exe
+            artifact: DaiDai-windows-x64.zip
           - label: Windows ARM64
             platform: windows-latest
             preset: Windows arm64
-            artifact: DaiDai-windows-arm64.exe
+            executable: DaiDai-windows-arm64.exe
+            artifact: DaiDai-windows-arm64.zip
           - label: macOS ARM64
             platform: macos-latest
             preset: macOS Universal
@@ -71,6 +79,10 @@ jobs:
           version: 4.6.3
           use-dotnet: false
           include-templates: true
+
+      - name: Set native release version
+        shell: pwsh
+        run: ./scripts/set_release_version.ps1 -Version "${{ github.event.release.tag_name }}"
 
       - name: Import Godot resources
         if: runner.os == 'Windows'
@@ -92,7 +104,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $output = Join-Path $PWD "${{ matrix.artifact }}"
+          $output = Join-Path $PWD "${{ matrix.executable }}"
           $startInfo = [Diagnostics.ProcessStartInfo]::new()
           $startInfo.FileName = $env:GODOT
           $startInfo.UseShellExecute = $false
@@ -104,6 +116,10 @@ jobs:
           if ($process.ExitCode -ne 0) {
             throw "Godot export failed with exit code $($process.ExitCode)."
           }
+          Compress-Archive `
+            -LiteralPath $output `
+            -DestinationPath (Join-Path $PWD "${{ matrix.artifact }}") `
+            -CompressionLevel Optimal
 
       - name: Export macOS release
         if: runner.os == 'macOS'
@@ -121,6 +137,23 @@ jobs:
             throw "Exported artifact is unexpectedly small."
           }
           Write-Host "${{ matrix.artifact }}: $($artifact.Length) bytes"
+
+      - name: Verify Windows archive
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [IO.Compression.ZipFile]::OpenRead(
+            (Resolve-Path "${{ matrix.artifact }}").Path
+          )
+          try {
+            $entries = @($archive.Entries | Select-Object -ExpandProperty FullName)
+            if ($entries.Count -ne 1 -or $entries[0] -ne "${{ matrix.executable }}") {
+              throw "Unexpected Windows archive contents: $($entries -join ', ')"
+            }
+          } finally {
+            $archive.Dispose()
+          }
 
       - name: Upload release artifact
         env:
@@ -185,11 +218,12 @@ jobs:
           export/android/java_sdk_path = "$JAVA_HOME"
           EOF
 
-      - name: Set Android release version
-        run: |
-          version_name="${GITHUB_REF_NAME#v}"
-          sed -i "s|^version/code=.*|version/code=$GITHUB_RUN_NUMBER|" godot/export_presets.cfg
-          sed -i "s|^version/name=.*|version/name=\"$version_name\"|" godot/export_presets.cfg
+      - name: Set native release version
+        shell: pwsh
+        run: ./scripts/set_release_version.ps1 -Version "${{ github.event.release.tag_name }}"
+
+      - name: Set Android version code
+        run: sed -i "s|^version/code=.*|version/code=$GITHUB_RUN_NUMBER|" godot/export_presets.cfg
 
       - name: Import Godot resources
         run: '"$GODOT" --headless --editor --path godot --quit'

@@ -205,6 +205,23 @@ func _test_web_distribution_contract() -> void:
 	var presets := FileAccess.get_file_as_string("res://export_presets.cfg")
 	_check(presets.contains("name=\"Web\""), "production Web export preset exists")
 	_check(presets.contains("name=\"Web Preview\""), "preview Web export preset exists")
+	var project_version := str(
+		ProjectSettings.get_setting("application/config/version", "")
+	)
+	var semver_pattern := RegEx.new()
+	semver_pattern.compile("^\\d+\\.\\d+\\.\\d+$")
+	_check(
+		semver_pattern.search(project_version) != null,
+		"native release version uses three-part semantic versioning",
+	)
+	_check(
+		presets.count('application/file_version="%s.0"' % project_version) == 2
+		and presets.count('application/product_version="%s.0"' % project_version) == 2
+		and presets.contains('application/short_version="%s"' % project_version)
+		and presets.contains('application/version="%s"' % project_version)
+		and presets.count('version/name="%s"' % project_version) == 2,
+		"native export presets match the canonical project version",
+	)
 	_check(
 		presets.contains("progressive_web_app/enabled=true"),
 		"production Web export remains installable",

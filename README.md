@@ -17,6 +17,8 @@
 <a href="https://apps.microsoft.com/detail/9MV7XJPTM52D?hl=zh-cn&gl=cn"><img src="https://get.microsoft.com/images/zh-cn%20dark.svg" alt="从 Microsoft 获取" width="190" height="52"></a>
 <a href="https://farmer1992.itch.io/daidai"><img src="https://static.itch.io/images/badge-color.svg" alt="Play on itch.io" width="169" height="52"></a>
 
+Microsoft Store 的 Xbox 版本现为原生 Godot 构建，不再使用 PWA 或 WebView。
+
 ## 玩法
 
 - 方向键 / WASD — 控制呆呆虫移动（同时按两个方向键可斜着走）
