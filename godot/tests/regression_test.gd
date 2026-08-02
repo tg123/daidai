@@ -191,6 +191,17 @@ func _test_web_distribution_contract() -> void:
 	_check(shell.contains("loading-worm"), "Web shell keeps the loading indicator")
 	_check(shell.contains("onProgress"), "Web shell reports download progress")
 	_check(shell.contains("$GODOT_CONFIG"), "Web shell keeps the Godot config placeholder")
+	_check(
+		shell.contains("__DAIDAI_BUILD_ID__")
+		and shell.contains("fetch(versionUrl, { cache: 'no-store' })")
+		and shell.contains("window.location.replace(nextUrl)"),
+		"Web previews automatically bypass stale GitHub Pages caches",
+	)
+	_check(
+		shell.contains("{ updateViaCache: 'none' }")
+		and shell.contains("registration.waiting.postMessage('update')"),
+		"installed PWAs activate new service workers without a hard reload",
+	)
 	var presets := FileAccess.get_file_as_string("res://export_presets.cfg")
 	_check(presets.contains("name=\"Web\""), "production Web export preset exists")
 	_check(presets.contains("name=\"Web Preview\""), "preview Web export preset exists")

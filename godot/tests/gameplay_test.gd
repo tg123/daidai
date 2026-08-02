@@ -77,6 +77,25 @@ func _run() -> void:
 		if mirror.visible and is_equal_approx(mirror.position.x, -0.5):
 			has_wrapped_head_mirror = true
 	_check(has_wrapped_head_mirror, "worm head is mirrored across the wrapped screen edge")
+	var visible_head_mirror: Node3D = null
+	for mirror in snake.head_wrap_mirrors:
+		if mirror.visible:
+			visible_head_mirror = mirror
+			break
+	snake._process(0.016)
+	_check(
+		visible_head_mirror != null
+		and is_equal_approx(visible_head_mirror.position.y, snake.head_node.position.y),
+		"wrapped head mirrors stay synchronized with bobbing animation",
+	)
+	game.set_paused(true)
+	_check(not _has_visible_wrap_mirror(snake), "pausing hides in-progress wrap mirrors")
+	game._process(0.016)
+	_check(
+		not _has_visible_wrap_mirror(snake),
+		"paused processing does not recreate hidden wrap mirrors",
+	)
+	game.set_paused(false)
 	_check(
 		snake._wrap_offsets(Vector3.ZERO, DaiDaiSnake.BODY_RADIUS).size() == 3,
 		"worm body creates horizontal, vertical, and diagonal corner mirrors",
@@ -85,6 +104,32 @@ func _run() -> void:
 	_check(
 		is_equal_approx(snake.head_node.position.x, game.cols - 1.0),
 		"wrapped interpolation reaches the target cell",
+	)
+	_check(
+		not _has_visible_wrap_mirror(snake),
+		"wrapped mirrors hide after reaching the target cell",
+	)
+	snake.reset(game.cols, game.rows)
+
+	snake.previous_cells = [
+		Vector2i(0, 3),
+		Vector2i(0, 4),
+		Vector2i(0, 5),
+		Vector2i(0, 6),
+		Vector2i(0, 7),
+	]
+	snake.cells = snake.previous_cells.duplicate()
+	snake.sync_visuals()
+	snake.interpolate_visuals(0.5)
+	var stable_edge_has_mirror := false
+	for mirror in snake.head_wrap_mirrors:
+		stable_edge_has_mirror = stable_edge_has_mirror or mirror.visible
+	for mirrors in snake.body_wrap_mirrors:
+		for mirror in mirrors:
+			stable_edge_has_mirror = stable_edge_has_mirror or mirror.visible
+	_check(
+		not stable_edge_has_mirror,
+		"a worm resting along an edge is not duplicated on the opposite edge",
 	)
 	snake.reset(game.cols, game.rows)
 
@@ -265,3 +310,14 @@ func _run() -> void:
 		for failure in failures:
 			push_error(failure)
 		quit(1)
+
+
+func _has_visible_wrap_mirror(snake: DaiDaiSnake) -> bool:
+	for mirror in snake.head_wrap_mirrors:
+		if mirror.visible:
+			return true
+	for mirrors in snake.body_wrap_mirrors:
+		for mirror in mirrors:
+			if (mirror as MeshInstance3D).visible:
+				return true
+	return false

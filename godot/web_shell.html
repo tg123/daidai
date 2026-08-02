@@ -121,6 +121,40 @@
             }
         </style>
         $GODOT_HEAD_INCLUDE
+        <script>
+            window.daidaiBuildReady = (() => {
+                const currentBuild = '__DAIDAI_BUILD_ID__';
+                if (currentBuild.startsWith('__')) {
+                    return Promise.resolve(true);
+                }
+                const versionUrl = new URL('build.json', window.location.href);
+                versionUrl.searchParams.set('check', Date.now().toString());
+                return fetch(versionUrl, { cache: 'no-store' })
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error(`Build check failed: HTTP ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(({ build: latestBuild }) => {
+                        if (!/^[0-9a-f]{40}$/.test(latestBuild) || latestBuild === currentBuild) {
+                            return true;
+                        }
+                        const nextUrl = new URL(window.location.href);
+                        if (nextUrl.searchParams.get('build') === latestBuild) {
+                            console.warn('Latest preview files are still propagating.');
+                            return true;
+                        }
+                        nextUrl.searchParams.set('build', latestBuild);
+                        window.location.replace(nextUrl);
+                        return false;
+                    })
+                    .catch((error) => {
+                        console.warn('Unable to check for a newer preview build.', error);
+                        return true;
+                    });
+            })();
+        </script>
     </head>
     <body>
         <canvas id="canvas" tabindex="0" aria-label="DaiDai game canvas"
@@ -137,49 +171,106 @@
         </div>
         <script src="$GODOT_URL"></script>
         <script>
-            const GODOT_CONFIG = $GODOT_CONFIG;
-            const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
-            const engine = new Engine(GODOT_CONFIG);
-            const status = document.getElementById('status');
-            const bar = document.getElementById('loading-bar-inner');
-            const percentage = document.getElementById('loading-pct');
-            const notice = document.getElementById('status-notice');
+            window.daidaiBuildReady.then(async (isCurrentBuild) => {
+                if (!isCurrentBuild) {
+                    return;
+                }
+                const GODOT_CONFIG = $GODOT_CONFIG;
+                const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+                if (
+                    GODOT_CONFIG.serviceWorker &&
+                    'serviceWorker' in navigator &&
+                    navigator.serviceWorker.controller
+                ) {
+                    try {
+                        const registration = await navigator.serviceWorker.register(
+                            GODOT_CONFIG.serviceWorker,
+                            { updateViaCache: 'none' },
+                        );
+                        await registration.update();
+                        const installingWorker = registration.installing;
+                        if (
+                            installingWorker &&
+                            !['installed', 'redundant'].includes(installingWorker.state)
+                        ) {
+                            await Promise.race([
+                                new Promise((resolve) => {
+                                    installingWorker.addEventListener(
+                                        'statechange',
+                                        () => {
+                                            if (['installed', 'redundant'].includes(
+                                                installingWorker.state,
+                                            )) {
+                                                resolve();
+                                            }
+                                        },
+                                    );
+                                }),
+                                new Promise((resolve) => setTimeout(resolve, 5000)),
+                            ]);
+                        }
+                        if (registration.waiting) {
+                            const controllerChanged = new Promise((resolve) => {
+                                navigator.serviceWorker.addEventListener(
+                                    'controllerchange',
+                                    resolve,
+                                    { once: true },
+                                );
+                            });
+                            registration.waiting.postMessage('update');
+                            await Promise.race([
+                                controllerChanged,
+                                new Promise((resolve) => setTimeout(resolve, 5000)),
+                            ]);
+                            window.location.reload();
+                            return;
+                        }
+                    } catch (error) {
+                        console.warn('Unable to activate the latest PWA build.', error);
+                    }
+                }
+                const engine = new Engine(GODOT_CONFIG);
+                const status = document.getElementById('status');
+                const bar = document.getElementById('loading-bar-inner');
+                const percentage = document.getElementById('loading-pct');
+                const notice = document.getElementById('status-notice');
 
-            function fail(error) {
-                console.error(error);
-                notice.textContent = error instanceof Error ? error.message : String(error);
-                notice.style.display = 'block';
-                bar.classList.remove('indeterminate');
-                percentage.textContent = '!';
-            }
+                function fail(error) {
+                    console.error(error);
+                    notice.textContent = error instanceof Error ? error.message : String(error);
+                    notice.style.display = 'block';
+                    bar.classList.remove('indeterminate');
+                    percentage.textContent = '!';
+                }
 
-            const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
-            if (missing.length) {
-                fail(`Missing browser features:\n${missing.join('\n')}`);
-            } else {
-                engine
-                    .startGame({
-                        canvas: document.getElementById('canvas'),
-                        onProgress(current, total) {
-                            if (current > 0 && total > 0) {
-                                const progress = Math.min(1, current / total);
-                                bar.classList.remove('indeterminate');
-                                bar.style.width = `${Math.round(progress * 100)}%`;
-                                percentage.textContent = `${Math.round(progress * 100)}%`;
-                            } else {
-                                bar.classList.add('indeterminate');
-                                percentage.textContent = '…';
-                            }
-                        },
-                    })
-                    .then(() => {
-                        bar.classList.remove('indeterminate');
-                        bar.style.width = '100%';
-                        percentage.textContent = '100%';
-                        status.classList.add('loaded');
-                        setTimeout(() => status.remove(), 260);
-                    }, fail);
-            }
+                const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+                if (missing.length) {
+                    fail(`Missing browser features:\n${missing.join('\n')}`);
+                } else {
+                    engine
+                        .startGame({
+                            canvas: document.getElementById('canvas'),
+                            onProgress(current, total) {
+                                if (current > 0 && total > 0) {
+                                    const progress = Math.min(1, current / total);
+                                    bar.classList.remove('indeterminate');
+                                    bar.style.width = `${Math.round(progress * 100)}%`;
+                                    percentage.textContent = `${Math.round(progress * 100)}%`;
+                                } else {
+                                    bar.classList.add('indeterminate');
+                                    percentage.textContent = '…';
+                                }
+                            },
+                        })
+                        .then(() => {
+                            bar.classList.remove('indeterminate');
+                            bar.style.width = '100%';
+                            percentage.textContent = '100%';
+                            status.classList.add('loaded');
+                            setTimeout(() => status.remove(), 260);
+                        }, fail);
+                }
+            });
         </script>
     </body>
 </html>
