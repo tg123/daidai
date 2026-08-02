@@ -116,6 +116,7 @@ def test_desktop() -> None:
         assert snapshot["pause_visible"] is False
         assert snapshot["mute_visible"] is True
         assert snapshot["language_visible"] is True
+        assert snapshot["muted"] is False
         assert snapshot["title"] == '"DAIDAI" Worm'
         assert driver.title == snapshot["title"]
         assert_export_links(driver)
@@ -165,6 +166,7 @@ def test_mobile() -> None:
         assert snapshot["pause_visible"] is True
         assert snapshot["mute_visible"] is True
         assert snapshot["language_visible"] is True
+        assert snapshot["muted"] is False
 
         dimensions = driver.execute_script(
             """
