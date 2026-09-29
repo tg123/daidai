@@ -94,7 +94,7 @@ void fragment() {
 		vec3 light = base_color * vec3(1.0, 0.62, 0.52) + vec3(0.06, 0.04, 0.03);
 		albedo = mix(dark, light, stripe * 0.8);
 		if (!body_mode) {
-			albedo = mix(albedo, vec3(1.0, 0.78, 0.7), smoothstep(0.2, 0.05, UV.y) * 0.5);
+			albedo = mix(albedo, vec3(1.0, 0.78, 0.7), (1.0 - smoothstep(0.05, 0.2, UV.y)) * 0.5);
 		}
 		emission = base_color * 0.07 + light * stripe * 0.05;
 		roughness = 0.28;

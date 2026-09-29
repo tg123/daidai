@@ -6,7 +6,7 @@ signal bean_landed(cell: Vector2i)
 const MAX_SPAWN_ATTEMPTS := 100
 const DROP_PHASE_RATE := 2.1
 const DROP_BOUNCE_RATE := 3.6
-const MAX_TRAIL_BEANS := 40
+const TRAIL_CAPACITY_STEP := 40
 const TRAIL_BUBBLES_PER_BEAN := 1
 
 var beans: Array[Dictionary] = []
@@ -188,7 +188,7 @@ void fragment() {
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.mesh = mesh
-	multimesh.instance_count = MAX_TRAIL_BEANS * TRAIL_BUBBLES_PER_BEAN
+	multimesh.instance_count = TRAIL_CAPACITY_STEP * TRAIL_BUBBLES_PER_BEAN
 	multimesh.visible_instance_count = 0
 	trail_node.multimesh = multimesh
 	trail_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -198,7 +198,12 @@ void fragment() {
 
 func _update_bubble_trails(now: int) -> void:
 	var multimesh := trail_node.multimesh
-	var count := mini(beans.size(), MAX_TRAIL_BEANS)
+	var count := beans.size()
+	var required := count * TRAIL_BUBBLES_PER_BEAN
+	if required > multimesh.instance_count:
+		# Rain magic keeps adding beans; grow in steps so every bean keeps its trail.
+		var steps := ceili(count / float(TRAIL_CAPACITY_STEP))
+		multimesh.instance_count = steps * TRAIL_CAPACITY_STEP * TRAIL_BUBBLES_PER_BEAN
 	var seconds := now * 0.001
 	for i in range(count):
 		var bean := beans[i]

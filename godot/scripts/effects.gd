@@ -14,6 +14,8 @@ const POND_FLOWER_COUNT := 6
 const BUBBLE_COUNT := 60
 const MARINE_SNOW_COUNT := 160
 const MAX_RIPPLES := 96
+const BED_RIPPLE_HEIGHT := 0.04
+const WATER_SURFACE_Y := 4.5
 
 var cols := 40
 var rows := 30
@@ -139,7 +141,9 @@ func _prepare_shared_effect_resources() -> void:
 	gold_additive_material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	falling_bean_shader = DaiDaiBeanVisuals.create_shader()
 	for color_index in range(DaiDaiRules.COLORS.size()):
-		falling_bean_meshes.append(DaiDaiBeanVisuals.create_mesh(color_index, true))
+		falling_bean_meshes.append(
+			DaiDaiBeanVisuals.create_mesh(color_index, reduced_web_quality),
+		)
 		falling_bean_materials.append(
 			DaiDaiBeanVisuals.create_material(color_index, falling_bean_shader),
 		)
@@ -205,12 +209,13 @@ func spawn_ripple(
 	max_scale: float = 3.2,
 	life: float = 0.92,
 	strength: float = 1.0,
+	height: float = BED_RIPPLE_HEIGHT,
 ) -> void:
 	if ripples.size() >= _max_ripples():
 		ripples.remove_at(0)
 	ripples.append(
 		{
-			"position": Vector3(world_position.x, 0.04, world_position.z),
+			"position": Vector3(world_position.x, height, world_position.z),
 			"life": life,
 			"max_life": life,
 			"max_scale": max_scale,
@@ -311,6 +316,7 @@ func _update_rain_splashes(delta: float) -> void:
 			rng.randf_range(0.8, 1.5),
 			rng.randf_range(0.45, 0.7),
 			rng.randf_range(1.0, 1.4),
+			WATER_SURFACE_Y,
 		)
 
 
@@ -758,7 +764,7 @@ void fragment() {
 	material.set_shader_parameter("high_quality", not reduced_web_quality)
 	water_mesh.material_override = material
 	water_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	water_mesh.position = Vector3((cols - 1) / 2.0, 4.5, (rows - 1) / 2.0)
+	water_mesh.position = Vector3((cols - 1) / 2.0, WATER_SURFACE_Y, (rows - 1) / 2.0)
 	atmosphere_node.add_child(water_mesh)
 
 
@@ -1206,7 +1212,9 @@ void fragment() {
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.mesh = quad
-	multimesh.instance_count = 70 if reduced_web_quality else MARINE_SNOW_COUNT
+	multimesh.instance_count = (
+		int(MARINE_SNOW_COUNT / 2.0) if reduced_web_quality else MARINE_SNOW_COUNT
+	)
 	for i in range(multimesh.instance_count):
 		var origin := box_min + Vector3(
 			rng.randf() * box_size.x,
