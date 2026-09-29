@@ -46,5 +46,5 @@ jobs:
           packageName: io.github.tg123.daidai
           releaseFiles: DaiDai-android-arm64.aab
           releaseName: ${{ steps.release.outputs.tag }}
-          track: ${{ inputs.track || 'internal' }}
+          tracks: ${{ inputs.track || 'internal' }}
           status: completed

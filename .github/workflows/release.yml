@@ -232,5 +232,5 @@ jobs:
           packageName: io.github.tg123.daidai
           releaseFiles: DaiDai-android-arm64.aab
           releaseName: ${{ github.event.release.tag_name }}
-          track: internal
+          tracks: internal
           status: completed
