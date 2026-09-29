@@ -9,7 +9,7 @@
 - Five-bean combo magic: red boost/stacked multiplier, blue rain/bonus beans, green skin recovery, orange gold projectile, and purple length halving
 - Gold beans, falling beans, random sky drops, particles, ripples, rain, boost expiry, god mode, `daidai` meteor shower, Konami code, and heart-sequence tribute
 - Distinct animated head/body visuals with eyes, blinking, bean gaze, hands, toss/chew animation, death eyes, boost tint, and rainbow god mode
-- Advanced native 3D pond with smooth terrain, animated caustics, refraction, depth fog, curved ribbon-grass clusters, floating long leaves, notched pond leaves, flower buds, pebbles, bubbles, and underwater color grading
+- Advanced native 3D pond with smooth terrain, organic animated caustics with drifting sun pools, a sun-glinting wave surface, instanced shaded ripples and rain-splash rings, refraction, depth fog, filmic grading with glow, curved ribbon-grass clusters, floating long leaves, notched pond leaves, flower buds, pebbles, rim-lit wobbling bubbles, and underwater color grading
 - Keyboard, swipe/tap, Xbox/PlayStation gamepad controls and glyphs, responsive HUD, pause/restart/mute/language controls
 - All 13 web locales with the same fallback and placeholder rules
 - Original music and sound effects, with persisted mute state
