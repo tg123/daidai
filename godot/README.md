@@ -5,7 +5,7 @@
 ## Implemented parity
 
 - Dynamic 22-cell-short-side pond layout, responsive orthographic oblique camera, 8-way movement, torus wrapping, self/skin collision, pause, restart, game over, timer, and persisted high score
-- Area-scaled free-cell bean density, canonical five-color palette with power-themed bean designs (red flame, blue raindrop, green sprouting seed, orange gold gem, purple split orb), scoring, growth, body color queue, length-25 shedding, permanent shed-skin collision, and heartbeat
+- Area-scaled free-cell bean density, canonical five-color palette with power-themed bean designs (red spiral shell, blue raindrop, green sprouting seed, orange gold gem, purple split orb), scoring, growth, body segments that wear the eaten bean's design, length-25 shedding, permanent shed-skin collision, and heartbeat
 - Five-bean combo magic: red boost/stacked multiplier, blue rain/bonus beans, green skin recovery, orange gold projectile, and purple length halving
 - Gold beans, falling beans, random sky drops, particles, ripples, rain, boost expiry, god mode, `daidai` meteor shower, Konami code, and heart-sequence tribute
 - Distinct animated head/body visuals with eyes, blinking, bean gaze, hands, toss/chew animation, death eyes, boost tint, and rainbow god mode

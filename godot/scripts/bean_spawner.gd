@@ -7,7 +7,7 @@ const MAX_SPAWN_ATTEMPTS := 100
 const DROP_PHASE_RATE := 2.1
 const DROP_BOUNCE_RATE := 3.6
 const MAX_TRAIL_BEANS := 40
-const TRAIL_BUBBLES_PER_BEAN := 2
+const TRAIL_BUBBLES_PER_BEAN := 1
 
 var beans: Array[Dictionary] = []
 var cols := 40
@@ -40,8 +40,8 @@ func _prepare_shared_resources() -> void:
 		var gradient := Gradient.new()
 		gradient.offsets = PackedFloat32Array([0.0, 0.4, 1.0])
 		gradient.colors = PackedColorArray([
-			Color(color.lightened(0.35), 0.42),
-			Color(color, 0.16),
+			Color(color.lightened(0.3), 0.26),
+			Color(color, 0.1),
 			Color(color, 0.0),
 		])
 		var halo_texture := GradientTexture2D.new()
@@ -179,7 +179,7 @@ void fragment() {
 	float rim = pow(1.0 - facing, 2.0);
 	float highlight = pow(clamp(dot(NORMAL, normalize(vec3(-0.45, 0.6, 0.65))), 0.0, 1.0), 24.0);
 	ALBEDO = mix(vec3(0.7, 0.95, 0.95), vec3(1.0), highlight);
-	ALPHA = clamp(0.08 + rim * 0.75 + highlight, 0.0, 1.0);
+	ALPHA = clamp(0.05 + rim * 0.5 + highlight * 0.7, 0.0, 1.0);
 }
 """
 	var material := ShaderMaterial.new()
@@ -206,11 +206,11 @@ func _update_bubble_trails(now: int) -> void:
 		var landed := float(bean["drop_phase"]) <= 0.0
 		var phase := int(bean["x"]) * 0.61 + int(bean["y"]) * 1.93
 		for k in range(TRAIL_BUBBLES_PER_BEAN):
-			var cycle := fposmod(seconds * 0.42 + phase + k / float(TRAIL_BUBBLES_PER_BEAN), 1.0)
-			var rise := cycle * 2.6
+			var cycle := fposmod(seconds * 0.3 + phase + k / float(TRAIL_BUBBLES_PER_BEAN), 1.0)
+			var rise := cycle * 2.2
 			var size := 0.0
 			if landed:
-				size = sin(cycle * PI) * (0.7 + 0.3 * sin(phase * 3.0 + k))
+				size = sin(cycle * PI) * (0.55 + 0.25 * sin(phase * 3.0 + k))
 			var position := Vector3(
 				int(bean["x"]) + sin(seconds * 2.2 + phase + k * 2.1) * 0.08 * (0.3 + cycle),
 				node.position.y + 0.3 + rise,

@@ -319,8 +319,8 @@ func spawn_particles(world_position: Vector3, color: Color, count: int) -> void:
 	for _i in range(particle_count):
 		var particle := MeshInstance3D.new()
 		var mesh := SphereMesh.new()
-		mesh.radius = 0.12
-		mesh.height = 0.24
+		mesh.radius = 0.09
+		mesh.height = 0.18
 		mesh.radial_segments = 6
 		mesh.rings = 4
 		particle.mesh = mesh
@@ -328,19 +328,20 @@ func spawn_particles(world_position: Vector3, color: Color, count: int) -> void:
 		material.albedo_color = color
 		material.emission_enabled = true
 		material.emission = color
-		material.emission_energy_multiplier = 0.35
+		material.emission_energy_multiplier = 0.2
 		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		particle.material_override = material
 		particle.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		particle.position = Vector3(world_position.x, 0.5, world_position.z)
 		ephemeral_node.add_child(particle)
+		# Water drag keeps bursts soft: pieces drift outward, then float up.
 		particles.append(
 			{
 				"node": particle,
 				"velocity": Vector3(
-					rng.randf_range(-4.5, 4.5),
-					rng.randf_range(3.0, 12.0),
-					rng.randf_range(-4.5, 4.5),
+					rng.randf_range(-1.8, 1.8),
+					rng.randf_range(0.4, 2.0),
+					rng.randf_range(-1.8, 1.8),
 				),
 				"life": 1.0,
 			},
@@ -441,7 +442,8 @@ func _process(delta: float) -> void:
 		var node := particle["node"] as MeshInstance3D
 		var velocity := particle["velocity"] as Vector3
 		node.position += velocity * delta
-		velocity.y -= 10.8 * delta
+		velocity *= exp(-2.4 * delta)
+		velocity.y += 0.9 * delta
 		particle["velocity"] = velocity
 		particle["life"] = float(particle["life"]) - delta
 		var amount := maxf(0.0, float(particle["life"]))
@@ -1191,7 +1193,7 @@ void fragment() {
 	float d = length(UV - vec2(0.5)) * 2.0;
 	float dot_shape = 1.0 - smoothstep(0.2, 1.0, d);
 	ALBEDO = vec3(0.75, 0.95, 0.85);
-	ALPHA = dot_shape * twinkle * 0.32;
+	ALPHA = dot_shape * twinkle * 0.2;
 }
 """
 	var material := ShaderMaterial.new()
