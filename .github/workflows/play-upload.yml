@@ -1,0 +1,48 @@
+name: Google Play Upload
+
+# Manually (re)publish a release's signed AAB to a Google Play track.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to upload (defaults to the latest release)
+        required: false
+      track:
+        description: Google Play track
+        required: true
+        default: internal
+        type: choice
+        options: [internal, alpha, beta, production]
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Download release AAB
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          if [ -z "$TAG" ]; then
+            TAG=$(gh release view -R "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+          fi
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p DaiDai-android-arm64.aab
+          test -s DaiDai-android-arm64.aab
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to Google Play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: io.github.tg123.daidai
+          releaseFiles: DaiDai-android-arm64.aab
+          releaseName: ${{ steps.release.outputs.tag }}
+          track: ${{ inputs.track || 'internal' }}
+          status: completed
