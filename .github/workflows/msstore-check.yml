@@ -32,7 +32,12 @@ jobs:
             --clientId $env:PARTNER_CENTER_CLIENT_ID `
             --clientSecret $env:PARTNER_CENTER_CLIENT_SECRET
           if ($LASTEXITCODE -ne 0) { throw "msstore reconfigure failed with exit code $LASTEXITCODE." }
-          msstore apps get 9MV7XJPTM52D
-          if ($LASTEXITCODE -ne 0) { throw "msstore apps get failed with exit code $LASTEXITCODE." }
-          msstore submission status 9MV7XJPTM52D
-          if ($LASTEXITCODE -ne 0) { throw "msstore submission status failed with exit code $LASTEXITCODE." }
+          msstore apps list --verbose
+          $list = $LASTEXITCODE
+          msstore apps get 9MV7XJPTM52D --verbose
+          $get = $LASTEXITCODE
+          msstore submission status 9MV7XJPTM52D --verbose
+          $status = $LASTEXITCODE
+          if ($list -ne 0 -or $get -ne 0 -or $status -ne 0) {
+            throw "apps list=$list, apps get=$get, submission status=$status"
+          }
