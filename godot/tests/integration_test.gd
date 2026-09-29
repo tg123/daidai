@@ -224,6 +224,12 @@ func _run() -> void:
 		(bean_a.get_child(0) as Sprite3D).texture == (bean_b.get_child(0) as Sprite3D).texture,
 		"same-color beans reuse their halo texture",
 	)
+	var bean_c := game.bean_spawner._create_bean(1)
+	_check(
+		bean_a.mesh != bean_c.mesh and bean_a.material_override != bean_c.material_override,
+		"each power has its own bean design",
+	)
+	bean_c.free()
 	bean_a.free()
 	bean_b.free()
 	var projectile_a := game.effects.create_projectile(Vector3.ZERO)

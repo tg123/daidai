@@ -12,6 +12,7 @@ const FLOATING_LEAF_COUNT := 54
 const LILY_PAD_COUNT := 24
 const POND_FLOWER_COUNT := 6
 const BUBBLE_COUNT := 60
+const MARINE_SNOW_COUNT := 160
 const MAX_RIPPLES := 96
 
 var cols := 40
@@ -25,6 +26,7 @@ var floating_plant_node: MultiMeshInstance3D
 var lily_pad_node: MultiMeshInstance3D
 var pond_flower_node: MultiMeshInstance3D
 var bubble_node: MultiMeshInstance3D
+var marine_snow_node: MultiMeshInstance3D
 var ripple_node: MultiMeshInstance3D
 var rain_splash_start_ms := 0
 var rain_splash_end_ms := 0
@@ -43,8 +45,9 @@ var gold_sparkle_overlays: Array[Sprite2D] = []
 var gold_overlay_root: Node2D
 var gold_additive_material: CanvasItemMaterial
 var projectile_overlays: Array[Dictionary] = []
-var falling_bean_mesh: SphereMesh
-var falling_bean_materials: Array[StandardMaterial3D] = []
+var falling_bean_shader: Shader
+var falling_bean_meshes: Array[ArrayMesh] = []
+var falling_bean_materials: Array[ShaderMaterial] = []
 var projectile_mesh: SphereMesh
 var projectile_material: StandardMaterial3D
 var gold_effect_mesh: SphereMesh
@@ -104,6 +107,7 @@ func configure_environment(new_cols: int, new_rows: int, camera_distance: float)
 	_build_floating_plants()
 	_build_lily_pads()
 	_build_bubbles()
+	_build_marine_snow()
 
 	var world := get_node("../WorldEnvironment") as WorldEnvironment
 	if world.environment != null:
@@ -133,20 +137,12 @@ func configure_environment(new_cols: int, new_rows: int, camera_distance: float)
 func _prepare_shared_effect_resources() -> void:
 	gold_additive_material = CanvasItemMaterial.new()
 	gold_additive_material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	falling_bean_mesh = SphereMesh.new()
-	falling_bean_mesh.radius = 0.35
-	falling_bean_mesh.height = 0.7
-	falling_bean_mesh.radial_segments = 8 if reduced_web_quality else 12
-	falling_bean_mesh.rings = 6 if reduced_web_quality else 10
-	for color: Color in DaiDaiRules.COLORS:
-		var material := StandardMaterial3D.new()
-		material.albedo_color = color
-		material.emission_enabled = true
-		material.emission = color
-		material.emission_energy_multiplier = 0.3
-		material.metallic = 0.4
-		material.roughness = 0.3
-		falling_bean_materials.append(material)
+	falling_bean_shader = DaiDaiBeanVisuals.create_shader()
+	for color_index in range(DaiDaiRules.COLORS.size()):
+		falling_bean_meshes.append(DaiDaiBeanVisuals.create_mesh(color_index, true))
+		falling_bean_materials.append(
+			DaiDaiBeanVisuals.create_material(color_index, falling_bean_shader),
+		)
 
 	projectile_mesh = SphereMesh.new()
 	projectile_mesh.radius = 0.3
@@ -363,8 +359,9 @@ func start_heavy_rain() -> void:
 
 func spawn_falling_bean(cell: Vector2i, color_index: int) -> void:
 	var bean := MeshInstance3D.new()
-	bean.mesh = falling_bean_mesh
+	bean.mesh = falling_bean_meshes[color_index]
 	bean.material_override = falling_bean_materials[color_index]
+	bean.scale = Vector3.ONE * DaiDaiBeanVisuals.VISUAL_SCALE
 	bean.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	bean.position = Vector3(cell.x, rng.randf_range(12.0, 17.0), cell.y)
 	ephemeral_node.add_child(bean)
@@ -1162,6 +1159,63 @@ void fragment() {
 	bubble_node.multimesh = multimesh
 	bubble_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	atmosphere_node.add_child(bubble_node)
+
+
+func _build_marine_snow() -> void:
+	marine_snow_node = MultiMeshInstance3D.new()
+	marine_snow_node.name = "MarineSnow"
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.09, 0.09)
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
+uniform vec3 box_min;
+uniform vec3 box_size;
+varying float twinkle;
+void vertex() {
+	vec3 origin = MODEL_MATRIX[3].xyz;
+	float id = float(INSTANCE_ID);
+	vec3 drift = vec3(
+		TIME * 0.11 + sin(TIME * 0.17 + id * 1.3) * 0.5,
+		sin(TIME * 0.23 + id * 0.7) * 0.25 - TIME * 0.035,
+		TIME * 0.05 + cos(TIME * 0.13 + id * 2.1) * 0.5
+	);
+	vec3 moved = mod(origin + drift - box_min, box_size) + box_min;
+	float size = 0.6 + fract(id * 0.618) * 0.9;
+	vec3 world = moved + (INV_VIEW_MATRIX * vec4(VERTEX * size, 0.0)).xyz;
+	POSITION = PROJECTION_MATRIX * VIEW_MATRIX * vec4(world, 1.0);
+	twinkle = 0.55 + 0.45 * sin(TIME * 1.1 + id * 2.3);
+}
+void fragment() {
+	float d = length(UV - vec2(0.5)) * 2.0;
+	float dot_shape = 1.0 - smoothstep(0.2, 1.0, d);
+	ALBEDO = vec3(0.75, 0.95, 0.85);
+	ALPHA = dot_shape * twinkle * 0.32;
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	var box_min := Vector3(-cols * 0.1, -0.2, -rows * 0.1)
+	var box_size := Vector3(cols * 1.2, 3.4, rows * 1.2)
+	material.set_shader_parameter("box_min", box_min)
+	material.set_shader_parameter("box_size", box_size)
+	quad.material = material
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.mesh = quad
+	multimesh.instance_count = 70 if reduced_web_quality else MARINE_SNOW_COUNT
+	for i in range(multimesh.instance_count):
+		var origin := box_min + Vector3(
+			rng.randf() * box_size.x,
+			rng.randf() * box_size.y,
+			rng.randf() * box_size.z,
+		)
+		multimesh.set_instance_transform(i, Transform3D(Basis.IDENTITY, origin))
+	marine_snow_node.multimesh = multimesh
+	marine_snow_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	marine_snow_node.custom_aabb = AABB(box_min - Vector3.ONE * 2.0, box_size + Vector3.ONE * 4.0)
+	atmosphere_node.add_child(marine_snow_node)
 
 
 func _spawn_rain_wave() -> void:

@@ -5,11 +5,11 @@
 ## Implemented parity
 
 - Dynamic 22-cell-short-side pond layout, responsive orthographic oblique camera, 8-way movement, torus wrapping, self/skin collision, pause, restart, game over, timer, and persisted high score
-- Area-scaled free-cell bean density, canonical five-color palette, scoring, growth, body color queue, length-25 shedding, permanent shed-skin collision, and heartbeat
+- Area-scaled free-cell bean density, canonical five-color palette with power-themed bean designs (red flame, blue raindrop, green sprouting seed, orange gold gem, purple split orb), scoring, growth, body color queue, length-25 shedding, permanent shed-skin collision, and heartbeat
 - Five-bean combo magic: red boost/stacked multiplier, blue rain/bonus beans, green skin recovery, orange gold projectile, and purple length halving
 - Gold beans, falling beans, random sky drops, particles, ripples, rain, boost expiry, god mode, `daidai` meteor shower, Konami code, and heart-sequence tribute
 - Distinct animated head/body visuals with eyes, blinking, bean gaze, hands, toss/chew animation, death eyes, boost tint, and rainbow god mode
-- Advanced native 3D pond with smooth terrain, organic animated caustics with drifting sun pools, a sun-glinting wave surface, instanced shaded ripples and rain-splash rings, refraction, depth fog, filmic grading with glow, curved ribbon-grass clusters, floating long leaves, notched pond leaves, flower buds, pebbles, rim-lit wobbling bubbles, and underwater color grading
+- Advanced native 3D pond with smooth terrain, organic animated caustics with drifting sun pools, a sun-glinting wave surface, instanced shaded ripples and rain-splash rings, refraction, depth fog, filmic grading with glow, curved ribbon-grass clusters, floating long leaves, notched pond leaves, flower buds, pebbles, rim-lit wobbling bubbles, bean bubble trails, drifting suspended particles, and underwater color grading
 - Keyboard, swipe/tap, Xbox/PlayStation gamepad controls and glyphs, responsive HUD, pause/restart/mute/language controls
 - All 13 web locales with the same fallback and placeholder rules
 - Original music and sound effects, with persisted mute state
@@ -29,6 +29,7 @@ godot/
 │   ├── game_rules.gd        # Pure wrapping, direction, and scoring rules
 │   ├── snake.gd             # Worm model and animated rendering
 │   ├── bean_spawner.gd      # Bean model, spawning, and rendering
+│   ├── bean_visuals.gd      # Power-themed bean meshes and shader
 │   ├── effects.gd           # Pond environment and gameplay effects
 │   ├── hud.gd               # HUD, controls, locale menu, overlays
 │   ├── i18n.gd              # Locale selection and translation
