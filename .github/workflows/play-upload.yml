@@ -3,8 +3,6 @@ name: Google Play Upload
 # Manually (re)publish a release's signed AAB to a Google Play track.
 
 on:
-  push:
-    branches: [update-android-apk]
   workflow_dispatch:
     inputs:
       tag:

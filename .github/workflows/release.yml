@@ -193,7 +193,10 @@ jobs:
       - name: Set Android release version
         run: |
           version_name="${GITHUB_REF_NAME#v}"
-          sed -i "s|^version/code=.*|version/code=$GITHUB_RUN_NUMBER|" godot/export_presets.cfg
+          IFS=. read -r major minor patch <<< "${version_name%%-*}"
+          # Semver-derived code, matching the earlier Tauri scheme (0.1.0 -> 1000).
+          version_code=$(( major * 1000000 + minor * 1000 + patch ))
+          sed -i "s|^version/code=.*|version/code=$version_code|" godot/export_presets.cfg
           sed -i "s|^version/name=.*|version/name=\"$version_name\"|" godot/export_presets.cfg
 
       - name: Import Godot resources
