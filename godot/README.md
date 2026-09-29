@@ -82,6 +82,7 @@ Publishing a GitHub Release builds and uploads:
 - `DaiDai-macos-arm64.zip` — Apple Silicon only
 - `DaiDai-android-arm64.apk`
 - `DaiDai-android-arm64.aab` — Google Play upload
+- `DaiDai-windows.msixbundle` — Microsoft Store upload (when configured, see below)
 
 The workflow thins Godot's universal template to ARM64 and then ad-hoc signs the app. It is not Apple-notarized.
 
@@ -90,6 +91,21 @@ Signed Android releases require these repository secrets:
 - `ANDROID_KEYSTORE_BASE64`
 - `ANDROID_KEYSTORE_ALIAS`
 - `ANDROID_KEYSTORE_PASSWORD`
+
+## Microsoft Store (Windows)
+
+When the `MSSTORE_PUBLISHER` repository variable is set, publishing a release also packages the x64 and ARM64 executables into `DaiDai-windows.msixbundle` (identity `62505tgic.daidaiworm`) and attaches it to the release. Copy the value from Partner Center > Product identity > `Package/Identity/Publisher`; `scripts/package_msix.ps1` rejects any value that does not match the listing's package family name.
+
+With these secrets configured, the bundle is also submitted to product `9MV7XJPTM52D`:
+
+- `PARTNER_CENTER_TENANT_ID`
+- `PARTNER_CENTER_SELLER_ID`
+- `PARTNER_CENTER_CLIENT_ID`
+- `PARTNER_CENTER_CLIENT_SECRET`
+
+The client must be a Microsoft Entra app added in Partner Center > Account settings > User management with the Manager role. Like the Google Play internal track, releases are submitted automatically only to the package flight in the `MSSTORE_FLIGHT_ID` variable. Use the **Microsoft Store Upload** workflow to submit a release as a draft or to production; both replace any pending Partner Center submission, including manual listing or Xbox package edits.
+
+The package uses the `runFullTrust` restricted capability, so the first MSIX submission needs a capability justification in Partner Center. It replaces the listing's previous PWA package for Windows desktop only; the Xbox package still comes from the private GDK pipeline.
 
 ## Native Xbox release
 
