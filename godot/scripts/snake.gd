@@ -25,6 +25,9 @@ var pupil_nodes: Array[Node3D] = []
 var dead_eye_nodes: Array[Node3D] = []
 var hand_nodes: Array[Node3D] = []
 var toss_bean: MeshInstance3D
+var bean_shader: Shader
+var toss_bean_meshes: Array[ArrayMesh] = []
+var toss_bean_materials: Array[ShaderMaterial] = []
 var smile_node: MeshInstance3D
 var open_mouth_node: MeshInstance3D
 var tongue_node: MeshInstance3D
@@ -38,6 +41,10 @@ var throw_side := 1
 
 
 func _ready() -> void:
+	bean_shader = DaiDaiBeanVisuals.create_shader()
+	for color_index in range(DaiDaiRules.COLORS.size()):
+		toss_bean_meshes.append(DaiDaiBeanVisuals.create_mesh(color_index, true))
+		toss_bean_materials.append(DaiDaiBeanVisuals.create_material(color_index, bean_shader))
 	body_node = Node3D.new()
 	body_node.name = "Body"
 	add_child(body_node)
@@ -163,20 +170,28 @@ func _update_materials() -> void:
 	var now := Time.get_ticks_msec()
 	for i in range(body_node.get_child_count()):
 		var segment := body_node.get_child(i) as MeshInstance3D
-		var material := segment.material_override as StandardMaterial3D
+		var material := segment.material_override as ShaderMaterial
 		if god_mode:
-			material.albedo_color = Color.from_hsv(
-				fmod(now * 0.0008 + (i + 1) * 0.08, 1.0),
-				1.0,
-				0.55,
+			DaiDaiBeanVisuals.set_body_power(
+				material,
+				-1,
+				Color.from_hsv(fmod(now * 0.0008 + (i + 1) * 0.08, 1.0), 1.0, 0.55),
 			)
 		elif boost_active:
 			var flicker := 0.7 + sin(now * 0.02 + i + 1) * 0.3
-			material.albedo_color = Color(flicker, 0.3, 0.1)
+			DaiDaiBeanVisuals.set_body_power(
+				material,
+				DaiDaiBeanVisuals.Power.BOOST,
+				Color(flicker, 0.3, 0.1),
+			)
 		elif i < eaten_colors.size():
-			material.albedo_color = DaiDaiRules.COLORS[eaten_colors[i]]
+			DaiDaiBeanVisuals.set_body_power(
+				material,
+				eaten_colors[i],
+				DaiDaiRules.COLORS[eaten_colors[i]],
+			)
 		else:
-			material.albedo_color = DEFAULT_BODY_COLOR
+			DaiDaiBeanVisuals.set_body_power(material, -1, DEFAULT_BODY_COLOR)
 	head_material.albedo_color = Color(1.0, 0.4, 0.1) if boost_active else HEAD_COLOR
 
 
@@ -195,9 +210,12 @@ func play_eat(color_index: int) -> void:
 	eat_time = 0.8
 	chew_time = 0.0
 	throw_side *= -1
-	var material := toss_bean.material_override as StandardMaterial3D
-	material.albedo_color = DaiDaiRules.COLORS[color_index]
-	material.emission = DaiDaiRules.COLORS[color_index]
+	toss_bean.mesh = toss_bean_meshes[color_index]
+	toss_bean.material_override = toss_bean_materials[color_index]
+	for mirror in head_wrap_mirrors:
+		var mirror_bean := mirror.get_child(toss_bean.get_index()) as MeshInstance3D
+		mirror_bean.mesh = toss_bean.mesh
+		mirror_bean.material_override = toss_bean.material_override
 	toss_bean.visible = true
 
 
@@ -405,17 +423,22 @@ func _build_head() -> Node3D:
 		head.add_child(hand_root)
 		hand_nodes.append(hand_root)
 
-	toss_bean = _sphere_mesh(0.16, _material(Color.WHITE, 0.4))
-	var toss_material := toss_bean.material_override as StandardMaterial3D
-	toss_material.emission_enabled = true
-	toss_material.emission_energy_multiplier = 0.4
+	toss_bean = MeshInstance3D.new()
+	toss_bean.name = "TossBean"
+	toss_bean.mesh = toss_bean_meshes[0]
+	toss_bean.material_override = toss_bean_materials[0]
+	toss_bean.scale = Vector3.ONE * 0.6
+	toss_bean.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	toss_bean.visible = false
 	head.add_child(toss_bean)
 	return head
 
 
 func _create_body_segment() -> void:
-	var segment := _sphere_mesh(BODY_RADIUS, _material(DEFAULT_BODY_COLOR, 0.3))
+	var segment := _sphere_mesh(
+		BODY_RADIUS,
+		DaiDaiBeanVisuals.create_body_material(bean_shader, DEFAULT_BODY_COLOR),
+	)
 	var mesh := segment.mesh as SphereMesh
 	mesh.radial_segments = 12
 	mesh.rings = 12

@@ -12,6 +12,10 @@ const FLOATING_LEAF_COUNT := 54
 const LILY_PAD_COUNT := 24
 const POND_FLOWER_COUNT := 6
 const BUBBLE_COUNT := 60
+const MARINE_SNOW_COUNT := 160
+const MAX_RIPPLES := 96
+const BED_RIPPLE_HEIGHT := 0.04
+const WATER_SURFACE_Y := 4.5
 
 var cols := 40
 var rows := 30
@@ -24,6 +28,11 @@ var floating_plant_node: MultiMeshInstance3D
 var lily_pad_node: MultiMeshInstance3D
 var pond_flower_node: MultiMeshInstance3D
 var bubble_node: MultiMeshInstance3D
+var marine_snow_node: MultiMeshInstance3D
+var ripple_node: MultiMeshInstance3D
+var rain_splash_start_ms := 0
+var rain_splash_end_ms := 0
+var rain_splash_budget := 0.0
 var atmosphere_node: Node3D
 var ephemeral_node: Node3D
 var particles: Array[Dictionary] = []
@@ -38,8 +47,9 @@ var gold_sparkle_overlays: Array[Sprite2D] = []
 var gold_overlay_root: Node2D
 var gold_additive_material: CanvasItemMaterial
 var projectile_overlays: Array[Dictionary] = []
-var falling_bean_mesh: SphereMesh
-var falling_bean_materials: Array[StandardMaterial3D] = []
+var falling_bean_shader: Shader
+var falling_bean_meshes: Array[ArrayMesh] = []
+var falling_bean_materials: Array[ShaderMaterial] = []
 var projectile_mesh: SphereMesh
 var projectile_material: StandardMaterial3D
 var gold_effect_mesh: SphereMesh
@@ -57,6 +67,7 @@ func _ready() -> void:
 	ephemeral_node = Node3D.new()
 	ephemeral_node.name = "Ephemeral"
 	add_child(ephemeral_node)
+	_build_ripple_renderer()
 	gold_overlay_root = Node2D.new()
 	gold_overlay_root.name = "GoldOverlay"
 	gold_overlay_root.z_index = -5
@@ -70,6 +81,10 @@ func reset(new_cols: int, new_rows: int) -> void:
 		child.free()
 	particles.clear()
 	ripples.clear()
+	ripple_node.multimesh.visible_instance_count = 0
+	rain_splash_start_ms = 0
+	rain_splash_end_ms = 0
+	rain_splash_budget = 0.0
 	falling_beans.clear()
 	skin_nodes.clear()
 	gold_nodes.clear()
@@ -94,36 +109,44 @@ func configure_environment(new_cols: int, new_rows: int, camera_distance: float)
 	_build_floating_plants()
 	_build_lily_pads()
 	_build_bubbles()
+	_build_marine_snow()
 
 	var world := get_node("../WorldEnvironment") as WorldEnvironment
 	if world.environment != null:
-		world.environment.background_mode = Environment.BG_COLOR
-		world.environment.background_color = Color8(13, 43, 40)
-		world.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-		world.environment.ambient_light_color = Color8(184, 225, 209)
-		world.environment.ambient_light_energy = 0.75
-		world.environment.fog_enabled = true
-		world.environment.fog_light_color = Color8(32, 93, 82)
-		world.environment.fog_density = 0.02 * (25.0 / camera_distance)
+		var environment := world.environment
+		environment.background_mode = Environment.BG_COLOR
+		environment.background_color = Color8(10, 38, 36)
+		environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		environment.ambient_light_color = Color8(176, 222, 208)
+		environment.ambient_light_energy = 0.72
+		environment.fog_enabled = true
+		environment.fog_light_color = Color8(18, 72, 68)
+		environment.fog_density = 0.012 * (25.0 / camera_distance)
+		environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+		environment.tonemap_exposure = 0.86
+		environment.adjustment_enabled = true
+		environment.adjustment_brightness = 1.0
+		environment.adjustment_contrast = 1.1
+		environment.adjustment_saturation = 1.12
+		environment.glow_enabled = not reduced_web_quality
+		environment.glow_intensity = 0.45
+		environment.glow_strength = 1.0
+		environment.glow_bloom = 0.0
+		environment.glow_hdr_threshold = 1.3
+		environment.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 
 
 func _prepare_shared_effect_resources() -> void:
 	gold_additive_material = CanvasItemMaterial.new()
 	gold_additive_material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	falling_bean_mesh = SphereMesh.new()
-	falling_bean_mesh.radius = 0.35
-	falling_bean_mesh.height = 0.7
-	falling_bean_mesh.radial_segments = 8 if reduced_web_quality else 12
-	falling_bean_mesh.rings = 6 if reduced_web_quality else 10
-	for color: Color in DaiDaiRules.COLORS:
-		var material := StandardMaterial3D.new()
-		material.albedo_color = color
-		material.emission_enabled = true
-		material.emission = color
-		material.emission_energy_multiplier = 0.3
-		material.metallic = 0.4
-		material.roughness = 0.3
-		falling_bean_materials.append(material)
+	falling_bean_shader = DaiDaiBeanVisuals.create_shader()
+	for color_index in range(DaiDaiRules.COLORS.size()):
+		falling_bean_meshes.append(
+			DaiDaiBeanVisuals.create_mesh(color_index, reduced_web_quality),
+		)
+		falling_bean_materials.append(
+			DaiDaiBeanVisuals.create_material(color_index, falling_bean_shader),
+		)
 
 	projectile_mesh = SphereMesh.new()
 	projectile_mesh.radius = 0.3
@@ -181,27 +204,120 @@ func _free_gold_overlay_set(overlay: Dictionary) -> void:
 			(sprite as Sprite2D).queue_free()
 
 
-func spawn_ripple(world_position: Vector3) -> void:
-	var ring := MeshInstance3D.new()
-	var mesh := TorusMesh.new()
-	mesh.inner_radius = 0.42
-	mesh.outer_radius = 0.5
-	mesh.rings = 6 if OS.has_feature("web") else 12
-	mesh.ring_segments = 16 if OS.has_feature("web") else 32
-	ring.mesh = mesh
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.75, 0.9, 1.0, 0.28)
-	material.emission_enabled = true
-	material.emission = Color8(191, 230, 255)
-	material.emission_energy_multiplier = 0.4
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	ring.material_override = material
-	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	ring.position = Vector3(world_position.x, 0.04, world_position.z)
-	ring.scale = Vector3.ONE * 0.4
-	ephemeral_node.add_child(ring)
-	ripples.append({"node": ring, "life": 0.92, "max_life": 0.92})
+func spawn_ripple(
+	world_position: Vector3,
+	max_scale: float = 3.2,
+	life: float = 0.92,
+	strength: float = 1.0,
+	height: float = BED_RIPPLE_HEIGHT,
+) -> void:
+	if ripples.size() >= _max_ripples():
+		ripples.remove_at(0)
+	ripples.append(
+		{
+			"position": Vector3(world_position.x, height, world_position.z),
+			"life": life,
+			"max_life": life,
+			"max_scale": max_scale,
+			"strength": strength,
+			"rotation": rng.randf_range(0.0, TAU),
+		},
+	)
+
+
+func _max_ripples() -> int:
+	return 48 if reduced_web_quality else MAX_RIPPLES
+
+
+func _build_ripple_renderer() -> void:
+	ripple_node = MultiMeshInstance3D.new()
+	ripple_node.name = "Ripples"
+	var quad := PlaneMesh.new()
+	quad.size = Vector2(1.2, 1.2)
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
+varying float progress;
+varying float strength;
+float band(float r, float center, float width) {
+	float x = (r - center) / width;
+	return exp(-x * x);
+}
+void vertex() {
+	progress = INSTANCE_CUSTOM.x;
+	strength = INSTANCE_CUSTOM.y;
+}
+void fragment() {
+	vec2 p = UV * 2.0 - 1.0;
+	float r = length(p);
+	if (r > 1.0) {
+		discard;
+	}
+	float width = mix(0.05, 0.085, progress);
+	float crest = band(r, 0.84, width) + band(r, 0.6, width) * 0.55 + band(r, 0.38, width) * 0.25;
+	float trough = band(r, 0.75, width) + band(r, 0.51, width) * 0.55 + band(r, 0.29, width) * 0.25;
+	vec2 dir = p / max(r, 0.0001);
+	float lit = 0.65 + 0.35 * dot(dir, normalize(vec2(-0.55, -0.83)));
+	float fade = smoothstep(0.0, 0.08, progress) * pow(1.0 - progress, 1.4);
+	fade *= 1.0 - smoothstep(0.9, 1.0, r);
+	float highlight = crest * lit;
+	float splash = band(r, 0.0, 0.16) * (1.0 - smoothstep(0.0, 0.25, progress));
+	highlight += splash * 1.5;
+	ALBEDO = mix(vec3(0.0, 0.08, 0.09), vec3(0.88, 1.0, 0.97), highlight / (highlight + trough * 0.8 + 0.0001));
+	ALPHA = clamp((highlight * 0.7 + trough * 0.26) * fade * strength, 0.0, 1.0);
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	quad.material = material
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.use_custom_data = true
+	multimesh.mesh = quad
+	multimesh.instance_count = _max_ripples()
+	multimesh.visible_instance_count = 0
+	ripple_node.multimesh = multimesh
+	ripple_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ripple_node.custom_aabb = AABB(Vector3(-1.0e4, -10.0, -1.0e4), Vector3(2.0e4, 20.0, 2.0e4))
+	add_child(ripple_node)
+
+
+func _update_ripples(delta: float) -> void:
+	for i in range(ripples.size() - 1, -1, -1):
+		ripples[i]["life"] = float(ripples[i]["life"]) - delta
+		if float(ripples[i]["life"]) <= 0.0:
+			ripples.remove_at(i)
+	var multimesh := ripple_node.multimesh
+	for i in range(ripples.size()):
+		var ripple := ripples[i]
+		var normalized := 1.0 - float(ripple["life"]) / float(ripple["max_life"])
+		var eased := 1.0 - pow(1.0 - normalized, 2.2)
+		var scale := lerpf(0.35, float(ripple["max_scale"]), eased)
+		var transform := Transform3D(
+			Basis(Vector3.UP, float(ripple["rotation"])).scaled(Vector3(scale, 1.0, scale)),
+			ripple["position"] as Vector3,
+		)
+		multimesh.set_instance_transform(i, transform)
+		multimesh.set_instance_custom_data(i, Color(normalized, float(ripple["strength"]), 0.0, 0.0))
+	multimesh.visible_instance_count = ripples.size()
+
+
+func _update_rain_splashes(delta: float) -> void:
+	var now := Time.get_ticks_msec()
+	if now < rain_splash_start_ms or now > rain_splash_end_ms:
+		return
+	var rate := 14.0 if reduced_web_quality else 38.0
+	rain_splash_budget += rate * delta
+	while rain_splash_budget >= 1.0:
+		rain_splash_budget -= 1.0
+		spawn_ripple(
+			Vector3(rng.randf_range(-0.5, cols - 0.5), 0.0, rng.randf_range(-0.5, rows - 0.5)),
+			rng.randf_range(0.8, 1.5),
+			rng.randf_range(0.45, 0.7),
+			rng.randf_range(1.0, 1.4),
+			WATER_SURFACE_Y,
+		)
 
 
 func spawn_particles(world_position: Vector3, color: Color, count: int) -> void:
@@ -209,8 +325,8 @@ func spawn_particles(world_position: Vector3, color: Color, count: int) -> void:
 	for _i in range(particle_count):
 		var particle := MeshInstance3D.new()
 		var mesh := SphereMesh.new()
-		mesh.radius = 0.12
-		mesh.height = 0.24
+		mesh.radius = 0.09
+		mesh.height = 0.18
 		mesh.radial_segments = 6
 		mesh.rings = 4
 		particle.mesh = mesh
@@ -218,19 +334,20 @@ func spawn_particles(world_position: Vector3, color: Color, count: int) -> void:
 		material.albedo_color = color
 		material.emission_enabled = true
 		material.emission = color
-		material.emission_energy_multiplier = 0.35
+		material.emission_energy_multiplier = 0.2
 		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		particle.material_override = material
 		particle.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		particle.position = Vector3(world_position.x, 0.5, world_position.z)
 		ephemeral_node.add_child(particle)
+		# Water drag keeps bursts soft: pieces drift outward, then float up.
 		particles.append(
 			{
 				"node": particle,
 				"velocity": Vector3(
-					rng.randf_range(-4.5, 4.5),
-					rng.randf_range(3.0, 12.0),
-					rng.randf_range(-4.5, 4.5),
+					rng.randf_range(-1.8, 1.8),
+					rng.randf_range(0.4, 2.0),
+					rng.randf_range(-1.8, 1.8),
 				),
 				"life": 1.0,
 			},
@@ -238,6 +355,9 @@ func spawn_particles(world_position: Vector3, color: Color, count: int) -> void:
 
 
 func start_heavy_rain() -> void:
+	var now := Time.get_ticks_msec()
+	rain_splash_start_ms = now + 650
+	rain_splash_end_ms = now + (3400 if OS.has_feature("web") else 4200)
 	_spawn_rain_wave()
 	_delayed_rain_wave(0.9)
 	if not OS.has_feature("web"):
@@ -246,8 +366,9 @@ func start_heavy_rain() -> void:
 
 func spawn_falling_bean(cell: Vector2i, color_index: int) -> void:
 	var bean := MeshInstance3D.new()
-	bean.mesh = falling_bean_mesh
+	bean.mesh = falling_bean_meshes[color_index]
 	bean.material_override = falling_bean_materials[color_index]
+	bean.scale = Vector3.ONE * DaiDaiBeanVisuals.VISUAL_SCALE
 	bean.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	bean.position = Vector3(cell.x, rng.randf_range(12.0, 17.0), cell.y)
 	ephemeral_node.add_child(bean)
@@ -327,7 +448,8 @@ func _process(delta: float) -> void:
 		var node := particle["node"] as MeshInstance3D
 		var velocity := particle["velocity"] as Vector3
 		node.position += velocity * delta
-		velocity.y -= 10.8 * delta
+		velocity *= exp(-2.4 * delta)
+		velocity.y += 0.9 * delta
 		particle["velocity"] = velocity
 		particle["life"] = float(particle["life"]) - delta
 		var amount := maxf(0.0, float(particle["life"]))
@@ -338,18 +460,8 @@ func _process(delta: float) -> void:
 			node.queue_free()
 			particles.remove_at(i)
 
-	for i in range(ripples.size() - 1, -1, -1):
-		var ripple := ripples[i]
-		var node := ripple["node"] as MeshInstance3D
-		ripple["life"] = float(ripple["life"]) - delta
-		var normalized := 1.0 - maxf(0.0, float(ripple["life"])) / float(ripple["max_life"])
-		var eased := 1.0 - pow(1.0 - normalized, 2.0)
-		node.scale = Vector3.ONE * lerpf(0.4, 3.2, eased)
-		var material := node.material_override as StandardMaterial3D
-		material.albedo_color.a = 0.28 * minf(1.0, normalized * 4.0) * maxf(0.0, 1.0 - normalized)
-		if float(ripple["life"]) <= 0.0:
-			node.queue_free()
-			ripples.remove_at(i)
+	_update_rain_splashes(delta)
+	_update_ripples(delta)
 
 	for i in range(falling_beans.size() - 1, -1, -1):
 		var falling := falling_beans[i]
@@ -371,7 +483,7 @@ func _process(delta: float) -> void:
 			var bubble := bubbles[i]
 			var position := bubble["position"] as Vector3
 			position.y += float(bubble["speed"]) * delta
-			position.x += sin(Time.get_ticks_msec() * 0.001 + float(bubble["phase"])) * 0.004
+			position.x += sin(Time.get_ticks_msec() * 0.001 + float(bubble["phase"])) * 0.24 * delta
 			if position.y > 5.5:
 				position = Vector3(
 					rng.randf_range(-cols * 0.2, cols * 1.2),
@@ -379,8 +491,12 @@ func _process(delta: float) -> void:
 					rng.randf_range(-rows * 0.2, rows * 1.2),
 				)
 			bubble["position"] = position
-			var transform := Transform3D.IDENTITY
-			transform.origin = position
+			var wobble := sin(Time.get_ticks_msec() * 0.006 + float(bubble["phase"]) * 3.0) * 0.08
+			var size := float(bubble["size"])
+			var transform := Transform3D(
+				Basis.from_scale(Vector3(size * (1.0 + wobble), size * (1.0 - wobble), size * (1.0 + wobble))),
+				position,
+			)
 			bubble_node.multimesh.set_instance_transform(i, transform)
 
 	var now := Time.get_ticks_msec()
@@ -451,6 +567,8 @@ func _build_floor() -> void:
 	shader.code = """
 shader_type spatial;
 render_mode diffuse_burley;
+uniform bool high_quality = true;
+uniform float caustic_strength = 0.22;
 varying vec3 world_position;
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -480,6 +598,33 @@ float fbm(vec2 p) {
 	}
 	return value;
 }
+vec2 hash2(vec2 p) {
+	p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+	return fract(sin(p) * 43758.5453);
+}
+// Distance between the two nearest animated cells: zero on cell borders,
+// which produces the bright web-like network of real pond caustics.
+float caustic_web(vec2 p, float t) {
+	vec2 cell = floor(p);
+	vec2 local = fract(p);
+	float nearest = 8.0;
+	float second = 8.0;
+	for (int y = -1; y <= 1; y++) {
+		for (int x = -1; x <= 1; x++) {
+			vec2 offset = vec2(float(x), float(y));
+			vec2 seed = hash2(cell + offset);
+			vec2 point = offset + 0.5 + 0.42 * sin(t + seed * 6.2831853) - local;
+			float d = dot(point, point);
+			if (d < nearest) {
+				second = nearest;
+				nearest = d;
+			} else if (d < second) {
+				second = d;
+			}
+		}
+	}
+	return sqrt(second) - sqrt(nearest);
+}
 void vertex() {
 	VERTEX.y += sin(VERTEX.x * 0.19) * 0.055;
 	VERTEX.y += cos(VERTEX.z * 0.16 + VERTEX.x * 0.07) * 0.045;
@@ -494,19 +639,45 @@ void fragment() {
 	float broad = fbm(domain + warp * 2.2);
 	float detail = fbm(world_position.xz * 0.72 + warp * 1.4 + vec2(31.0, 7.0));
 	float grain = gradient_noise(world_position.xz * 4.5);
-	vec3 dark = vec3(0.025, 0.12, 0.105);
-	vec3 light = vec3(0.14, 0.34, 0.22);
+	vec3 dark = vec3(0.02, 0.1, 0.095);
+	vec3 light = vec3(0.13, 0.33, 0.21);
+	vec3 sand = vec3(0.34, 0.4, 0.27);
 	float moss = clamp(broad * 0.65 + detail * 0.3 + grain * 0.05, 0.0, 1.0);
-	ALBEDO = mix(dark, light, moss);
-	float wave_a = sin(world_position.x * 1.25 + TIME * 0.7 + sin(world_position.z * 0.72 - TIME * 0.4));
-	float wave_b = cos(world_position.z * 1.08 - TIME * 0.55 + sin(world_position.x * 0.63 + TIME * 0.35));
-	float caustic = pow(clamp((wave_a + wave_b) * 0.25 + 0.5, 0.0, 1.0), 7.0);
-	ALBEDO += vec3(0.08, 0.17, 0.14) * caustic;
+	vec3 bed = mix(dark, light, moss);
+	float sand_mask = smoothstep(0.58, 0.72, fbm(domain * 0.7 + vec2(53.0, 11.0) - warp));
+	bed = mix(bed, sand * (0.82 + grain * 0.3), sand_mask * 0.55);
+
+	// Two drifting caustic layers, bent by the moving surface.
+	vec2 flow = vec2(
+		sin(world_position.z * 0.45 + TIME * 0.6),
+		cos(world_position.x * 0.4 - TIME * 0.5)
+	) * 0.18;
+	vec2 caustic_uv = world_position.xz * 0.46 + flow;
+	// Warp the cell domain so the network bends into organic, curved filaments.
+	caustic_uv += vec2(
+		gradient_noise(caustic_uv * 0.85 + vec2(TIME * 0.11, 0.0)),
+		gradient_noise(caustic_uv * 0.85 + vec2(5.2, 1.3 - TIME * 0.09))
+	) * 0.9 - 0.45;
+	float web_a = caustic_web(caustic_uv, TIME * 0.85);
+	float lines = exp(-web_a * web_a * 260.0);
+	if (high_quality) {
+		float web_b = caustic_web(caustic_uv * 1.31 + vec2(3.1, 7.7) - flow, TIME * -0.7 + 2.0);
+		float lines_b = exp(-web_b * web_b * 380.0);
+		lines = lines * 0.6 + lines_b * 0.35 + lines * lines_b * 0.9;
+	}
+	lines = clamp(lines, 0.0, 1.5);
+	// Large, slowly moving pools of sunlight so caustics breathe across the pond.
+	float sun_pool = smoothstep(0.38, 0.7, fbm(world_position.xz * 0.045 + vec2(TIME * 0.018, -TIME * 0.012)));
+	float caustic = lines * mix(0.12, 1.0, sun_pool);
+	vec3 caustic_color = vec3(0.62, 1.0, 0.86);
+	ALBEDO = bed * mix(0.8, 1.06, sun_pool) + caustic_color * caustic * 0.04;
+	EMISSION = caustic_color * caustic * caustic_strength;
 	ROUGHNESS = 0.85;
 }
 """
 	var material := ShaderMaterial.new()
 	material.shader = shader
+	material.set_shader_parameter("high_quality", not reduced_web_quality)
 	floor_mesh.material_override = material
 	floor_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	floor_mesh.position = Vector3((cols - 1) / 2.0, -0.3, (rows - 1) / 2.0)
@@ -523,25 +694,77 @@ func _build_water() -> void:
 	var shader := Shader.new()
 	shader.code = """
 shader_type spatial;
-render_mode blend_mix, depth_draw_never, cull_disabled;
+render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
+uniform bool high_quality = true;
+uniform vec3 sun_direction = vec3(-0.35, 0.8, 0.48);
+uniform vec2 glint_tilt = vec2(0.1, -0.16);
 varying vec3 world_position;
+vec2 random_gradient(vec2 p) {
+	float angle = fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453) * 6.2831853;
+	return vec2(cos(angle), sin(angle));
+}
+float gradient_noise(vec2 p) {
+	vec2 cell = floor(p);
+	vec2 local = fract(p);
+	vec2 blend = local * local * (3.0 - 2.0 * local);
+	float a = dot(random_gradient(cell), local);
+	float b = dot(random_gradient(cell + vec2(1.0, 0.0)), local - vec2(1.0, 0.0));
+	float c = dot(random_gradient(cell + vec2(0.0, 1.0)), local - vec2(0.0, 1.0));
+	float d = dot(random_gradient(cell + vec2(1.0, 1.0)), local - vec2(1.0, 1.0));
+	return mix(mix(a, b, blend.x), mix(c, d, blend.x), blend.y);
+}
+float swell(vec2 p, float t) {
+	float h = sin(dot(p, vec2(0.38, 0.12)) + t * 1.6) * 0.12;
+	h += sin(dot(p, vec2(-0.21, 0.33)) + t * 1.3) * 0.1;
+	h += sin(dot(p, vec2(0.9, -0.55)) + t * 2.3) * 0.035;
+	h += sin(dot(p, vec2(-0.7, -1.1)) + t * 2.9) * 0.025;
+	return h;
+}
+float surface(vec2 p, float t) {
+	float h = swell(p, t);
+	h += gradient_noise(p * 1.7 + vec2(t * 0.35, t * 0.22)) * 0.07;
+	if (high_quality) {
+		h += gradient_noise(p * 3.9 - vec2(t * 0.42, -t * 0.3)) * 0.028;
+	}
+	return h;
+}
 void vertex() {
-	VERTEX.y += sin(VERTEX.x * 0.4 + TIME * 2.0) * 0.15;
-	VERTEX.y += cos(VERTEX.z * 0.3 + TIME * 1.7) * 0.12;
+	vec3 world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	VERTEX.y += swell(world.xz, TIME);
 	world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
-	float caustic = pow(max(0.0, sin(world_position.x * 1.7 + TIME) * cos(world_position.z * 1.3 - TIME * 0.8)), 4.0);
-	ALBEDO = vec3(0.32, 0.68, 0.67) + vec3(0.12, 0.26, 0.3) * caustic;
-	ROUGHNESS = 0.15;
-	ALPHA = 0.045 + caustic * 0.025;
+	vec2 p = world_position.xz;
+	float e = 0.06;
+	float h = surface(p, TIME);
+	float hx = surface(p + vec2(e, 0.0), TIME);
+	float hz = surface(p + vec2(0.0, e), TIME);
+	vec3 n = normalize(vec3(h - hx, e, h - hz));
+	vec3 view_world = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
+
+	float fresnel = 0.03 + 0.97 * pow(1.0 - clamp(abs(dot(n, view_world)), 0.0, 1.0), 5.0);
+	float diffuse = clamp(dot(n, normalize(sun_direction)), 0.0, 1.0);
+	float sun_pool = smoothstep(0.05, 0.4, gradient_noise(p * 0.05 + vec2(TIME * 0.02, -TIME * 0.015)));
+
+	vec3 glint_normal = normalize(vec3(glint_tilt.x, 1.0, glint_tilt.y));
+	float alignment = max(dot(n, glint_normal), 0.0);
+	float glint = pow(alignment, high_quality ? 1600.0 : 900.0) * 1.8;
+	glint *= sun_pool;
+
+	vec3 deep = vec3(0.04, 0.26, 0.27);
+	vec3 sky = vec3(0.72, 0.93, 0.95);
+	vec3 color = mix(deep, sky, clamp(fresnel * 2.5 + diffuse * 0.12, 0.0, 1.0));
+	float sheen = smoothstep(0.12, 0.32, h) * 0.035;
+	ALBEDO = color + vec3(1.0, 0.98, 0.9) * glint;
+	ALPHA = clamp(0.035 + fresnel * 0.35 + sheen + glint * 0.85, 0.0, 0.9);
 }
 """
 	var material := ShaderMaterial.new()
 	material.shader = shader
+	material.set_shader_parameter("high_quality", not reduced_web_quality)
 	water_mesh.material_override = material
 	water_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	water_mesh.position = Vector3((cols - 1) / 2.0, 4.5, (rows - 1) / 2.0)
+	water_mesh.position = Vector3((cols - 1) / 2.0, WATER_SURFACE_Y, (rows - 1) / 2.0)
 	atmosphere_node.add_child(water_mesh)
 
 
@@ -901,14 +1124,24 @@ func _build_pond_flowers(pad_positions: Array[Vector3]) -> void:
 func _build_bubbles() -> void:
 	bubble_node = MultiMeshInstance3D.new()
 	var mesh := SphereMesh.new()
-	mesh.radius = 0.04
-	mesh.height = 0.08
-	mesh.radial_segments = 6
-	mesh.rings = 4
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.87, 0.93, 1.0, 0.45)
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mesh.radius = 0.05
+	mesh.height = 0.1
+	mesh.radial_segments = 10
+	mesh.rings = 6
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode unshaded, blend_mix, depth_draw_never, shadows_disabled;
+void fragment() {
+	float facing = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
+	float rim = pow(1.0 - facing, 2.2);
+	float highlight = pow(clamp(dot(NORMAL, normalize(vec3(-0.45, 0.6, 0.65))), 0.0, 1.0), 28.0);
+	ALBEDO = mix(vec3(0.62, 0.9, 0.92), vec3(1.0), highlight);
+	ALPHA = clamp(0.06 + rim * 0.7 + highlight * 0.9, 0.0, 1.0);
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
 	mesh.material = material
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
@@ -920,19 +1153,79 @@ func _build_bubbles() -> void:
 			rng.randf_range(0.0, 5.0),
 			rng.randf_range(-rows * 0.2, rows * 1.2),
 		)
-		var transform := Transform3D.IDENTITY
-		transform.origin = position
+		var size := rng.randf_range(0.55, 1.6)
+		var transform := Transform3D(Basis.from_scale(Vector3.ONE * size), position)
 		multimesh.set_instance_transform(i, transform)
 		bubbles.append(
 			{
 				"position": position,
-				"speed": rng.randf_range(0.24, 0.84),
+				"speed": rng.randf_range(0.24, 0.84) * lerpf(0.8, 1.25, (size - 0.55) / 1.05),
 				"phase": rng.randf_range(0.0, TAU),
+				"size": size,
 			},
 		)
 	bubble_node.multimesh = multimesh
 	bubble_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	atmosphere_node.add_child(bubble_node)
+
+
+func _build_marine_snow() -> void:
+	marine_snow_node = MultiMeshInstance3D.new()
+	marine_snow_node.name = "MarineSnow"
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.09, 0.09)
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
+uniform vec3 box_min;
+uniform vec3 box_size;
+varying float twinkle;
+void vertex() {
+	vec3 origin = MODEL_MATRIX[3].xyz;
+	float id = float(INSTANCE_ID);
+	vec3 drift = vec3(
+		TIME * 0.11 + sin(TIME * 0.17 + id * 1.3) * 0.5,
+		sin(TIME * 0.23 + id * 0.7) * 0.25 - TIME * 0.035,
+		TIME * 0.05 + cos(TIME * 0.13 + id * 2.1) * 0.5
+	);
+	vec3 moved = mod(origin + drift - box_min, box_size) + box_min;
+	float size = 0.6 + fract(id * 0.618) * 0.9;
+	vec3 world = moved + (INV_VIEW_MATRIX * vec4(VERTEX * size, 0.0)).xyz;
+	POSITION = PROJECTION_MATRIX * VIEW_MATRIX * vec4(world, 1.0);
+	twinkle = 0.55 + 0.45 * sin(TIME * 1.1 + id * 2.3);
+}
+void fragment() {
+	float d = length(UV - vec2(0.5)) * 2.0;
+	float dot_shape = 1.0 - smoothstep(0.2, 1.0, d);
+	ALBEDO = vec3(0.75, 0.95, 0.85);
+	ALPHA = dot_shape * twinkle * 0.2;
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	var box_min := Vector3(-cols * 0.1, -0.2, -rows * 0.1)
+	var box_size := Vector3(cols * 1.2, 3.4, rows * 1.2)
+	material.set_shader_parameter("box_min", box_min)
+	material.set_shader_parameter("box_size", box_size)
+	quad.material = material
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.mesh = quad
+	multimesh.instance_count = (
+		int(MARINE_SNOW_COUNT / 2.0) if reduced_web_quality else MARINE_SNOW_COUNT
+	)
+	for i in range(multimesh.instance_count):
+		var origin := box_min + Vector3(
+			rng.randf() * box_size.x,
+			rng.randf() * box_size.y,
+			rng.randf() * box_size.z,
+		)
+		multimesh.set_instance_transform(i, Transform3D(Basis.IDENTITY, origin))
+	marine_snow_node.multimesh = multimesh
+	marine_snow_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	marine_snow_node.custom_aabb = AABB(box_min - Vector3.ONE * 2.0, box_size + Vector3.ONE * 4.0)
+	atmosphere_node.add_child(marine_snow_node)
 
 
 func _spawn_rain_wave() -> void:

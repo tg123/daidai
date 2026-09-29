@@ -224,8 +224,68 @@ func _run() -> void:
 		(bean_a.get_child(0) as Sprite3D).texture == (bean_b.get_child(0) as Sprite3D).texture,
 		"same-color beans reuse their halo texture",
 	)
+	var design_signatures := {}
+	for color_index in range(DaiDaiRules.COLORS.size()):
+		var design := DaiDaiBeanVisuals.create_mesh(color_index)
+		var arrays := design.surface_get_arrays(0)
+		var aabb := design.get_aabb()
+		var signature := "%d|%d|%s|%s" % [
+			(arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size(),
+			(arrays[Mesh.ARRAY_INDEX] as PackedInt32Array).size(),
+			str(aabb.position.snapped(Vector3.ONE * 0.001)),
+			str(aabb.size.snapped(Vector3.ONE * 0.001)),
+		]
+		design_signatures[signature] = color_index
+	_check(
+		design_signatures.size() == DaiDaiRules.COLORS.size(),
+		"all five powers have distinct bean geometry",
+	)
+	var power_values := {}
+	for material in game.bean_spawner.bean_materials:
+		power_values[int(material.get_shader_parameter("power"))] = true
+	_check(
+		power_values.size() == DaiDaiRules.COLORS.size(),
+		"all five powers use distinct bean shading",
+	)
 	bean_a.free()
 	bean_b.free()
+	var trail_multimesh := game.bean_spawner.trail_node.multimesh
+	var trail_capacity := (
+		(DaiDaiBeanSpawner.TRAIL_CAPACITY_STEP + 5) * DaiDaiBeanSpawner.TRAIL_BUBBLES_PER_BEAN
+	)
+	var original_beans := game.bean_spawner.beans.duplicate()
+	game.bean_spawner.beans.clear()
+	for i in range(DaiDaiBeanSpawner.TRAIL_CAPACITY_STEP + 5):
+		game.bean_spawner.beans.append(
+			{"x": i, "y": 0, "node": Node3D.new(), "drop_phase": 0.0},
+		)
+	game.bean_spawner._update_bubble_trails(Time.get_ticks_msec())
+	_check(
+		trail_multimesh.instance_count >= trail_capacity
+		and trail_multimesh.visible_instance_count == trail_capacity,
+		"every bean keeps a bubble trail as the bean count grows",
+	)
+	for bean in game.bean_spawner.beans:
+		(bean["node"] as Node).free()
+	game.bean_spawner.beans.assign(original_beans)
+	game.effects.ripples.clear()
+	game.effects.rain_splash_start_ms = 0
+	game.effects.rain_splash_end_ms = Time.get_ticks_msec() + 10000
+	game.effects._update_rain_splashes(1.0)
+	var surface_ripples := game.effects.ripples.filter(
+		func(ripple: Dictionary) -> bool:
+			return is_equal_approx(
+				(ripple["position"] as Vector3).y,
+				DaiDaiEffects.WATER_SURFACE_Y,
+			)
+	)
+	_check(
+		not game.effects.ripples.is_empty()
+		and surface_ripples.size() == game.effects.ripples.size(),
+		"rain splashes ring on the water surface",
+	)
+	game.effects.rain_splash_end_ms = 0
+	game.effects.ripples.clear()
 	var projectile_a := game.effects.create_projectile(Vector3.ZERO)
 	var projectile_b := game.effects.create_projectile(Vector3.ONE)
 	var projectile_mesh_a := projectile_a.get_child(0) as MeshInstance3D
