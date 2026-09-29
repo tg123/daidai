@@ -91,6 +91,8 @@ Signed Android releases require these repository secrets:
 - `ANDROID_KEYSTORE_ALIAS`
 - `ANDROID_KEYSTORE_PASSWORD`
 
+To also publish the AAB to the Google Play internal testing track, add a `PLAY_SERVICE_ACCOUNT_JSON` secret containing a Google Cloud service account JSON key. The service account must be invited in Play Console with release permissions for `io.github.tg123.daidai`. The upload step is skipped when the secret is not set.
+
 ## Xbox-first release path
 
 The standard open-source Godot templates cannot create Xbox console packages. Xbox export modules use the NDA-protected Microsoft GDK and must remain private.
