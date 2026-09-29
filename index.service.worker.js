@@ -4,7 +4,7 @@
 // Incrementing CACHE_VERSION will kick off the install event and force
 // previously cached resources to be updated from the network.
 /** @type {string} */
-const CACHE_VERSION = '1790673657|2578840';
+const CACHE_VERSION = '1790674900|2403462';
 /** @type {string} */
 const CACHE_PREFIX = 'DaiDai-sw-cache-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
@@ -14,10 +14,10 @@ const OFFLINE_URL = 'index.offline.html';
 const ENSURE_CROSSORIGIN_ISOLATION_HEADERS = false;
 // Files that will be cached on load.
 /** @type {string[]} */
-const CACHED_FILES = ["index.html","index-4227c49572eb8a7e33fffee5530551cbb2410794.js","index.offline.html","index.icon.png","index.apple-touch-icon.png","index-4227c49572eb8a7e33fffee5530551cbb2410794.audio.worklet.js","index-4227c49572eb8a7e33fffee5530551cbb2410794.audio.position.worklet.js"];
+const CACHED_FILES = ["index.html","index-1d860c3c160e2995e58b68bd0ece481a33fb0b99.js","index.offline.html","index.icon.png","index.apple-touch-icon.png","index-1d860c3c160e2995e58b68bd0ece481a33fb0b99.audio.worklet.js","index-1d860c3c160e2995e58b68bd0ece481a33fb0b99.audio.position.worklet.js"];
 // Files that we might not want the user to preload, and will only be cached on first load.
 /** @type {string[]} */
-const CACHEABLE_FILES = ["index-4227c49572eb8a7e33fffee5530551cbb2410794.wasm","index-4227c49572eb8a7e33fffee5530551cbb2410794.pck"];
+const CACHEABLE_FILES = ["index-1d860c3c160e2995e58b68bd0ece481a33fb0b99.wasm","index-1d860c3c160e2995e58b68bd0ece481a33fb0b99.pck"];
 const FULL_CACHE = CACHED_FILES.concat(CACHEABLE_FILES);
 
 self.addEventListener('install', (event) => {
