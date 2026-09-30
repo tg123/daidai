@@ -160,6 +160,83 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "$RELEASE_TAG" "${{ matrix.artifact }}" --clobber
 
+  microsoft-store:
+    if: github.event_name == 'release'
+    name: Microsoft Store MSIX
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      # Partner Center > Product identity > Package/Identity/Publisher. Accepted as a
+      # variable or a secret; the steps are skipped until it is configured.
+      MSSTORE_PUBLISHER: ${{ vars.MSSTORE_PUBLISHER || secrets.MSSTORE_PUBLISHER }}
+      MSSTORE_FLIGHT_ID: ${{ vars.MSSTORE_FLIGHT_ID }}
+      PARTNER_CENTER_CLIENT_SECRET: ${{ secrets.PARTNER_CENTER_CLIENT_SECRET }}
+
+    steps:
+      - name: Report configuration
+        if: env.MSSTORE_PUBLISHER == ''
+        run: echo "::notice::MSSTORE_PUBLISHER is not set; skipping the Microsoft Store MSIX."
+
+      - uses: actions/checkout@v5
+        if: env.MSSTORE_PUBLISHER != ''
+
+      - name: Download native Windows builds
+        if: env.MSSTORE_PUBLISHER != ''
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download $env:RELEASE_TAG -p "DaiDai-windows-*.zip" -D windows
+          if ($LASTEXITCODE -ne 0) { throw "gh release download failed with exit code $LASTEXITCODE." }
+          Get-ChildItem windows -Filter *.zip | ForEach-Object {
+            Expand-Archive -LiteralPath $_.FullName -DestinationPath windows -Force
+          }
+
+      - name: Build MSIX bundle
+        if: env.MSSTORE_PUBLISHER != ''
+        shell: pwsh
+        run: |
+          ./scripts/package_msix.ps1 `
+            -Version $env:RELEASE_TAG `
+            -Publisher $env:MSSTORE_PUBLISHER `
+            -X64Executable windows/DaiDai-windows-x64.exe `
+            -Arm64Executable windows/DaiDai-windows-arm64.exe `
+            -OutputPath DaiDai-windows.msixbundle
+
+      - name: Upload MSIX bundle
+        if: env.MSSTORE_PUBLISHER != ''
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$RELEASE_TAG" DaiDai-windows.msixbundle --clobber
+
+      - name: Set up Microsoft Store CLI
+        if: env.MSSTORE_PUBLISHER != '' && env.PARTNER_CENTER_CLIENT_SECRET != '' && env.MSSTORE_FLIGHT_ID != ''
+        uses: microsoft/microsoft-store-apppublisher@v1.4
+
+      # Mirrors Google Play's internal track: releases go only to a package flight.
+      # Draft/production submissions replace any pending Partner Center submission,
+      # so they are left to the manual Microsoft Store Upload workflow.
+      - name: Submit to Microsoft Store package flight
+        if: env.MSSTORE_PUBLISHER != '' && env.PARTNER_CENTER_CLIENT_SECRET != '' && env.MSSTORE_FLIGHT_ID != ''
+        shell: pwsh
+        env:
+          PARTNER_CENTER_TENANT_ID: ${{ secrets.PARTNER_CENTER_TENANT_ID }}
+          PARTNER_CENTER_SELLER_ID: ${{ secrets.PARTNER_CENTER_SELLER_ID }}
+          PARTNER_CENTER_CLIENT_ID: ${{ secrets.PARTNER_CENTER_CLIENT_ID }}
+        run: |
+          msstore reconfigure `
+            --tenantId $env:PARTNER_CENTER_TENANT_ID `
+            --sellerId $env:PARTNER_CENTER_SELLER_ID `
+            --clientId $env:PARTNER_CENTER_CLIENT_ID `
+            --clientSecret $env:PARTNER_CENTER_CLIENT_SECRET
+          if ($LASTEXITCODE -ne 0) { throw "msstore reconfigure failed with exit code $LASTEXITCODE." }
+          ./scripts/publish_msstore.ps1 `
+            -Package DaiDai-windows.msixbundle `
+            -Target flight `
+            -FlightId $env:MSSTORE_FLIGHT_ID
+
   android:
     if: github.event_name == 'release'
     name: Godot Android ARM64
