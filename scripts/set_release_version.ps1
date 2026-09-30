@@ -3,7 +3,7 @@ param(
     [string] $Version
 )
 
-$normalizedVersion = $Version.TrimStart("v")
+$normalizedVersion = $Version -replace "^v", ""
 if ($normalizedVersion -notmatch "^\d+\.\d+\.\d+$") {
     throw "Version must use semantic versioning (for example, v1.0.1)."
 }
