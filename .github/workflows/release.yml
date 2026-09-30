@@ -13,6 +13,10 @@ on:
 permissions:
   contents: write
 
+# Kept out of run scripts so tag text is passed as data, never evaluated as code.
+env:
+  RELEASE_TAG: ${{ github.event.release.tag_name }}
+
 jobs:
   draft:
     if: github.event_name != 'release'
@@ -22,27 +26,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Read canonical release version
-        id: project-version
-        shell: bash
-        run: |
-          version=$(sed -n 's/^config\/version="\([^"]*\)"/\1/p' godot/project.godot)
-          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Invalid application/config/version: $version"
-            exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Compute next semver
+        id: repo-semver
+        uses: lhstrh/action-repo-semver@v1.2.1
+        with:
+          bump: patch
 
       - name: Refresh draft release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="v${{ steps.project-version.outputs.version }}"
-          gh release list --limit 100 --json tagName,isDraft \
-            --jq '.[] | select(.isDraft) | .tagName' |
-            while read -r existing; do
-              gh release delete "$existing" --yes
-            done
+          tag="v${{ steps.repo-semver.outputs.bump }}"
+          existing=$(gh release list --json tagName,isDraft \
+            --jq ".[] | select(.isDraft and .tagName==\"$tag\") | .tagName")
+          if [ -n "$existing" ]; then
+            gh release delete "$existing" --yes
+          fi
           gh release create -d --generate-notes "$tag" \
             --notes "Native Godot release. The Xbox edition is built through the private GDK pipeline and is no longer a PWA."
 
@@ -82,7 +81,7 @@ jobs:
 
       - name: Set native release version
         shell: pwsh
-        run: ./scripts/set_release_version.ps1 -Version "${{ github.event.release.tag_name }}"
+        run: ./scripts/set_release_version.ps1 -Version $env:RELEASE_TAG
 
       - name: Import Godot resources
         if: runner.os == 'Windows'
@@ -158,13 +157,15 @@ jobs:
       - name: Upload release artifact
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.event.release.tag_name }}" "${{ matrix.artifact }}" --clobber
+        run: gh release upload "$RELEASE_TAG" "${{ matrix.artifact }}" --clobber
 
   android:
     if: github.event_name == 'release'
     name: Godot Android ARM64
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
 
     steps:
       - uses: actions/checkout@v5
@@ -223,10 +224,15 @@ jobs:
 
       - name: Set native release version
         shell: pwsh
-        run: ./scripts/set_release_version.ps1 -Version "${{ github.event.release.tag_name }}"
+        run: ./scripts/set_release_version.ps1 -Version $env:RELEASE_TAG
 
       - name: Set Android version code
-        run: sed -i "s|^version/code=.*|version/code=$GITHUB_RUN_NUMBER|" godot/export_presets.cfg
+        run: |
+          version_name="${GITHUB_REF_NAME#v}"
+          IFS=. read -r major minor patch <<< "${version_name%%-*}"
+          # Semver-derived code, matching the earlier Tauri scheme (0.1.0 -> 1000).
+          version_code=$(( major * 1000000 + minor * 1000 + patch ))
+          sed -i "s|^version/code=.*|version/code=$version_code|" godot/export_presets.cfg
 
       - name: Import Godot resources
         run: '"$GODOT" --headless --editor --path godot --quit'
@@ -251,7 +257,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ github.event.release.tag_name }}" \
+          gh release upload "$RELEASE_TAG" \
             DaiDai-android-arm64.apk \
             DaiDai-android-arm64.aab \
             --clobber
+
+      - name: Publish to Google Play internal testing
+        if: env.PLAY_SERVICE_ACCOUNT_JSON != ''
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ env.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: io.github.tg123.daidai
+          releaseFiles: DaiDai-android-arm64.aab
+          releaseName: ${{ github.event.release.tag_name }}
+          tracks: internal
+          status: completed
