@@ -63,11 +63,57 @@ $languages = @(
     "zh-cn", "zh-tw", "en-us", "ja-jp", "ko-kr", "es-es", "fr-fr",
     "it-it", "de-de", "pt-br", "pl-pl", "ru-ru", "th-th"
 )
+# Store listing titles are taken from the package display name for each package language,
+# and every name must be reserved for the product in Partner Center.
+$localizedDisplayNames = @{
+    "zh-cn" = "呆呆虫之豆豆潭"
+    "zh-tw" = "呆呆蟲之豆豆潭"
+    "ja-jp" = "ダイダイ虫と豆豆池"
+    "ko-kr" = "다이다이충과 콩콩못"
+}
 $escape = { param($value) [Security.SecurityElement]::Escape($value) }
+
+$makePri = Get-ChildItem -Path $sdkBin -Filter makepri.exe -Recurse -ErrorAction SilentlyContinue |
+    Where-Object { $_.Directory.Name -eq "x64" } |
+    Sort-Object { [version] $_.Directory.Parent.Name } -Descending |
+    Select-Object -First 1
+if (-not $makePri) {
+    throw "MakePri.exe was not found. Install the Windows 10/11 SDK."
+}
 
 $workRoot = Join-Path ([IO.Path]::GetTempPath()) "daidai-msix-$([Guid]::NewGuid().ToString('N'))"
 $packagesDirectory = Join-Path $workRoot "packages"
 New-Item -ItemType Directory -Path $packagesDirectory -Force | Out-Null
+
+$priSource = Join-Path $workRoot "pri"
+foreach ($language in $languages) {
+    $name = $localizedDisplayNames[$language]
+    if (-not $name) { $name = $DisplayName }
+    $stringsDirectory = Join-Path $priSource "Strings\$language"
+    New-Item -ItemType Directory -Path $stringsDirectory -Force | Out-Null
+    $resw = @"
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="AppName" xml:space="preserve"><value>$(& $escape $name)</value></data>
+</root>
+"@
+    [IO.File]::WriteAllText((Join-Path $stringsDirectory "Resources.resw"), $resw, [Text.UTF8Encoding]::new($true))
+}
+$priConfig = Join-Path $workRoot "priconfig.xml"
+& $makePri.FullName createconfig /cf $priConfig /dq en-US /pv 10.0.0 /o | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    throw "MakePri createconfig failed with exit code $LASTEXITCODE."
+}
+# Keep every language in the main resources.pri; split resource packs are not bundled.
+[xml] $priConfigXml = Get-Content -LiteralPath $priConfig -Raw
+foreach ($packaging in @($priConfigXml.SelectNodes("//packaging"))) {
+    [void] $packaging.ParentNode.RemoveChild($packaging)
+}
+$priConfigXml.Save($priConfig)
 
 try {
     Add-Type -AssemblyName System.Drawing
@@ -120,7 +166,7 @@ try {
     Version="$packageVersion"
     ProcessorArchitecture="$architecture" />
   <Properties>
-    <DisplayName>$(& $escape $DisplayName)</DisplayName>
+    <DisplayName>ms-resource:AppName</DisplayName>
     <PublisherDisplayName>$(& $escape $PublisherDisplayName)</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -133,7 +179,7 @@ $resources
   <Applications>
     <Application Id="DaiDai" Executable="DaiDai.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="$(& $escape $DisplayName)"
+        DisplayName="ms-resource:AppName"
         Description="$(& $escape $DisplayName)"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
@@ -148,6 +194,11 @@ $resources
 </Package>
 "@
             [IO.File]::WriteAllText((Join-Path $layout "AppxManifest.xml"), $manifest, [Text.UTF8Encoding]::new($false))
+
+            & $makePri.FullName new /pr $priSource /cf $priConfig /mn (Join-Path $layout "AppxManifest.xml") /of (Join-Path $layout "resources.pri") /o | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                throw "MakePri failed for $architecture with exit code $LASTEXITCODE."
+            }
 
             $package = Join-Path $packagesDirectory "DaiDai_${packageVersion}_$architecture.msix"
             & $makeAppx.FullName pack /d $layout /p $package /o

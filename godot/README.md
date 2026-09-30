@@ -113,6 +113,8 @@ The client must be a Microsoft Entra app added in Partner Center > Account setti
 
 The package uses the `runFullTrust` restricted capability, so the first MSIX submission needs a capability justification in Partner Center. It replaces the listing's previous PWA package for Windows desktop only; the Xbox package still comes from the private GDK pipeline.
 
+Store listing titles come from the package display name in each language, so `scripts/package_msix.ps1` builds a `resources.pri` with the product's reserved names (for example `呆呆虫之豆豆潭` for `zh-cn`). A localized name must be reserved in Partner Center before it is used. Draft and production uploads also limit the submission to the Windows desktop device family; the earlier PWA enabled HoloLens, which the native package does not support.
+
 ## Native Xbox release
 
 The Microsoft Store Xbox edition is a native Godot console build, not a PWA or WebView wrapper. Xbox export modules use the NDA-protected Microsoft GDK and remain outside this public repository.
