@@ -1,0 +1,69 @@
+name: Microsoft Store Upload
+
+# Manually (re)submit a release's MSIX bundle to the Microsoft Store.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to upload (defaults to the latest release)
+        required: false
+      target:
+        description: draft/production replace any pending Partner Center submission (including manual edits)
+        required: true
+        default: draft
+        type: choice
+        options: [draft, flight, production]
+      flight_id:
+        description: Package flight ID (defaults to the MSSTORE_FLIGHT_ID variable)
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download release MSIX bundle
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          $tag = $env:TAG
+          if (-not $tag) {
+            $tag = gh release view -R $env:GITHUB_REPOSITORY --json tagName --jq .tagName
+          }
+          gh release download $tag -R $env:GITHUB_REPOSITORY -p DaiDai-windows.msixbundle
+          if (-not (Test-Path DaiDai-windows.msixbundle)) {
+            throw "Release $tag has no DaiDai-windows.msixbundle asset."
+          }
+
+      - name: Set up Microsoft Store CLI
+        uses: microsoft/microsoft-store-apppublisher@v1.4
+
+      - name: Submit to Microsoft Store
+        shell: pwsh
+        env:
+          PARTNER_CENTER_TENANT_ID: ${{ secrets.PARTNER_CENTER_TENANT_ID }}
+          PARTNER_CENTER_SELLER_ID: ${{ secrets.PARTNER_CENTER_SELLER_ID }}
+          PARTNER_CENTER_CLIENT_ID: ${{ secrets.PARTNER_CENTER_CLIENT_ID }}
+          PARTNER_CENTER_CLIENT_SECRET: ${{ secrets.PARTNER_CENTER_CLIENT_SECRET }}
+          TARGET: ${{ inputs.target }}
+          FLIGHT_ID: ${{ inputs.flight_id || vars.MSSTORE_FLIGHT_ID }}
+        run: |
+          msstore reconfigure `
+            --tenantId $env:PARTNER_CENTER_TENANT_ID `
+            --sellerId $env:PARTNER_CENTER_SELLER_ID `
+            --clientId $env:PARTNER_CENTER_CLIENT_ID `
+            --clientSecret $env:PARTNER_CENTER_CLIENT_SECRET
+          if ($LASTEXITCODE -ne 0) { throw "msstore reconfigure failed with exit code $LASTEXITCODE." }
+          ./scripts/publish_msstore.ps1 `
+            -Package DaiDai-windows.msixbundle `
+            -Target $env:TARGET `
+            -FlightId $env:FLIGHT_ID

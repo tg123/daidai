@@ -77,11 +77,12 @@ Web quality is selected automatically from pointer type, WebGL renderer, device 
 
 Publishing a GitHub Release builds and uploads:
 
-- `DaiDai-windows-x64.exe`
-- `DaiDai-windows-arm64.exe`
+- `DaiDai-windows-x64.zip` — contains the single native `.exe`
+- `DaiDai-windows-arm64.zip` — contains the single native `.exe`
 - `DaiDai-macos-arm64.zip` — Apple Silicon only
 - `DaiDai-android-arm64.apk`
 - `DaiDai-android-arm64.aab` — Google Play upload
+- `DaiDai-windows.msixbundle` — Microsoft Store upload (when configured, see below)
 
 The workflow thins Godot's universal template to ARM64 and then ad-hoc signs the app. It is not Apple-notarized.
 
@@ -97,17 +98,33 @@ The Android version code is derived from the release tag as `major * 1000000 + m
 
 To re-upload an existing release's AAB or push it to another track, run the **Google Play Upload** workflow manually.
 
-## Xbox-first release path
+## Microsoft Store (Windows)
 
-The standard open-source Godot templates cannot create Xbox console packages. Xbox export modules use the NDA-protected Microsoft GDK and must remain private.
+When the `MSSTORE_PUBLISHER` repository variable (or secret) is set, publishing a release also packages the x64 and ARM64 executables into `DaiDai-windows.msixbundle` (identity `62505tgic.daidaiworm`) and attaches it to the release. Copy the value from Partner Center > Product identity > `Package/Identity/Publisher`; `scripts/package_msix.ps1` rejects any value that does not match the listing's package family name.
 
-1. Apply to [ID@Xbox](https://developer.microsoft.com/en-us/games/publish/id/welcome) and submit DaiDai for concept approval.
-2. After approval, obtain GDK and Xbox development-kit access.
-3. License [W4 Consoles](https://www.w4games.com/w4consoles) or engage another authorized Godot console-porting provider.
-4. Add the private Xbox template to an NDA-compliant self-hosted Windows runner; public GitHub-hosted CI continues to validate Windows native exports.
-5. Complete Xbox certification and Partner Center submission.
+With these secrets configured, the bundle is also submitted to product `9MV7XJPTM52D`:
 
-Windows and Android remain fully native Godot targets and do not use a browser or WebView.
+- `PARTNER_CENTER_TENANT_ID`
+- `PARTNER_CENTER_SELLER_ID`
+- `PARTNER_CENTER_CLIENT_ID`
+- `PARTNER_CENTER_CLIENT_SECRET`
+
+The client must be a Microsoft Entra app added in Partner Center > Account settings > User management with the Manager role. Like the Google Play internal track, releases are submitted automatically only to the package flight in the `MSSTORE_FLIGHT_ID` variable. Use the **Microsoft Store Upload** workflow to submit a release as a draft or to production; both replace any pending Partner Center submission, including manual listing or Xbox package edits.
+
+The package uses the `runFullTrust` restricted capability, so the first MSIX submission needs a capability justification in Partner Center. It replaces the listing's previous PWA package for Windows desktop only; the Xbox package still comes from the private GDK pipeline.
+
+## Native Xbox release
+
+The Microsoft Store Xbox edition is a native Godot console build, not a PWA or WebView wrapper. Xbox export modules use the NDA-protected Microsoft GDK and remain outside this public repository.
+
+For each Xbox update:
+
+1. Check out the same Git tag used by the public native release.
+2. Run `pwsh scripts/set_release_version.ps1 -Version <tag>`.
+3. Export and sign with the private GDK/W4 template on the NDA-compliant Windows runner.
+4. Upload the package to Partner Center and complete Xbox certification.
+
+Public CI validates the shared Godot gameplay through Windows native exports. Xbox templates, signing material, and packages remain private.
 
 ## Tests
 
@@ -129,4 +146,3 @@ The bundled Noto fonts are licensed under the SIL Open Font License 1.1. Their s
 ## Remaining distribution work
 
 - [ ] Sign the Windows executables and notarize macOS
-- [ ] Evaluate the licensed console export path and produce an Xbox package
