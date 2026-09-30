@@ -206,6 +206,7 @@ jobs:
 
       - name: Upload MSIX bundle
         if: env.MSSTORE_PUBLISHER != ''
+        shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "$RELEASE_TAG" DaiDai-windows.msixbundle --clobber
