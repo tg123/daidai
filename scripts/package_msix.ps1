@@ -18,7 +18,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$normalizedVersion = $Version.TrimStart("v")
+$normalizedVersion = $Version -replace "^v", ""
 if ($normalizedVersion -notmatch "^\d+\.\d+\.\d+$") {
     throw "Version must use semantic versioning (for example, v2.0.0)."
 }
