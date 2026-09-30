@@ -92,9 +92,15 @@ Signed Android releases require these repository secrets:
 - `ANDROID_KEYSTORE_ALIAS`
 - `ANDROID_KEYSTORE_PASSWORD`
 
+To also publish the AAB to the Google Play internal testing track, add a `PLAY_SERVICE_ACCOUNT_JSON` secret containing a Google Cloud service account JSON key. The service account must be invited in Play Console with release permissions for `io.github.tg123.daidai`. The upload step is skipped when the secret is not set.
+
+The Android version code is derived from the release tag as `major * 1000000 + minor * 1000 + patch` (for example `v2.0.1` → `2000001`), continuing the scheme of the earlier Tauri build (`0.1.0` → `1000`).
+
+To re-upload an existing release's AAB or push it to another track, run the **Google Play Upload** workflow manually.
+
 ## Microsoft Store (Windows)
 
-When the `MSSTORE_PUBLISHER` repository variable is set, publishing a release also packages the x64 and ARM64 executables into `DaiDai-windows.msixbundle` (identity `62505tgic.daidaiworm`) and attaches it to the release. Copy the value from Partner Center > Product identity > `Package/Identity/Publisher`; `scripts/package_msix.ps1` rejects any value that does not match the listing's package family name.
+When the `MSSTORE_PUBLISHER` repository variable (or secret) is set, publishing a release also packages the x64 and ARM64 executables into `DaiDai-windows.msixbundle` (identity `62505tgic.daidaiworm`) and attaches it to the release. Copy the value from Partner Center > Product identity > `Package/Identity/Publisher`; `scripts/package_msix.ps1` rejects any value that does not match the listing's package family name.
 
 With these secrets configured, the bundle is also submitted to product `9MV7XJPTM52D`:
 
