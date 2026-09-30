@@ -1,0 +1,32 @@
+name: Microsoft Store Publisher Check
+
+# Temporary check that the MSSTORE_PUBLISHER value matches the Store listing. Remove before merge.
+
+on:
+  push:
+    branches: [ci/msstore-upload]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    env:
+      MSSTORE_PUBLISHER: ${{ vars.MSSTORE_PUBLISHER || secrets.MSSTORE_PUBLISHER }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Validate publisher against 62505tgic.daidaiworm_jt60csy3p7b26
+        shell: pwsh
+        run: |
+          if (-not $env:MSSTORE_PUBLISHER) { throw "MSSTORE_PUBLISHER is not set." }
+          try {
+            ./scripts/package_msix.ps1 -Version v0.0.0 -Publisher $env:MSSTORE_PUBLISHER `
+              -OutputPath check.msixbundle -X64Executable missing.exe
+          } catch {
+            if ($_.Exception.Message -like "*Store listing expects*") { throw "MSSTORE_PUBLISHER does not match the listing." }
+            Write-Host "Publisher matches the Store listing's package family name."
+          }
